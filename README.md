@@ -6,23 +6,23 @@ All computations performed by a vendor BLAS library are assumed to be functional
 # BLAS Kernels Evaluated
 The kernels listed below are computed by the benchmark for a wide range of problem sizes and shapes.
 
-## Level 3 BLAS
-### GEMM
- - FP16 (where supported), FP32, FP64
- - Square, short-&-wide, tall-&-thin input sizes 
+### Level 3 BLAS
+ - GEMM
+   - FP16 (where supported), FP32, FP64
+   - Square, short-&-wide, tall-&-thin input sizes 
 
-### SpMM
- - FP16 (where supported), FP32, FP64
- - ...
+ - SpMM
+   - FP16 (where supported), FP32, FP64
+   - ...
 
-## Level 2 BLAS
-### GEMV
- - FP16 (where supported), FP32, FP64
- - Square, short-&-wide, tall-&-thin input sizes 
+### Level 2 BLAS
+ - GEMV
+   - FP16 (where supported), FP32, FP64
+   - Square, short-&-wide, tall-&-thin input sizes 
 
-### SpMV
- - FP16 (where supported), FP32, FP64
- - ...
+ - SpMV
+   - FP16 (where supported), FP32, FP64
+   - ...
 
 # ToDo:
  - [ ] Outline what kernels are included in the benchmark, along with how they will be run.

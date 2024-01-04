@@ -86,13 +86,13 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - ...
 
 # ToDo:
- - [ ] Outline what kernels are included in the benchmark, along with how they will be run.
+ - [x] Outline what kernels are included in the benchmark, along with how they will be run.
    - [ ] Finish Sparce function descriptions, including what inputs are evaluated and why.
  - [ ] Consider the suitability of including batched versions of the chosen BLAS kernels.
  - [ ] Consider whether including MAGMA(-Batched) would be a worthwhile addition.
    - Could provide a point of comparison to a heterogeneous library, given this benchmark will be testing CPU vs. GPU individually.
  - [ ] Create main file which contains functionality of:
-   - [ ] Print system information such as CPU library used, GPU library used...
+   - [x] Print system information such as CPU library used, GPU library used...
    - [ ] Running each BLAS kernel for all input types & shapes on CPU.
      - [ ] Increase each dimension by 1 each run until reached upper-limit (user defined?).
      - [ ] Each for `n` iterations (user defined?).
@@ -105,11 +105,15 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - [ ] Saving all data to .csv file(s).
    - [ ] Calculate for each kernel at what problem size offloading the computation to the GPU becomes worthwhile.
    - [ ] ...
- - [ ] Create Makefile with options for:
-   - [ ] Selecting the compiler + compiler specific flags.
-   - [ ] Selecting the CPU library target (ArmPL, oneMKL, OpenBLAS) + relevant flags.
-   - [ ] Selecting the GPU library target (cuBLAS, oneMKL) + relevant flags.
+ - [x] Create Makefile with options for:
+   - [x] Selecting the compiler + compiler specific flags.
+   - [x] Selecting the CPU library target (ArmPL, oneMKL, OpenBLAS) + relevant flags.
+   - [x] Selecting the GPU library target (cuBLAS, oneMKL) + relevant flags.
  - [ ] Add support for ArmPL.
+   - [ ] GEMM 
+   - [ ] GEMV 
+   - [ ] SpMM 
+   - [ ] SpMV 
  - [ ] Add support for cuBLAS.
  - [ ] Add support for oneMKL.
  - [ ] Add support for AOCL (AMD Optimizing CPU libraries).

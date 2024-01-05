@@ -68,7 +68,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 ### <u>Level 3 BLAS</u>
  - GEMM
    - FP16 (where supported), FP32, FP64
-   - Square, short-&-wide, tall-&-thin input sizes 
+   - Square, short-&-wide, tall-&-thin input sizes
 
  - SpMM
    - FP16 (where supported), FP32, FP64
@@ -86,10 +86,10 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 # ToDo:
  - [x] Outline what kernels are included in the benchmark, along with how they will be run.
    - [ ] Finish Sparce function descriptions, including what inputs are evaluated and why.
- - [ ] Consider the suitability of including batched versions of the chosen BLAS kernels.
+ - [x] Consider the suitability of including batched versions of the chosen BLAS kernels.
  - [ ] Consider whether including MAGMA(-Batched) would be a worthwhile addition.
    - Could provide a point of comparison to a heterogeneous library, given this benchmark will be testing CPU vs. GPU individually.
- - [ ] Create main file which contains functionality of:
+ - [x] Create main file which contains functionality of:
    - [x] Print system information such as CPU library used, GPU library used...
    - [ ] Running each BLAS kernel for all input types & shapes on CPU.
      - [ ] Increase each dimension by 1 each run until reached upper-limit (user defined?).
@@ -120,6 +120,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [ ] Add support for NVIDIA NVPL(?)
  - [ ] Add support for Apple Accelerate(?)
  - [ ] Add support for Apple Metal Performance Shaders(?)
+ - [ ] Add batched versions of appropriate BLAS kernels
 
 # Future Work
  - [ ] Add support for Intel AMX.

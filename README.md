@@ -1,12 +1,10 @@
-# GPU-BLAS-Offload-Benchmark
-<u>__*TODO - Rewrite introduction section*__</u>
+# GPU-BLOB: GPU BLas Offload Benchmark
+GPU-BLOB is a benchmark tool which can be used to determine at what point (i.e. problem size) it is worthwhile to offload select BLAS computations to the GPU on a heterogeneous system.
+Not only can this aid to help programmers understand the characteristics of the hardware they are optimising for, but also whether or not it would be useful for them to utilise the GPU at all for their specific problem.
 
-A tool to determine at what point it is worthwhile offloading BLAS computations to the GPU on heterogeneous systems.
-
-Time taken and GFLOP/s given for each kernel includes the cost of initialising the input matricies, any data offload required, GFLOPs calculations, and any other overhead required to call the appropriate library function.
-
-If no CPU library is specified, then a naive solution will be computed.
-If no GPU library is specified, then no kernels will be run on the GPU - Effectively making this tool a simple BLAS benchmark.
+For each supported BLAS kernel (listed below) GPU-BLOB will run `n` iterations of each kernel, gradually increasing the problem size to gather large amounts of performance data. Said data can then be used to determine at
+what point does the GPU's performance advantage over the CPU outweigh the cost of offloading data to/from the GPU.\
+Each BLAS kernel is tested with a range of different problem size designs to attempt to capture performance differences that occur between different problem sets when utilising the same underlying kernel.
 
 All computations performed by a vendor BLAS library are assumed to be functionally correct. As such, no verification of correct results will be performed or displayed.
 

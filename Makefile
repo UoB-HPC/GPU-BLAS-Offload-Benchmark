@@ -41,17 +41,17 @@ ifndef CPU_LIBRARY
 $(warning CPU_LIBRARY not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive solutions being used.)
 else ifeq ($(CPU_LIBRARY), ARMPL)
 # Test for compatible compiler
-valid_compiler = 
+valid_compiler = no
 ifeq ($(COMPILER), ARM)
 valid_compiler = yes
 else ifeq ($(COMPILER), GNU)
 valid_compiler = yes
 endif
-ifdef valid_compiler
+ifneq ($(valid_compiler), yes)
 $(error Selected compiler $(COMPILER) is not compatible with ArmPL)
 endif
 # Add aditional flags needed
-CFLAGS += -armpl
+CFLAGS += -armpl=ilp64,parallel
 else ifeq ($(CPU_LIBRARY), ONEMKL)
 # Do OneMKL stuff
 else ifeq ($(CPU_LIBRARY), AOCL)

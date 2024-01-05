@@ -7,6 +7,17 @@ MAKEFLAGS += --warn-undefined-variables --no-builtin-rules
 
 # -------
 
+MACHINE = $(shell uname -m)
+ifeq ($(MACHINE), x86_64)
+ARCHFLAG = march
+else
+# The target CPU is specificed differently on x86 and on aarch64
+# https://community.arm.com/developer/tools-software/tools/b/tools-software-ides-blog/posts/compiler-flags-across-architectures-march-mtune-and-mcpu
+ARCHFLAG = mcpu
+endif
+
+# -------
+
 ifndef COMPILER
 $(warning COMPILER not set (use ARM, CLANG, GNU, or INTEL))
 COMPILER=GNU
@@ -18,12 +29,29 @@ CC_GNU     = gcc
 CC_INTEL   = icc
 CC = $(CC_$(COMPILER))
 
+CFLAGS_ARM     = -std=c99 -Wall -Ofast -fopenmp -$(ARCHFLAG)=native
+CFLAGS_CLANG   = -std=c99 -Wall -Ofast -fopenmp -$(ARCHFLAG)=native
+CFLAGS_GNU     = -std=c99 -Wall -Ofast -fopenmp -$(ARCHFLAG)=native
+CFLAGS_INTEL   = -std=c99 -Wall -Ofast -fopenmp -$(ARCHFLAG)=native
+CFLAGS = $(CFLAGS_$(COMPILER))
+
 # -------
 
 ifndef CPU_LIBRARY
 $(warning CPU_LIBRARY not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive solutions being used.)
 else ifeq ($(CPU_LIBRARY), ARMPL)
-# Do ArmPL stuff
+# Test for compatible compiler
+valid_compiler = 
+ifeq ($(COMPILER), ARM)
+valid_compiler = yes
+else ifeq ($(COMPILER), GNU)
+valid_compiler = yes
+endif
+ifdef valid_compiler
+$(error Selected compiler $(COMPILER) is not compatible with ArmPL)
+endif
+# Add aditional flags needed
+CFLAGS += -armpl
 else ifeq ($(CPU_LIBRARY), ONEMKL)
 # Do OneMKL stuff
 else ifeq ($(CPU_LIBRARY), AOCL)
@@ -49,12 +77,6 @@ $(warning Provided GPU_LIBRARY not valid (use CUBLAS, ONEMKL, ROCBLAS). No GPU k
 endif
 
 # -------
-
-CFLAGS_ARM     = -std=c99 -Wall -Ofast
-CFLAGS_CLANG   = -std=c99 -Wall -Ofast
-CFLAGS_GNU     = -std=c99 -Wall -Ofast
-CFLAGS_INTEL   = -std=c99 -Wall -Ofast
-CFLAGS = $(CFLAGS_$(COMPILER))
 
 ifdef CPU_LIBRARY
 CFLAGS += -DCPU_$(CPU_LIBRARY)

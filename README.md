@@ -11,7 +11,7 @@ All computations performed by a vendor BLAS library are assumed to be functional
 # Build Options
 Select the compiler you wish to use
 ``` bash
-make COMPILER=GNU
+make COMPILER=ARM
 ```
 The supported compiler names are: `ARM`, `CLANG`, `GNU`, `INTEL`.\
 This option defaults to `GNU`.
@@ -24,6 +24,7 @@ make COMPILER=GNU CPU_LIBRARY=ARMPL
 ```
 The supported Libraries are as follows:
  - Arm Performance Libraries : `ARMPL`
+   - Currently only usable with the `ARM` compiler build option.
  - Intel OneMKL : `ONEMKL`
  - AMD Optimizing CPU libraries : `AOCL`
  - OpenBLAS : `OPENBLAS`

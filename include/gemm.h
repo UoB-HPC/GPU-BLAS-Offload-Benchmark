@@ -12,68 +12,73 @@ double gemm_cpu(const dataTypes dType, const uint64_t iters, const uint64_t m,
   // Define timer variables
   struct timeval tv, start_tv;
   switch (dType) {
-    case _fp32_: {
-      float *A;
-      float *B;
-      float *C;
-      A = (float*)malloc(sizeof(float) * m * k);
-      B = (float*)malloc(sizeof(float) * k * n);
-      C = (float*)malloc(sizeof(float) * m * n);
-      // Initialise the matricies 
-      for (uint64_t y = 0; y < m; y++) {
-        for (uint64_t x = 0; x < k; x++) {
-          A[y*k + x] = (((float) (rand() % 10000) / 100.0f) - 30.0);
-        }
+  case _fp32_: {
+    float *A;
+    float *B;
+    float *C;
+    A = (float *)malloc(sizeof(float) * m * k);
+    B = (float *)malloc(sizeof(float) * k * n);
+    C = (float *)malloc(sizeof(float) * m * n);
+    // Initialise the matricies
+    for (uint64_t y = 0; y < m; y++) {
+      for (uint64_t x = 0; x < k; x++) {
+        A[y * k + x] = (((float)(rand() % 10000) / 100.0f) - 30.0);
       }
-      for (uint64_t y = 0; y < k; y++) {
-        for (uint64_t x = 0; x < n; x++) {
-          B[y*n + x] = (((float) (rand() % 10000) / 100.0f) - 30.0);
-        }
-      }
-      // Warmup run
-      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A, MAX(1, k), B, MAX(1, n), BETA, C, MAX(1, n));
-      // Start timer
-      gettimeofday(&start_tv, NULL);
-      // Perform all SGEMM iterations
-      for (uint64_t i = 0; i < iters; i++) {
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A, MAX(1, k), B, MAX(1, n), BETA, C, MAX(1, n));
-      }
-      break;
     }
-    case _fp64_: {
-      double *A;
-      double *B;
-      double *C;
-      A = (double*)malloc(sizeof(double) * m * k);
-      B = (double*)malloc(sizeof(double) * k * n);
-      C = (double*)malloc(sizeof(double) * m * n);
-      // Initialise the matricies 
-      for (uint64_t y = 0; y < m; y++) {
-        for (uint64_t x = 0; x < k; x++) {
-          A[y*k + x] = (((double) (rand() % 10000) / 100.0) - 30.0);
-        }
+    for (uint64_t y = 0; y < k; y++) {
+      for (uint64_t x = 0; x < n; x++) {
+        B[y * n + x] = (((float)(rand() % 10000) / 100.0f) - 30.0);
       }
-      for (uint64_t y = 0; y < k; y++) {
-        for (uint64_t x = 0; x < n; x++) {
-          B[y*n + x] = (((double) (rand() % 10000) / 100.0) - 30.0);
-        }
-      }
-      // Warmup run
-      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A, MAX(1, m), B, MAX(1, k), BETA, C, MAX(1, m));
-      // Start timer
-      gettimeofday(&start_tv, NULL);
-      // Perform all SGEMM iterations
-      for (uint64_t i = 0; i < iters; i++) {
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A, MAX(1, m), B, MAX(1, k), BETA, C, MAX(1, m));
-      }
-      break;
     }
-    default:
-      printf("GEMM_CPU: Unsuported dataType\n");
+    // Warmup run
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A,
+                MAX(1, k), B, MAX(1, n), BETA, C, MAX(1, n));
+    // Start timer
+    gettimeofday(&start_tv, NULL);
+    // Perform all SGEMM iterations
+    for (uint64_t i = 0; i < iters; i++) {
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A,
+                  MAX(1, k), B, MAX(1, n), BETA, C, MAX(1, n));
+    }
+    break;
+  }
+  case _fp64_: {
+    double *A;
+    double *B;
+    double *C;
+    A = (double *)malloc(sizeof(double) * m * k);
+    B = (double *)malloc(sizeof(double) * k * n);
+    C = (double *)malloc(sizeof(double) * m * n);
+    // Initialise the matricies
+    for (uint64_t y = 0; y < m; y++) {
+      for (uint64_t x = 0; x < k; x++) {
+        A[y * k + x] = (((double)(rand() % 10000) / 100.0) - 30.0);
+      }
+    }
+    for (uint64_t y = 0; y < k; y++) {
+      for (uint64_t x = 0; x < n; x++) {
+        B[y * n + x] = (((double)(rand() % 10000) / 100.0) - 30.0);
+      }
+    }
+    // Warmup run
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A,
+                MAX(1, m), B, MAX(1, k), BETA, C, MAX(1, m));
+    // Start timer
+    gettimeofday(&start_tv, NULL);
+    // Perform all SGEMM iterations
+    for (uint64_t i = 0; i < iters; i++) {
+      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A,
+                  MAX(1, m), B, MAX(1, k), BETA, C, MAX(1, m));
+    }
+    break;
+  }
+  default:
+    printf("GEMM_CPU: Unsuported dataType\n");
   }
   // Stop timer
   gettimeofday(&tv, NULL);
-  return ((tv.tv_sec - start_tv.tv_sec) + (tv.tv_usec - start_tv.tv_usec) / 1000000.0);
+  return ((tv.tv_sec - start_tv.tv_sec) +
+          (tv.tv_usec - start_tv.tv_usec) / 1000000.0);
 }
 
 /** Performs GEMM operations of type `dType` on host GPU for `iters` iterations.
@@ -95,5 +100,6 @@ double gemm_gpu(const dataTypes dType, const uint64_t iters, const uint64_t m,
   gettimeofday(&start_tv, NULL);
   // Stop timer
   gettimeofday(&tv, NULL);
-  return ((tv.tv_sec - start_tv.tv_sec) + (tv.tv_usec - start_tv.tv_usec) / 1000000.0);
+  return ((tv.tv_sec - start_tv.tv_sec) +
+          (tv.tv_usec - start_tv.tv_usec) / 1000000.0);
 }

@@ -1,0 +1,8 @@
+# Build Options:
+ - COMPILER = ARM | GNU
+ - CPU_LIBRARY = ARMPL
+
+# Runtime Environment Variables
+ - OMP_NUM_THREADS = 48
+ - OMP_PROC_BIND = close
+ - OMP_PLACES = cores

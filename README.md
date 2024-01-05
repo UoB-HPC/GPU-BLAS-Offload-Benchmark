@@ -61,26 +61,31 @@ The default value is `1000`.\
 __Example:__ For a square GEMM, the problem size will iterate up to `M=N=K=UPPER_LIMIT`. \
 __Example:__ For a rectangular GEMM where `M=N` and `K=M/4`, the probelm size will iterate up to`M=N=UPPER_LIMIT` and `K=UPPER_LIMIT/4`.
 
+# Running
+The benchmark takes no run-time options. However, for the CPU kernels it is likely beneficial to set the relevant environment variables. For example, for ArmPL setting `OMP_NUM_THREADS`, `OMP_PROC_BIND`, and `OMP_PLACES` can be beneficial.
+
+Some pre-analysed build and run options which have been found to improve CPU kernel performance can be found in the `Configurations` directory.
+
 
 # BLAS Kernels Supported
 The kernels listed below are computed by the benchmark for a wide range of problem sizes and shapes.
 
 ### <u>Level 3 BLAS</u>
  - GEMM
-   - FP16 (where supported), FP32, FP64
+   - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes
 
  - SpMM
-   - FP16 (where supported), FP32, FP64
+   - FP32, FP64
    - ...
 
 ### <u>Level 2 BLAS</u>
  - GEMV
-   - FP16 (where supported), FP32, FP64
+   - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes 
 
  - SpMV
-   - FP16 (where supported), FP32, FP64
+   - FP32, FP64
    - ...
 
 # ToDo:

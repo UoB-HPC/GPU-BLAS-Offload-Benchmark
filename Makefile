@@ -38,7 +38,7 @@ CFLAGS = $(CFLAGS_$(COMPILER))
 # -------
 
 ifndef CPU_LIBRARY
-$(warning CPU_LIBRARY not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive solutions being used.)
+$(warning CPU_LIBRARY not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
 else ifeq ($(CPU_LIBRARY), ARMPL)
 # Add ARM compiler options
 ifeq ($(COMPILER), ARM)
@@ -57,7 +57,7 @@ else ifeq ($(CPU_LIBRARY), OPENBLAS)
 # Do OpenBLAS stuff
 $(error The CPU_LIBRARY $(CPU_LIBRARY) is currently not supported.)
 else
-$(warning Provided CPU_LIBRARY not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive solutions being used.)
+$(warning Provided CPU_LIBRARY not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
 endif
 
 # -------

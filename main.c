@@ -14,17 +14,25 @@ int main(int argc, char *argv[]) {
   FILE *fptr;
   fptr = newCSV(CSV_DIR "/sgemm_square.csv");
   for (uint64_t dim = 1; dim <= UPPER_LIMIT; dim++) {
-    uint64_t M = dim, N = dim, K = dim;
+    const uint64_t M = dim, N = dim, K = dim;
+    const uint64_t gemmProbSize = (M * K) + (K * N) + (M * N);
     // Perform CPU
     double cpuTime = gemm_cpu(_fp32_, ITERATIONS, M, N, K);
-    uint64_t gemmProbSize = (M * K) + (K * N) + (M * N);
     writeLineToCsv(fptr, "cpu", "sgemm", M, N, K, calcKib(gemmProbSize, 4),
                    ITERATIONS, cpuTime,
                    calcGflops(gemmFlops(M, N, K), ITERATIONS, cpuTime));
 
     // Perform GPU
-    // gemm_gpu(_fp32_, ITERATIONS, M, N, K, true);
-    // gemm_gpu(_fp32_, ITERATIONS, M, N, K, false);
+    // - Offload to/from GPU once before all iterations and once after
+    double gpuTime_once = gemm_gpu(_fp32_, ITERATIONS, M, N, K, true);
+    writeLineToCsv(fptr, "gpu_offloadOnce", "sgemm", M, N, K,
+                   calcKib(gemmProbSize, 4), ITERATIONS, gpuTime_once,
+                   calcGflops(gemmFlops(M, N, K), ITERATIONS, gpuTime_once));
+    // - Offload to/from GPU every iteration
+    double gpuTime_every = gemm_gpu(_fp32_, ITERATIONS, M, N, K, false);
+    writeLineToCsv(fptr, "gpu_offloadAlways", "sgemm", M, N, K,
+                   calcKib(gemmProbSize, 4), ITERATIONS, gpuTime_every,
+                   calcGflops(gemmFlops(M, N, K), ITERATIONS, gpuTime_every));
   }
   // Close file
   fclose(fptr);
@@ -42,10 +50,18 @@ int main(int argc, char *argv[]) {
                    ITERATIONS, cpuTime,
                    calcGflops(gemmFlops(M, N, K), ITERATIONS, cpuTime));
     // Perform GPU
-    // gemm_gpu(_fp64_, ITERATIONS, M, N, K, true);
-    // gemm_gpu(_fp64_, ITERATIONS, M, N, K, false);
+    // - Offload to/from GPU once before all iterations and once after
+    double gpuTime_once = gemm_gpu(_fp64_, ITERATIONS, M, N, K, true);
+    writeLineToCsv(fptr, "gpu_offloadOnce", "dgemm", M, N, K,
+                   calcKib(gemmProbSize, 8), ITERATIONS, gpuTime_once,
+                   calcGflops(gemmFlops(M, N, K), ITERATIONS, gpuTime_once));
+    // - Offload to/from GPU every iteration
+    double gpuTime_every = gemm_gpu(_fp64_, ITERATIONS, M, N, K, false);
+    writeLineToCsv(fptr, "gpu_offloadAlways", "dgemm", M, N, K,
+                   calcKib(gemmProbSize, 8), ITERATIONS, gpuTime_every,
+                   calcGflops(gemmFlops(M, N, K), ITERATIONS, gpuTime_every));
   }
-  printf("Done!\n");
+  printf("Finished!\n");
 
   return 0;
 }

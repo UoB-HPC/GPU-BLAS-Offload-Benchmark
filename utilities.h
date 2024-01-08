@@ -64,7 +64,9 @@ typedef enum { _fp32_, _fp64_ } dataTypes;
 /** A function to calculate GFLOPs. */
 double calcGflops(const uint64_t flops, const uint64_t iters,
                   const double seconds) {
-  return (seconds == 0.0) ? 0.0 : ((flops * iters) / seconds) * 1e-9;
+  return (seconds == 0.0 || seconds == INFINITY)
+             ? 0.0
+             : ((flops * iters) / seconds) * 1e-9;
 }
 
 /** A function to calculate KiB from a data-structur's dimensions. */

@@ -17,7 +17,9 @@
 #endif
 
 // Select which GPU Library to use
-#if defined GPU_CUBLAS
+#if defined GPU_DEFAULT
+#include "DefaultGPU/default.h"
+#elif defined GPU_CUBLAS
 // #include "cuBLAS/cublas.h"
 #elif defined GPU_ONEMKL
 // #include "OneMKL/onemkl.h"

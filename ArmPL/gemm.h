@@ -3,12 +3,7 @@
 #include "../utilities.h"
 
 #ifdef CPU_ARMPL
-#include <armpl.h>
-
-/** A function for calculating FLOPs performed by a GEMM. */
-uint64_t gemmFlops(const uint64_t M, const uint64_t N, const uint64_t K) {
-  return (M * N * K * 2);
-}
+#include "headers.h"
 
 /** Performs GEMM operations of type `dType` on host CPU for `iters` iterations.
  * Returns the time taken to perform the operation in seconds. */

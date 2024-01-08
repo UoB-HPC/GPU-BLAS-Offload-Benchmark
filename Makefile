@@ -97,12 +97,13 @@ LDFLAGS = -lm
 # -------
 
 EXE = gpu-blob
+HEADER_FILES = $(wildcard DefaultCPU/* ArmPL/*)
 
 .PHONY: all $(EXE) clean
 
 all: $(EXE)
 
-$(EXE): main.c include/flags.h include/gemm.h include/gemv.h include/spmm.h include/spmv.h
+$(EXE): main.c main.h utilities.h $(HEADER_FILES)
 	$(CC) $(CFLAGS) main.c -o $@ $(LDFLAGS)
 
 clean:

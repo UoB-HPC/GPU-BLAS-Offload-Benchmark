@@ -1,24 +1,7 @@
 #include "main.h"
 
 int main(int argc, char *argv[]) {
-  char *gpu_enabled_str = (GPU_ENABLED) ? "True" : "False";
-  unsigned int omp_threads =
-      (getenv("OMP_NUM_THREADS") != NULL) ? atoi(getenv("OMP_NUM_THREADS")) : 1;
-  const char *omp_proc_bind =
-      (getenv("OMP_PROC_BIND") != NULL) ? getenv("OMP_PROC_BIND") : "Not Set";
-  const char *omp_places =
-      (getenv("OMP_PLACES") != NULL) ? getenv("OMP_PLACES") : "Not Set";
-  printf("\nGPU BLAS Offloading Benchmark:\n");
-  printf("\tIterations per Kernel: %d\n", ITERATIONS);
-  printf("\tMax Problem Dimension: %d\n", UPPER_LIMIT);
-  printf("\tCPU Tests Enabled: True\n");
-  printf("\tCPU Library: %s\n", CPU_LIB_NAME);
-  printf("\tGPU Tests Enabled: %s\n", gpu_enabled_str);
-  printf("\tGPU Library: %s\n", GPU_LIB_NAME);
-  printf("\tOMP_NUM_THREADS: %u\n", omp_threads);
-  printf("\tOMP_PROC_BIND: %s\n", omp_proc_bind);
-  printf("\tOMP_PLACES: %s\n", omp_places);
-  printf("\n\n");
+  printBenchmarkConfig();
 
   // Ensure CSV file directory exists.
   struct stat st = {0};

@@ -91,15 +91,13 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 
 # ToDo:
  - [x] Outline what kernels are included in the benchmark, along with how they will be run.
-   - [ ] Finish Sparce function descriptions, including what inputs are evaluated and why.
+   - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
  - [x] Consider the suitability of including batched versions of the chosen BLAS kernels.
- - [ ] Consider whether including MAGMA(-Batched) would be a worthwhile addition.
-   - Could provide a point of comparison to a heterogeneous library, given this benchmark will be testing CPU vs. GPU individually.
  - [x] Create main file which contains functionality of:
    - [x] Print system information such as CPU library used, GPU library used...
    - [ ] Running each BLAS kernel for all input types & shapes on CPU.
-     - [ ] Increase each dimension by 1 each run until reached upper-limit (user defined?).
-     - [ ] Each for `n` iterations (user defined?).
+     - [x] Increase each dimension by 1 each run until reached upper-limit (user defined?).
+     - [x] Each for `n` iterations (user defined?).
    - [ ] Running each BLAS kernel for all input types & shapes on GPU.
      - [ ] Increase each dimension by 1 each run until reached upper-limit (user defined?).
      - [ ] Each for `n` iterations (user defined?).
@@ -108,13 +106,19 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - [ ] Calculate GLFOPs achieved for each BLAS kernel run.
    - [ ] Saving all data to .csv file(s).
    - [ ] Calculate for each kernel at what problem size offloading the computation to the GPU becomes worthwhile.
+     - i.e. the time taken on CPU becomes longer than on GPU
    - [ ] ...
  - [x] Create Makefile with options for:
    - [x] Selecting the compiler + compiler specific flags.
    - [x] Selecting the CPU library target (ArmPL, oneMKL, OpenBLAS) + relevant flags.
    - [x] Selecting the GPU library target (cuBLAS, oneMKL) + relevant flags.
+ - [ ] Add naive implementations of kernels for CPU
+   - [x] GEMM 
+   - [ ] GEMV 
+   - [ ] SpMM 
+   - [ ] SpMV 
  - [ ] Add support for ArmPL.
-   - [ ] GEMM 
+   - [x] GEMM 
    - [ ] GEMV 
    - [ ] SpMM 
    - [ ] SpMV 
@@ -123,7 +127,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [ ] Add support for AOCL (AMD Optimizing CPU libraries).
  - [ ] Add support for rocBLAS.
  - [ ] Add support for OpenBLAS.
- - [ ] Add support for NVIDIA NVPL(?)
+ - [ ] Add support for NVIDIA NVPL(?) CPU Library
  - [ ] Add support for Apple Accelerate(?)
  - [ ] Add support for Apple Metal Performance Shaders(?)
  - [ ] Add batched versions of appropriate BLAS kernels

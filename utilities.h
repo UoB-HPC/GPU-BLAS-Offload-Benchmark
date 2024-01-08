@@ -51,6 +51,9 @@
 #define ALPHA 1
 #define BETA 0
 
+// Define output directory for csv files.
+#define CSV_DIR "output_csv_files"
+
 // Define MIN and MAX Macros
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -58,9 +61,15 @@
 // Define data type enums
 typedef enum { _fp32_, _fp64_ } dataTypes;
 
-// Define function to calculate GFLOPs
-double calcGflops(const uint64_t flops, const double seconds) {
-  return (seconds == 0.0) ? 0.0 : (flops / seconds) * 1e-9;
+/** A function to calculate GFLOPs. */
+double calcGflops(const uint64_t flops, const uint64_t iters,
+                  const double seconds) {
+  return (seconds == 0.0) ? 0.0 : ((flops * iters) / seconds) * 1e-9;
+}
+
+/** A function to calculate KiB from a data-structur's dimensions. */
+double calcKib(const uint64_t probSize, const uint64_t bytesPerElem) {
+  return ((double)(probSize * bytesPerElem) / 1024);
 }
 
 /** A function for calculating FLOPs performed by a GEMM. */

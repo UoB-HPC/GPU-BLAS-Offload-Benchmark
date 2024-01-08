@@ -51,8 +51,9 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-# Executable made by Makefile
+# Executable and generated files
 gpu-blob
+output_csv_files
 
 # VS Code
 .vscode

@@ -43,7 +43,8 @@ double gemm_cpu(const dataTypes dType, const uint64_t iters, const uint64_t m,
     for (uint64_t i = 0; i < iters; i++) {
       check += naiveSgemm(m, n, k, A, B, C);
     }
-    // Post run check
+    // Post run check - required to ensure the naive GEMM code is not optimised
+    // away.
     if (check == 0.0f) {
       printf("GEMM_CPU: Kernel not executed.\n");
     }
@@ -75,7 +76,8 @@ double gemm_cpu(const dataTypes dType, const uint64_t iters, const uint64_t m,
     for (uint64_t i = 0; i < iters; i++) {
       check += naiveDgemm(m, n, k, A, B, C);
     }
-    // Post run check
+    // Post run check - required to ensure the naive GEMM code is not optimised
+    // away.
     if (check == 0.0f) {
       printf("GEMM_CPU: Kernel not executed.\n");
     }
@@ -92,7 +94,9 @@ double gemm_cpu(const dataTypes dType, const uint64_t iters, const uint64_t m,
 
 /** A naive implementation of a FP32 GEMM. Alpha and Beta are always 1 and 0
  * respectively.
- * Operation takes the form of C[M,N] = A[M,K] * B[K,N]. */
+ * Operation takes the form of C[M,N] = A[M,K] * B[K,N].
+ * A return value is required to ensure that the compiler does not optimise away
+ * this function. */
 float naiveSgemm(const uint64_t m, const uint64_t n, const uint64_t k,
                  const float *restrict A, const float *restrict B,
                  float *restrict C) {
@@ -113,7 +117,9 @@ float naiveSgemm(const uint64_t m, const uint64_t n, const uint64_t k,
 
 /** A naive implementation of a FP64 GEMM. Alpha and Beta are always 1 and 0
  * respectively.
- * Operation takes the form of C[M,N] = A[M,K] * B[K,N]. */
+ * Operation takes the form of C[M,N] = A[M,K] * B[K,N].
+ * A return value is required to ensure that the compiler does not optimise away
+ * this function. */
 double naiveDgemm(const uint64_t m, const uint64_t n, const uint64_t k,
                   const double *restrict A, const double *restrict B,
                   double *restrict C) {

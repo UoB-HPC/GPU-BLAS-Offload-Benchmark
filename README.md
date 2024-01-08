@@ -50,8 +50,8 @@ The benchmark takes the following runtime arguments:
 ```bash
 ./gpu-blob --iterations I --dimension_limit D
 ```
-Where `I` (default of `10`) specifies how many iterations each kernel will run, and `D` (default of `128`) specifies the the upper limit for the largest dimention in a problem size.
-__Example:__ For a square GEMM, the problem size will iterate up to `M=N=K=D`. \
+Where `I` (default of `10`) specifies how many iterations each kernel will run, and `D` (default of `128`) specifies the the upper limit for the largest dimention in a problem size.\
+__Example:__ For a square GEMM, the problem size will iterate up to `M=N=K=D`.\
 __Example:__ For a rectangular GEMM where `M=N` and `K=M/4`, the probelm size will iterate up to`M=N=D` and `K=D/4`.
 
 

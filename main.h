@@ -46,7 +46,15 @@ void printBenchmarkConfig() {
   printf("\tOMP_NUM_THREADS: %u\n", omp_threads);
   printf("\tOMP_PROC_BIND: %s\n", omp_proc_bind);
   printf("\tOMP_PLACES: %s\n", omp_places);
-  printf("\n\n");
+#ifdef CPU_DEFAULT
+  printf("\nWARNING - No CPU BLAS library selected. Results will be collected "
+         "from a single threaded naive implementation.\n");
+#endif
+#ifdef GPU_DEFAULT
+  printf("\nWARNING - No GPU BLAS Library selected. All results will be based "
+         "off of a time of infinity.\n");
+#endif
+  printf("\n");
 }
 
 /** A function to open a new csv file in WRITE mode and write the standard

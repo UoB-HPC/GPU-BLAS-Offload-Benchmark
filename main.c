@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
   // SGEMM Comparison - Square
   printf("Comparing SGEMM Kernels...\n");
   fprintf(stderr, "M, N, K, Kernel, seconds, GFLOP/s\n");
-  for (uint64_t dim = 1; dim <= UPPER_LIMIT; dim *= 2) {
+  for (uint64_t dim = 1; dim <= UPPER_LIMIT; dim++) {
     uint64_t M = dim, N = dim, K = dim;
     // Perform CPU
     double cpuTime = gemm_cpu(_fp32_, ITERATIONS, M, N, K);
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
   // DGEMM Comparison - Square
   printf("Comparing DGEMM Kernels...\n");
   fprintf(stderr, "M, N, K, Kernel, seconds, GFLOP/s\n");
-  for (uint64_t dim = 1; dim <= UPPER_LIMIT; dim *= 2) {
+  for (uint64_t dim = 1; dim <= UPPER_LIMIT; dim++) {
     uint64_t M = dim, N = dim, K = dim;
     // Perform CPU
     double cpuTime = gemm_cpu(_fp64_, ITERATIONS, M, N, K);

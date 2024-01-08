@@ -1,7 +1,6 @@
 #pragma once
 
 #include <math.h>
-#include <omp.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -56,10 +55,15 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
-// Define function to calculate GFLOPs
-double calcGflops(const uint64_t flops, const double seconds) {
-  return (flops / seconds) * 1e-9;
-}
-
 // Define data type enums
 typedef enum { _fp32_, _fp64_ } dataTypes;
+
+// Define function to calculate GFLOPs
+double calcGflops(const uint64_t flops, const double seconds) {
+  return (seconds == 0.0) ? 0.0 : (flops / seconds) * 1e-9;
+}
+
+/** A function for calculating FLOPs performed by a GEMM. */
+uint64_t gemmFlops(const uint64_t M, const uint64_t N, const uint64_t K) {
+  return (M * N * K * 2);
+}

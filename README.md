@@ -112,7 +112,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - [x] Selecting the compiler + compiler specific flags.
    - [x] Selecting the CPU library target (ArmPL, oneMKL, OpenBLAS) + relevant flags.
    - [x] Selecting the GPU library target (cuBLAS, oneMKL) + relevant flags.
- - [ ] Add naive implementations of kernels for CPU
+ - [ ] Add naive implementations of kernels for Default CPU
    - [x] GEMM 
    - [ ] GEMV 
    - [ ] SpMM 

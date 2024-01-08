@@ -97,7 +97,7 @@ LDFLAGS = -lm
 # -------
 
 EXE = gpu-blob
-HEADER_FILES = $(wildcard DefaultCPU/* ArmPL/*)
+HEADER_FILES = $(wildcard DefaultCPU/* DefaultGPU/* ArmPL/*)
 
 .PHONY: all $(EXE) clean
 

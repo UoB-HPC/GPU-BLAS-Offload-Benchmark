@@ -1,4 +1,9 @@
-#include "flags.h"
+#pragma once
+
+#include "../utilities.h"
+
+#ifdef CPU_ARMPL
+#include <armpl.h>
 
 /** A function for calculating FLOPs performed by a GEMM. */
 uint64_t gemmFlops(const uint64_t M, const uint64_t N, const uint64_t K) {
@@ -80,26 +85,30 @@ double gemm_cpu(const dataTypes dType, const uint64_t iters, const uint64_t m,
   return ((tv.tv_sec - start_tv.tv_sec) +
           (tv.tv_usec - start_tv.tv_usec) / 1000000.0);
 }
+#endif
 
-/** Performs GEMM operations of type `dType` on host GPU for `iters` iterations.
- * Returns the time taken to perform the operation in seconds.
- *  - `offloadOnce` refers to whether the matrix data should be offloaded to the
- *    device once before computation and then copied back at the end of all
- *    iterations, or if the matrcies should be offloaded to/from the device
- *    every iteration. */
-double gemm_gpu(const dataTypes dType, const uint64_t iters, const uint64_t m,
-                const uint64_t n, const uint64_t k, const bool offloadOnce) {
-  // Conditionally execute the kernel
-  if (!GPU_ENABLED) {
-    return 0.0;
-  }
+// /** Performs GEMM operations of type `dType` on host GPU for `iters`
+// iterations.
+//  * Returns the time taken to perform the operation in seconds.
+//  *  - `offloadOnce` refers to whether the matrix data should be offloaded to
+//  the
+//  *    device once before computation and then copied back at the end of all
+//  *    iterations, or if the matrcies should be offloaded to/from the device
+//  *    every iteration. */
+// double gemm_gpu(const dataTypes dType, const uint64_t iters, const uint64_t
+// m,
+//                 const uint64_t n, const uint64_t k, const bool offloadOnce) {
+//   // Conditionally execute the kernel
+//   if (!GPU_ENABLED) {
+//     return 0.0;
+//   }
 
-  // Define timer variables
-  struct timeval tv, start_tv;
-  // Start timer
-  gettimeofday(&start_tv, NULL);
-  // Stop timer
-  gettimeofday(&tv, NULL);
-  return ((tv.tv_sec - start_tv.tv_sec) +
-          (tv.tv_usec - start_tv.tv_usec) / 1000000.0);
-}
+//   // Define timer variables
+//   struct timeval tv, start_tv;
+//   // Start timer
+//   gettimeofday(&start_tv, NULL);
+//   // Stop timer
+//   gettimeofday(&tv, NULL);
+//   return ((tv.tv_sec - start_tv.tv_sec) +
+//           (tv.tv_usec - start_tv.tv_usec) / 1000000.0);
+// }

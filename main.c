@@ -1,7 +1,4 @@
-#include "include/gemm.h"
-#include "include/gemv.h"
-#include "include/spmm.h"
-#include "include/spmv.h"
+#include "main.h"
 
 int main(int argc, char *argv[]) {
   char *gpu_enabled_str = (GPU_ENABLED) ? "True" : "False";

@@ -55,7 +55,7 @@ __Example:__ For a square GEMM, the problem size will iterate up to `M=N=K=D`.\
 __Example:__ For a rectangular GEMM where `M=N` and `K=M/4`, the probelm size will iterate up to`M=N=D` and `K=D/4`.
 
 
-For the CPU kernels it is also likely beneficial to set the relevant environment variables. For example, when using ArmPL, setting `OMP_NUM_THREADS`, `OMP_PROC_BIND`, and `OMP_PLACES` can be beneficial.
+For the CPU kernels it is also recommended to set the relevant environment variables. For example, when using ArmPL, setting `OMP_NUM_THREADS`, `OMP_PROC_BIND`, and `OMP_PLACES` can be beneficial.
 
 
 # BLAS Kernels Supported

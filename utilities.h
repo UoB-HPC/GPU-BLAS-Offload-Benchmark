@@ -39,15 +39,7 @@
 #define GPU_ENABLED true
 #endif
 
-// Define general macros
-#ifndef ITERATIONS
-#define ITERATIONS 10
-#endif
-
-#ifndef UPPER_LIMIT
-#define UPPER_LIMIT 1000
-#endif
-
+// Define macros for alpha and beta
 #define ALPHA 1
 #define BETA 0
 
@@ -62,11 +54,10 @@
 typedef enum { _fp32_, _fp64_ } dataTypes;
 
 /** A function to calculate GFLOPs. */
-double calcGflops(const uint64_t flops, const uint64_t iters,
-                  const double seconds) {
+double calcGflops(const uint64_t flops, const int iters, const double seconds) {
   return (seconds == 0.0 || seconds == INFINITY)
              ? 0.0
-             : ((flops * iters) / seconds) * 1e-9;
+             : ((double)(flops * iters) / seconds) * 1e-9;
 }
 
 /** A function to calculate KiB from a data-structur's dimensions. */
@@ -75,6 +66,6 @@ double calcKib(const uint64_t probSize, const uint64_t bytesPerElem) {
 }
 
 /** A function for calculating FLOPs performed by a GEMM. */
-uint64_t gemmFlops(const uint64_t M, const uint64_t N, const uint64_t K) {
+uint64_t gemmFlops(const int M, const int N, const int K) {
   return (M * N * K * 2);
 }

@@ -45,27 +45,17 @@ The supported Libraries are as follows:
 If no library is selected then no GPU BLAS kernels will be executed.
 
 
-### <u>Iterations</u>
-Specify how many iterations of each kernel to run:
-```bash
-make COMPILER=GNU CPU_LIBRARY=ARMPL GPU_LIBRARY=CUBLAS ITERATIONS=100
-```
-The default value is `10`
-
-
-### <u>Problem Size Limit</u>
-Specify what the upper limit should be for the largest dimention in a problem size:
-```bash
-make COMPILER=GNU CPU_LIBRARY=ARMPL GPU_LIBRARY=CUBLAS ITERATIONS=100 UPPER_LIMIT=8000
-```
-The default value is `1000`.\
-__Example:__ For a square GEMM, the problem size will iterate up to `M=N=K=UPPER_LIMIT`. \
-__Example:__ For a rectangular GEMM where `M=N` and `K=M/4`, the probelm size will iterate up to`M=N=UPPER_LIMIT` and `K=UPPER_LIMIT/4`.
-
 # Running
-The benchmark takes no run-time options. However, for the CPU kernels it is likely beneficial to set the relevant environment variables. For example, for ArmPL setting `OMP_NUM_THREADS`, `OMP_PROC_BIND`, and `OMP_PLACES` can be beneficial.
+The benchmark takes the following runtime arguments:
+```bash
+./gpu-blob --iterations I --dimension_limit D
+```
+Where `I` (default of `10`) specifies how many iterations each kernel will run, and `D` (default of `128`) specifies the the upper limit for the largest dimention in a problem size.
+__Example:__ For a square GEMM, the problem size will iterate up to `M=N=K=D`. \
+__Example:__ For a rectangular GEMM where `M=N` and `K=M/4`, the probelm size will iterate up to`M=N=D` and `K=D/4`.
 
-Some pre-analysed build and run options which have been found to improve CPU kernel performance can be found in the `Configurations` directory.
+
+For the CPU kernels it is also likely beneficial to set the relevant environment variables. For example, when using ArmPL, setting `OMP_NUM_THREADS`, `OMP_PROC_BIND`, and `OMP_PLACES` can be beneficial.
 
 
 # BLAS Kernels Supported
@@ -91,6 +81,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 
 # ToDo:
  - [x] Outline what kernels are included in the benchmark, along with how they will be run.
+   - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
    - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
  - [x] Consider the suitability of including batched versions of the chosen BLAS kernels.
  - [x] Create main file which contains functionality of:
@@ -99,15 +90,14 @@ The kernels listed below are computed by the benchmark for a wide range of probl
      - [x] Increase each dimension by 1 each run until reached upper-limit (user defined?).
      - [x] Each for `n` iterations (user defined?).
    - [ ] Running each BLAS kernel for all input types & shapes on GPU.
-     - [ ] Increase each dimension by 1 each run until reached upper-limit (user defined?).
-     - [ ] Each for `n` iterations (user defined?).
+     - [x] Increase each dimension by 1 each run until reached upper-limit (user defined?).
+     - [x] Each for `n` iterations (user defined?).
        - [ ] Offload data once at start, once at end.
        - [ ] Offload data each iteration.
-   - [ ] Calculate GLFOPs achieved for each BLAS kernel run.
-   - [ ] Saving all data to .csv file(s).
+   - [x] Calculate GLFOPs achieved for each BLAS kernel run.
+   - [x] Saving all data to .csv file(s).
    - [ ] Calculate for each kernel at what problem size offloading the computation to the GPU becomes worthwhile.
      - i.e. the time taken on CPU becomes longer than on GPU
-   - [ ] ...
  - [x] Create Makefile with options for:
    - [x] Selecting the compiler + compiler specific flags.
    - [x] Selecting the CPU library target (ArmPL, oneMKL, OpenBLAS) + relevant flags.

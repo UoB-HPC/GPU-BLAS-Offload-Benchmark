@@ -28,24 +28,24 @@
 #endif
 
 /** A function which prints standard configuration information to stdout. */
-void printBenchmarkConfig() {
-  char *gpu_enabled_str = (GPU_ENABLED) ? "True" : "False";
-  unsigned int omp_threads =
+void printBenchmarkConfig(const int iters, const int upperLimit) {
+  char *gpuEnabledStr = (GPU_ENABLED) ? "True" : "False";
+  unsigned int ompThreads =
       (getenv("OMP_NUM_THREADS") != NULL) ? atoi(getenv("OMP_NUM_THREADS")) : 1;
-  const char *omp_proc_bind =
+  const char *ompProcBind =
       (getenv("OMP_PROC_BIND") != NULL) ? getenv("OMP_PROC_BIND") : "Not Set";
-  const char *omp_places =
+  const char *ompPlaces =
       (getenv("OMP_PLACES") != NULL) ? getenv("OMP_PLACES") : "Not Set";
   printf("GPU BLAS Offload Benchmark:\n");
-  printf("\tIterations per Kernel: %d\n", ITERATIONS);
-  printf("\tMax Problem Dimension: %d\n", UPPER_LIMIT);
-  printf("\tCPU Tests Enabled: True\n");
+  printf("\tIterations per Kernel: %d\n", iters);
+  printf("\tMax Problem Dimension: %d\n", upperLimit);
+  printf("\tCPU Kernels Enabled: True\n");
   printf("\tCPU Library: %s\n", CPU_LIB_NAME);
-  printf("\tGPU Tests Enabled: %s\n", gpu_enabled_str);
+  printf("\tGPU Kernels Enabled: %s\n", gpuEnabledStr);
   printf("\tGPU Library: %s\n", GPU_LIB_NAME);
-  printf("\tOMP_NUM_THREADS: %u\n", omp_threads);
-  printf("\tOMP_PROC_BIND: %s\n", omp_proc_bind);
-  printf("\tOMP_PLACES: %s\n", omp_places);
+  printf("\tOMP_NUM_THREADS: %u\n", ompThreads);
+  printf("\tOMP_PROC_BIND: %s\n", ompProcBind);
+  printf("\tOMP_PLACES: %s\n", ompPlaces);
 #ifdef CPU_DEFAULT
   printf("\nWARNING - No CPU BLAS library selected. Results will be collected "
          "from a single threaded naive implementation.\n");
@@ -71,9 +71,9 @@ FILE *newCSV(const char *filename) {
 }
 
 void writeLineToCsv(FILE *fptr, const char *device, const char *kernel,
-                    const uint64_t M, const uint64_t N, const uint64_t K,
-                    const double totalProbSize, const uint64_t iters,
+                    const int M, const int N, const int K,
+                    const double totalProbSize, const int iters,
                     const double totalTime, const double gflops) {
-  fprintf(fptr, "%s,%s,%llu,%llu,%llu,%.2lf,%llu,%lf,%lf\n", device, kernel, M,
-          N, K, totalProbSize, iters, totalTime, gflops);
+  fprintf(fptr, "%s,%s,%d,%d,%d,%.2lf,%d,%lf,%lf\n", device, kernel, M, N, K,
+          totalProbSize, iters, totalTime, gflops);
 }

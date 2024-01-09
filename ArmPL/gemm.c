@@ -1,4 +1,4 @@
-#include "../cpuKernels.h"
+#include "../include/cpuKernels.h"
 #include "commonHeaders.h"
 
 #ifdef CPU_ARMPL

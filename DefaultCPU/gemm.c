@@ -1,4 +1,4 @@
-#include "../cpuKernels.h"
+#include "../include/cpuKernels.h"
 #include "commonHeaders.h"
 
 void naiveSgemm(const int m, const int n, const int k, const float *restrict A,

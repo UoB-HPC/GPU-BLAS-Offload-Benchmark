@@ -1,4 +1,4 @@
-#include "../gpuKernels.h"
+#include "../include/gpuKernels.h"
 #include "commonHeaders.h"
 
 double gemm_gpu(const dataTypes dType, const int iters, const int m,

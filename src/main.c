@@ -1,7 +1,8 @@
-#include "main.h"
+#include "../include/main.h"
 
 int iters = 10;
 int upperLimit = 128;
+FILE *fptr;
 
 int parseInt(const char *str);
 void getParameters(int argc, char *argv[]);
@@ -17,8 +18,8 @@ int main(int argc, char *argv[]) {
   }
 
   // SGEMM Comparison - Square
-  printf("Comparing SGEMM Kernels...\n");
-  FILE *fptr;
+  printf("Comparing SGEMM Kernels:\n");
+  printf("\tSquare Problem Sizes...\n");
   fptr = newCSV(CSV_DIR "/sgemm_square.csv");
   for (int dim = 1; dim <= upperLimit; dim++) {
     const int M = dim, N = dim, K = dim;
@@ -43,10 +44,14 @@ int main(int argc, char *argv[]) {
   }
   // Close file
   fclose(fptr);
+
+  // MxK = 16Mx1K, 1Mx16K, Mx32, 32xM,
+
   printf("Finished!\n");
 
   // DGEMM Comparison - Square
-  printf("Comparing DGEMM Kernels...\n");
+  printf("Comparing DGEMM Kernels:\n");
+  printf("\tSquare Problem Sizes...\n");
   fptr = newCSV(CSV_DIR "/dgemm_square.csv");
   for (int dim = 1; dim <= upperLimit; dim++) {
     int M = dim, N = dim, K = dim;

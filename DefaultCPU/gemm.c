@@ -1,12 +1,11 @@
 #include "../cpuKernels.h"
 #include "commonHeaders.h"
 
-float naiveSgemm(const int m, const int n, const int k, const float *restrict A,
-                 const float *restrict B, float *restrict C);
+void naiveSgemm(const int m, const int n, const int k, const float *restrict A,
+                const float *restrict B, float *restrict C);
 
-double naiveDgemm(const int m, const int n, const int k,
-                  const double *restrict A, const double *restrict B,
-                  double *restrict C);
+void naiveDgemm(const int m, const int n, const int k, const double *restrict A,
+                const double *restrict B, double *restrict C);
 
 double gemm_cpu(const dataTypes dType, const int iters, const int m,
                 const int n, const int k) {
@@ -32,18 +31,15 @@ double gemm_cpu(const dataTypes dType, const int iters, const int m,
       }
     }
     // Warmup run
-    float check = naiveSgemm(m, n, k, A, B, C);
+    naiveSgemm(m, n, k, A, B, C);
     // Start timer
     gettimeofday(&start_tv, NULL);
     // Perform all SGEMM iterations
     for (int i = 0; i < iters; i++) {
-      check += naiveSgemm(m, n, k, A, B, C);
+      naiveSgemm(m, n, k, A, B, C);
     }
-    // Post run check - required to ensure the naive GEMM code is not optimised
-    // away.
-    if (check == 0.0f) {
-      printf("GEMM_CPU - Kernel not executed.\n");
-    }
+    // Post run consume - ensures naive kernel isn't optimised away
+    consume((void *)A, (void *)B, (void *)C);
     break;
   }
   case _fp64_: {
@@ -65,18 +61,15 @@ double gemm_cpu(const dataTypes dType, const int iters, const int m,
       }
     }
     // Warmup run
-    double check = naiveDgemm(m, n, k, A, B, C);
+    naiveDgemm(m, n, k, A, B, C);
     // Start timer
     gettimeofday(&start_tv, NULL);
     // Perform all SGEMM iterations
     for (int i = 0; i < iters; i++) {
-      check += naiveDgemm(m, n, k, A, B, C);
+      naiveDgemm(m, n, k, A, B, C);
     }
-    // Post run check - required to ensure the naive GEMM code is not optimised
-    // away.
-    if (check == 0.0f) {
-      printf("GEMM_CPU - Kernel not executed.\n");
-    }
+    // Post run consume - ensures naive kernel isn't optimised away
+    consume((void *)A, (void *)B, (void *)C);
     break;
   }
   default:
@@ -93,8 +86,8 @@ double gemm_cpu(const dataTypes dType, const int iters, const int m,
  * Operation takes the form of C[M,N] = A[M,K] * B[K,N].
  * A return value is required to ensure that the compiler does not optimise away
  * this function. */
-float naiveSgemm(const int m, const int n, const int k, const float *restrict A,
-                 const float *restrict B, float *restrict C) {
+void naiveSgemm(const int m, const int n, const int k, const float *restrict A,
+                const float *restrict B, float *restrict C) {
   int x, y, z;
   float acc;
   for (x = 0; x < m; x++) {
@@ -106,8 +99,6 @@ float naiveSgemm(const int m, const int n, const int k, const float *restrict A,
       C[x * n + y] = acc;
     }
   }
-  // -1 from x and y to get max index values
-  return C[(x - 1) * n + (y - 1)];
 }
 
 /** A naive implementation of a FP64 GEMM. Alpha and Beta are always 1 and 0
@@ -115,9 +106,8 @@ float naiveSgemm(const int m, const int n, const int k, const float *restrict A,
  * Operation takes the form of C[M,N] = A[M,K] * B[K,N].
  * A return value is required to ensure that the compiler does not optimise away
  * this function. */
-double naiveDgemm(const int m, const int n, const int k,
-                  const double *restrict A, const double *restrict B,
-                  double *restrict C) {
+void naiveDgemm(const int m, const int n, const int k, const double *restrict A,
+                const double *restrict B, double *restrict C) {
   int x, y, z;
   double acc;
   for (x = 0; x < m; x++) {
@@ -129,6 +119,4 @@ double naiveDgemm(const int m, const int n, const int k,
       C[x * n + y] = acc;
     }
   }
-  // -1 from x and y to get max index values
-  return C[(x - 1) * n + (y - 1)];
 }

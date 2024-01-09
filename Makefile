@@ -109,8 +109,9 @@ EXE = gpu-blob
 
 all: $(EXE)
 
-$(EXE): main.c main.h utilities.h cpuKernels.h gpuKernels.h $(SRC_FILES) $(HEADER_FILES)
-	$(CC) $(CFLAGS) main.c $(SRC_FILES) $(LDFLAGS) -o $@
+$(EXE): main.c main.h consume.c utilities.h cpuKernels.h gpuKernels.h $(SRC_FILES) $(HEADER_FILES)
+	gcc consume.c -fpic -O0 -shared -o consume.so
+	$(CC) $(CFLAGS) main.c $(SRC_FILES) consume.so $(LDFLAGS) -o $@
 
 clean:
 	rm -f $(EXE)

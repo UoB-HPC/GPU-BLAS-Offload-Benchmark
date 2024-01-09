@@ -36,7 +36,7 @@
 #define BETA 0
 
 // Define output directory for csv files.
-#define CSV_DIR "output_csv_files"
+#define CSV_DIR "CSV_Results"
 
 // Define MIN and MAX Macros
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))

@@ -114,4 +114,4 @@ $(EXE): src/main.c src/consume.c $(SRC_FILES) $(HEADER_FILES)
 	$(CC) $(CFLAGS) src/main.c $(SRC_FILES) src/consume.so $(LDFLAGS) -o $@
 
 clean:
-	rm -f $(EXE)
+	rm -f $(EXE) src/consume.so

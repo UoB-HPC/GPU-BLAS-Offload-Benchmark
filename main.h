@@ -1,4 +1,7 @@
+#include "cpuKernels.h"
+#include "gpuKernels.h"
 #include "utilities.h"
+
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -7,9 +10,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include "cpuKernels.h"
-#include "gpuKernels.h"
 
 /** A function which prints standard configuration information to stdout. */
 void printBenchmarkConfig(const int iters, const int upperLimit) {
@@ -47,6 +47,10 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
 FILE *newCSV(const char *filename) {
   FILE *newFile;
   newFile = fopen(filename, "w");
+  if (newFile == NULL) {
+    perror("ERROR - File failed to open: ");
+    exit(1);
+  }
   // Write headers to file.
   fprintf(newFile,
           "Device,Kernel,M,N,K,Total Problem Size (KiB),Iterations,Total "

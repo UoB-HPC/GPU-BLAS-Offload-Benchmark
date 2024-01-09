@@ -32,14 +32,15 @@ double gemm_cpu(const dataTypes dType, const int iters, const int m,
     }
     // Warmup run
     naiveSgemm(m, n, k, A, B, C);
+    consume((void *)A, (void *)B, (void *)C);
     // Start timer
     gettimeofday(&start_tv, NULL);
     // Perform all SGEMM iterations
     for (int i = 0; i < iters; i++) {
       naiveSgemm(m, n, k, A, B, C);
+      // Post iteration consume - ensures naive kernel isn't optimised away
+      consume((void *)A, (void *)B, (void *)C);
     }
-    // Post run consume - ensures naive kernel isn't optimised away
-    consume((void *)A, (void *)B, (void *)C);
     break;
   }
   case _fp64_: {
@@ -62,14 +63,15 @@ double gemm_cpu(const dataTypes dType, const int iters, const int m,
     }
     // Warmup run
     naiveDgemm(m, n, k, A, B, C);
+    consume((void *)A, (void *)B, (void *)C);
     // Start timer
     gettimeofday(&start_tv, NULL);
     // Perform all SGEMM iterations
     for (int i = 0; i < iters; i++) {
       naiveDgemm(m, n, k, A, B, C);
+      // Post iteration consume - ensures naive kernel isn't optimised away
+      consume((void *)A, (void *)B, (void *)C);
     }
-    // Post run consume - ensures naive kernel isn't optimised away
-    consume((void *)A, (void *)B, (void *)C);
     break;
   }
   default:

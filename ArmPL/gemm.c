@@ -28,12 +28,17 @@ double gemm_cpu(const dataTypes dType, const int iters, const int m,
     // Warmup run
     cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A,
                 MAX(1, k), B, MAX(1, n), BETA, C, MAX(1, n));
+    consume((void *)A, (void *)B, (void *)C);
     // Start timer
     gettimeofday(&start_tv, NULL);
     // Perform all SGEMM iterations
     for (int i = 0; i < iters; i++) {
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A,
                   MAX(1, k), B, MAX(1, n), BETA, C, MAX(1, n));
+      // Call to `consume()` function to ensure all CPU BLAS Library
+      // implementations account for function call overhead (only required for
+      // DefaultCPU)
+      consume((void *)A, (void *)B, (void *)C);
     }
     break;
   }
@@ -58,12 +63,17 @@ double gemm_cpu(const dataTypes dType, const int iters, const int m,
     // Warmup run
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A,
                 MAX(1, m), B, MAX(1, k), BETA, C, MAX(1, m));
+    consume((void *)A, (void *)B, (void *)C);
     // Start timer
     gettimeofday(&start_tv, NULL);
     // Perform all SGEMM iterations
     for (int i = 0; i < iters; i++) {
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA, A,
                   MAX(1, m), B, MAX(1, k), BETA, C, MAX(1, m));
+      // Call to `consume()` function to ensure all CPU BLAS Library
+      // implementations account for function call overhead (only required for
+      // DefaultCPU)
+      consume((void *)A, (void *)B, (void *)C);
     }
     break;
   }

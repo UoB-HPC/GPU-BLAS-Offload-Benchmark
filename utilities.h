@@ -44,3 +44,7 @@
 
 // Define data type enums
 typedef enum { _fp32_, _fp64_ } dataTypes;
+
+// External consume function used to ensure naive code is performed and not
+// optimised away.
+extern int consume(void *a, void *b, void *c);

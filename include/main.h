@@ -85,5 +85,6 @@ double calcKib(const uint64_t probSize, const uint64_t bytesPerElem) {
 
 /** A function for calculating FLOPs performed by a GEMM. */
 uint64_t gemmFlops(const int M, const int N, const int K) {
-  return (M * N * K * 2);
+
+  return ((uint64_t)M * (uint64_t)N * (uint64_t)K * 2);
 }

@@ -41,6 +41,10 @@ double gemm_cpu(const dataTypes dType, const int iters, const int m,
       // Post iteration consume - ensures naive kernel isn't optimised away
       consume((void *)A, (void *)B, (void *)C);
     }
+    // Destroy matricies
+    free(A);
+    free(B);
+    free(C);
     break;
   }
   case _fp64_: {
@@ -72,6 +76,10 @@ double gemm_cpu(const dataTypes dType, const int iters, const int m,
       // Post iteration consume - ensures naive kernel isn't optimised away
       consume((void *)A, (void *)B, (void *)C);
     }
+    // Destroy matricies
+    free(A);
+    free(B);
+    free(C);
     break;
   }
   default:

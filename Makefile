@@ -35,10 +35,15 @@ CFLAGS_GNU     = -std=c99 -Wall -Ofast -$(ARCHFLAG)=native
 CFLAGS_INTEL   = -std=c99 -Wall -Ofast -$(ARCHFLAG)=native
 CFLAGS = $(CFLAGS_$(COMPILER))
 
+SRC_FILES =
+HEADER_FILES =
+
 # -------
 
 ifndef CPU_LIBRARY
 $(warning CPU_LIBRARY not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
+SRC_FILES += $(wildcard DefaultCPU/*.c)
+HEADER_FILES += $(wildcard DefaultCPU/*.h)
 else ifeq ($(CPU_LIBRARY), ARMPL)
 # Add ARM compiler options
 ifeq ($(COMPILER), ARM)
@@ -47,6 +52,8 @@ CFLAGS += -armpl=ilp64,parallel -fopenmp
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
 endif
+SRC_FILES += $(wildcard ArmPL/*.c)
+HEADER_FILES += $(wildcard ArmPL/*.h)
 else ifeq ($(CPU_LIBRARY), ONEMKL)
 # Do OneMKL stuff
 $(error The CPU_LIBRARY $(CPU_LIBRARY) is currently not supported.)
@@ -58,12 +65,16 @@ else ifeq ($(CPU_LIBRARY), OPENBLAS)
 $(error The CPU_LIBRARY $(CPU_LIBRARY) is currently not supported.)
 else
 $(warning Provided CPU_LIBRARY not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
+SRC_FILES += $(wildcard DefaultCPU/*.c)
+HEADER_FILES += $(wildcard DefaultCPU/*.h)
 endif
 
 # -------
 
 ifndef GPU_LIBRARY
 $(warning GPU_LIBRARY not set (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
+SRC_FILES += $(wildcard DefaultGPU/*.c)
+HEADER_FILES += $(wildcard DefaultGPU/*.h)
 else ifeq ($(GPU_LIBRARY), CUBLAS)
 # Do cuBLAS stuff
 $(error The GPU_LIBRARY $(GPU_LIBRARY) is currently not supported.)
@@ -75,6 +86,8 @@ else ifeq ($(GPU_LIBRARY), ROCBLAS)
 $(error The GPU_LIBRARY $(GPU_LIBRARY) is currently not supported.)
 else
 $(warning Provided GPU_LIBRARY not valid (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
+SRC_FILES += $(wildcard DefaultGPU/*.c)
+HEADER_FILES += $(wildcard DefaultGPU/*.h)
 endif
 
 # -------
@@ -91,14 +104,13 @@ LDFLAGS = -lm
 # -------
 
 EXE = gpu-blob
-HEADER_FILES = $(wildcard DefaultCPU/* DefaultGPU/* ArmPL/*)
 
 .PHONY: all $(EXE) clean
 
 all: $(EXE)
 
-$(EXE): main.c main.h utilities.h $(HEADER_FILES)
-	$(CC) $(CFLAGS) main.c -o $@ $(LDFLAGS)
+$(EXE): main.c main.h utilities.h cpuKernels.h gpuKernels.h $(SRC_FILES) $(HEADER_FILES)
+	$(CC) $(CFLAGS) main.c $(SRC_FILES) $(LDFLAGS) -o $@
 
 clean:
 	rm -f $(EXE)

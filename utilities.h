@@ -1,13 +1,5 @@
 #pragma once
 
-#include <math.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/time.h>
-
 // Define CPU related macros
 #if defined CPU_ARMPL
 #define CPU_LIB_NAME "Arm Performance Libraries"
@@ -52,20 +44,3 @@
 
 // Define data type enums
 typedef enum { _fp32_, _fp64_ } dataTypes;
-
-/** A function to calculate GFLOPs. */
-double calcGflops(const uint64_t flops, const int iters, const double seconds) {
-  return (seconds == 0.0 || seconds == INFINITY)
-             ? 0.0
-             : ((double)(flops * iters) / seconds) * 1e-9;
-}
-
-/** A function to calculate KiB from a data-structur's dimensions. */
-double calcKib(const uint64_t probSize, const uint64_t bytesPerElem) {
-  return ((double)(probSize * bytesPerElem) / 1024);
-}
-
-/** A function for calculating FLOPs performed by a GEMM. */
-uint64_t gemmFlops(const int M, const int N, const int K) {
-  return (M * N * K * 2);
-}

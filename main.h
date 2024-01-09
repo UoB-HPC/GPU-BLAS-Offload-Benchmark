@@ -1,31 +1,14 @@
 #include "utilities.h"
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-// Select which CPU Library to use
-#if defined CPU_DEFAULT
-#include "DefaultCPU/default.h"
-#elif defined CPU_ARMPL
-#include "ArmPL/armpl.h"
-#elif defined CPU_ONEMKL
-// #include "OneMKL/onemkl.h"
-#elif defined CPU_OPENBLAS
-// #include "OpenBLAS/openblas.h"
-#elif defined CPU_AOCL
-// #include "AOCL/aocl.h"
-#endif
-
-// Select which GPU Library to use
-#if defined GPU_DEFAULT
-#include "DefaultGPU/default.h"
-#elif defined GPU_CUBLAS
-// #include "cuBLAS/cublas.h"
-#elif defined GPU_ONEMKL
-// #include "OneMKL/onemkl.h"
-#elif defined GPU_ROCBLAS
-// #include "rocBLAS/rocblas.h"
-#endif
+#include "cpuKernels.h"
+#include "gpuKernels.h"
 
 /** A function which prints standard configuration information to stdout. */
 void printBenchmarkConfig(const int iters, const int upperLimit) {
@@ -70,10 +53,32 @@ FILE *newCSV(const char *filename) {
   return newFile;
 }
 
+/** A function to write a new line to an open CSV file. */
 void writeLineToCsv(FILE *fptr, const char *device, const char *kernel,
                     const int M, const int N, const int K,
                     const double totalProbSize, const int iters,
                     const double totalTime, const double gflops) {
+  if (fptr == NULL) {
+    printf("ERROR - Attempted to write line to invalid file pointer.\n");
+    exit(1);
+  }
   fprintf(fptr, "%s,%s,%d,%d,%d,%.2lf,%d,%lf,%lf\n", device, kernel, M, N, K,
           totalProbSize, iters, totalTime, gflops);
+}
+
+/** A function to calculate GFLOPs. */
+double calcGflops(const uint64_t flops, const int iters, const double seconds) {
+  return (seconds == 0.0 || seconds == INFINITY)
+             ? 0.0
+             : ((double)(flops * iters) / seconds) * 1e-9;
+}
+
+/** A function to calculate KiB from a data-structur's dimensions. */
+double calcKib(const uint64_t probSize, const uint64_t bytesPerElem) {
+  return ((double)(probSize * bytesPerElem) / 1024);
+}
+
+/** A function for calculating FLOPs performed by a GEMM. */
+uint64_t gemmFlops(const int M, const int N, const int K) {
+  return (M * N * K * 2);
 }

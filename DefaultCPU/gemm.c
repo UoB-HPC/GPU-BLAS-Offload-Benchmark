@@ -1,6 +1,5 @@
-#pragma once
-
-#include "../utilities.h"
+#include "../cpuKernels.h"
+#include "commonHeaders.h"
 
 float naiveSgemm(const int m, const int n, const int k, const float *restrict A,
                  const float *restrict B, float *restrict C);
@@ -9,8 +8,6 @@ double naiveDgemm(const int m, const int n, const int k,
                   const double *restrict A, const double *restrict B,
                   double *restrict C);
 
-/** Performs GEMM operations of type `dType` on host CPU for `iters` iterations.
- * Returns the time taken to perform the operation in seconds. */
 double gemm_cpu(const dataTypes dType, const int iters, const int m,
                 const int n, const int k) {
   // Define timer variables

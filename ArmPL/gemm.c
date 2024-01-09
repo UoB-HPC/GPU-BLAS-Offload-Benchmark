@@ -1,12 +1,7 @@
-#pragma once
-
-#include "../utilities.h"
+#include "../cpuKernels.h"
+#include "commonHeaders.h"
 
 #ifdef CPU_ARMPL
-#include "headers.h"
-
-/** Performs GEMM operations of type `dType` on host CPU for `iters` iterations.
- * Returns the time taken to perform the operation in seconds. */
 double gemm_cpu(const dataTypes dType, const int iters, const int m,
                 const int n, const int k) {
   // Define timer variables
@@ -81,29 +76,3 @@ double gemm_cpu(const dataTypes dType, const int iters, const int m,
           (tv.tv_usec - start_tv.tv_usec) / 1000000.0);
 }
 #endif
-
-// /** Performs GEMM operations of type `dType` on host GPU for `iters`
-// iterations.
-//  * Returns the time taken to perform the operation in seconds.
-//  *  - `offloadOnce` refers to whether the matrix data should be offloaded to
-//  the
-//  *    device once before computation and then copied back at the end of all
-//  *    iterations, or if the matrcies should be offloaded to/from the device
-//  *    every iteration. */
-// double gemm_gpu(const dataTypes dType, const int iters, const int
-// m,
-//                 const int n, const int k, const bool offloadOnce) {
-//   // Conditionally execute the kernel
-//   if (!GPU_ENABLED) {
-//     return 0.0;
-//   }
-
-//   // Define timer variables
-//   struct timeval tv, start_tv;
-//   // Start timer
-//   gettimeofday(&start_tv, NULL);
-//   // Stop timer
-//   gettimeofday(&tv, NULL);
-//   return ((tv.tv_sec - start_tv.tv_sec) +
-//           (tv.tv_usec - start_tv.tv_usec) / 1000000.0);
-// }

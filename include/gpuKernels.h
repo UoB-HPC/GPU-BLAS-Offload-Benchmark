@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utilities.h"
+#include "dataTypes.h"
 #include <stdbool.h>
 
 /** Performs GEMM operations of type `dType` on host GPU for `iters` iterations.

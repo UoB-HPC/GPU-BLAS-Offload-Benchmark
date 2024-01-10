@@ -42,9 +42,6 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
-// Define data type enums
-typedef enum { _fp32_, _fp64_ } dataTypes;
-
 // External consume function used to ensure naive code is performed and not
 // optimised away, and that all iterations of any library BLAS call are
 // performed.

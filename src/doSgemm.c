@@ -27,9 +27,11 @@ void doSgemm(const int iters, const int upperLimit) {
 
   printf("\t\tTall and thin (M x 32)...\n");
   fptr = newCSV(CSV_DIR "/sgemm_rectangular_Mx32.csv");
-  for (int dim = 1; dim <= upperLimit; dim++) {
-    const int M = dim, N = dim, K = 32;
-    callSgemms(fptr, iters, M, N, K);
+  if (upperLimit >= 32) {
+    for (int dim = 1; dim <= upperLimit; dim++) {
+      const int M = dim, N = dim, K = 32;
+      callSgemms(fptr, iters, M, N, K);
+    }
   }
   // Close file
   fclose(fptr);
@@ -45,9 +47,11 @@ void doSgemm(const int iters, const int upperLimit) {
 
   printf("\t\tShort and wide (32 x K)...\n");
   fptr = newCSV(CSV_DIR "/sgemm_rectangular_32xK.csv");
-  for (int dim = 1; dim <= upperLimit; dim++) {
-    const int M = 32, N = 32, K = dim;
-    callSgemms(fptr, iters, M, N, K);
+  if (upperLimit >= 32) {
+    for (int dim = 1; dim <= upperLimit; dim++) {
+      const int M = 32, N = 32, K = dim;
+      callSgemms(fptr, iters, M, N, K);
+    }
   }
   // Close file
   fclose(fptr);

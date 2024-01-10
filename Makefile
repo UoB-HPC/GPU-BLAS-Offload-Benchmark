@@ -35,7 +35,7 @@ CFLAGS_GNU     = -std=c99 -Wall -Ofast -$(ARCHFLAG)=native
 CFLAGS_INTEL   = -std=c99 -Wall -Ofast -$(ARCHFLAG)=native
 CFLAGS = $(CFLAGS_$(COMPILER))
 
-SRC_FILES = 
+SRC_FILES = $(wildcard src/*.c)
 HEADER_FILES = $(wildcard include/*.h)
 
 # -------
@@ -109,9 +109,9 @@ EXE = gpu-blob
 
 all: $(EXE)
 
-$(EXE): src/main.c src/consume.c $(SRC_FILES) $(HEADER_FILES)
-	gcc src/consume.c -fpic -O0 -shared -o src/consume.so
-	$(CC) $(CFLAGS) src/main.c $(SRC_FILES) src/consume.so $(LDFLAGS) -o $@
+$(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
+	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/consume.so
+	$(CC) $(CFLAGS) $(SRC_FILES) src/Consume/consume.so $(LDFLAGS) -o $@
 
 clean:
-	rm -f $(EXE) src/consume.so
+	rm -f $(EXE) src/Consume/consume.so

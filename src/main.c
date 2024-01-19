@@ -13,14 +13,17 @@ int main(int argc, char *argv[]) {
   if (stat(CSV_DIR, &st) == -1) {
     mkdir(CSV_DIR, 0700);
   }
+  char absPath[4096];
+  realpath(CSV_DIR, absPath);
+  printf("All results will be saved in CSV files at \'%s\'\n\n", absPath);
 
   // SGEMM Comparison
-  printf("Comparing SGEMM Kernels:\n");
+  printf("\nComparing SGEMM Kernels:\n");
   doSgemm(iters, upperLimit);
   printf("Finished!\n");
 
   // DGEMM Comparison
-  printf("Comparing DGEMM Kernels:\n");
+  printf("\nComparing DGEMM Kernels:\n");
   doDgemm(iters, upperLimit);
   printf("Finished!\n");
   return 0;
@@ -44,12 +47,13 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
   printf("\tOMP_NUM_THREADS: %u\n", ompThreads);
   printf("\tOMP_PROC_BIND: %s\n", ompProcBind);
   printf("\tOMP_PLACES: %s\n", ompPlaces);
+  printf("\n");
 #ifdef CPU_DEFAULT
-  printf("\nWARNING - No CPU BLAS library selected. Results will be collected "
+  printf("WARNING - No CPU BLAS library selected. Results will be collected "
          "from a single threaded naive implementation.\n");
 #endif
 #ifdef GPU_DEFAULT
-  printf("\nWARNING - No GPU BLAS Library selected. All results will be based "
+  printf("WARNING - No GPU BLAS Library selected. All results will be based "
          "off of a time of infinity.\n");
 #endif
   printf("\n");

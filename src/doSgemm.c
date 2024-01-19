@@ -5,7 +5,7 @@ void callSgemms(FILE *fptr, const int iters, const int M, const int N,
 
 void doSgemm(const int iters, const int upperLimit) {
   FILE *fptr;
-  printf("\tSquare Problem Sizes...\n");
+  // Square Problem Sizes...
   // Open new CSV file
   fptr = newCSV(CSV_DIR "/sgemm_square.csv");
   for (int dim = 1; dim <= upperLimit; dim++) {
@@ -15,8 +15,8 @@ void doSgemm(const int iters, const int upperLimit) {
   // Close file
   fclose(fptr);
 
-  printf("\tRectangular Problem Sizes:\n");
-  printf("\t\tTall and thin (16M x K)...\n");
+  // Rectangular Problem Sizes:
+  // Tall and thin (16M x K)...
   fptr = newCSV(CSV_DIR "/sgemm_rectangular_16MxK.csv");
   for (int dim = 16; dim <= upperLimit; dim += 16) {
     const int M = dim, N = dim, K = (dim / 16);
@@ -25,7 +25,7 @@ void doSgemm(const int iters, const int upperLimit) {
   // Close file
   fclose(fptr);
 
-  printf("\t\tTall and thin (M x 32)...\n");
+  // Tall and thin (M x 32)...
   fptr = newCSV(CSV_DIR "/sgemm_rectangular_Mx32.csv");
   if (upperLimit >= 32) {
     for (int dim = 1; dim <= upperLimit; dim++) {
@@ -36,7 +36,7 @@ void doSgemm(const int iters, const int upperLimit) {
   // Close file
   fclose(fptr);
 
-  printf("\t\tShort and wide (M x 16K)...\n");
+  // Short and wide (M x 16K)...
   fptr = newCSV(CSV_DIR "/sgemm_rectangular_Mx16K.csv");
   for (int dim = 16; dim <= upperLimit; dim += 16) {
     const int M = (dim / 16), N = (dim / 16), K = dim;
@@ -45,7 +45,7 @@ void doSgemm(const int iters, const int upperLimit) {
   // Close file
   fclose(fptr);
 
-  printf("\t\tShort and wide (32 x K)...\n");
+  // Short and wide (32 x K)...
   fptr = newCSV(CSV_DIR "/sgemm_rectangular_32xK.csv");
   if (upperLimit >= 32) {
     for (int dim = 1; dim <= upperLimit; dim++) {

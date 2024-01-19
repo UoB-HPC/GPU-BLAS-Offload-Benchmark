@@ -86,7 +86,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [x] Consider the suitability of including batched versions of the chosen BLAS kernels.
  - [x] Create main file which contains functionality of:
    - [x] Print system information such as CPU library used, GPU library used...
-   - [ ] Running each BLAS kernel for all input types & shapes on CPU.
+   - [x] Running each BLAS kernel for all input types & shapes on CPU.
      - [x] Increase each dimension by 1 each run until reached upper-limit (user defined?).
      - [x] Each for `n` iterations (user defined?).
    - [ ] Running each BLAS kernel for all input types & shapes on GPU.

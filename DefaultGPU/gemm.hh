@@ -2,6 +2,7 @@
 
 #include <time.h>
 
+#include <cmath>
 #include <vector>
 
 #include "../include/GPU/gemm.hh"

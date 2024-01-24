@@ -51,13 +51,13 @@ class gemm_cpu : public gemm<T> {
   /** Make a class to the BLAS Library Kernel. */
   virtual void callKernel() override {
     if constexpr (std::is_same_v<T, float>) {
-      cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA,
-                  A_.data(), MAX(1, m), B.data(), MAX(1, k), BETA, C.data(),
-                  MAX(1, m));
+      cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, ALPHA,
+                  A_.data(), MAX(1, m_), B_.data(), MAX(1, k_), BETA, C_.data(),
+                  MAX(1, m_));
     } else if constexpr (std::is_same_v<T, double>) {
-      cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, k, ALPHA,
-                  A_.data(), MAX(1, m), B.data(), MAX(1, k), BETA, C.data(),
-                  MAX(1, m));
+      cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, ALPHA,
+                  A_.data(), MAX(1, m_), B_.data(), MAX(1, k_), BETA, C_.data(),
+                  MAX(1, m_));
     } else {
       // Un-specialised class will not do any work - print error and exit.
       std::cout << "ERROR - Datatype for ArmPL CPU GEMM kernel not supported."

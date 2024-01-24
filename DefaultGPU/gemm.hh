@@ -31,12 +31,7 @@ class gemm_gpu : public gemm<T> {
 
  private:
   /** Make a class to the BLAS Library Kernel. */
-  virtual void callKernel() override {
-    // Default GPU implementation - do nothing.
-  }
-
-  /** Call the extern consume() function. */
-  virtual void callConsume() override {
+  virtual void callKernel(const int iterations) override {
     // Default GPU implementation - do nothing.
   }
 };

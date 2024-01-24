@@ -2,6 +2,8 @@
 
 #include <chrono>
 
+namespace cpu {
+
 /** A generic abstract class defining the operation of timing a BLAS kernel for
  * n iterations. */
 template <typename T>
@@ -20,7 +22,6 @@ class kernel {
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime =
         std::chrono::high_resolution_clock::now();
 
-    // Perform all SGEMM iterations
     for (int i = 0; i < iterations_; i++) {
       callKernel();
       // Post iteration consume - ensures naive kernel isn't optimised away
@@ -46,3 +47,4 @@ class kernel {
   /** The number of iterations to perform per problem size. */
   const int iterations_;
 };
+}  // namespace cpu

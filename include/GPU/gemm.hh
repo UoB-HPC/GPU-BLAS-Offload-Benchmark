@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../kernel.hh"
+#include "kernel.hh"
 
 namespace gpu {
 
 /** An abstract class for GEMM BLAS kernels. */
 template <typename T>
-class gemm : public ::kernel<T> {
+class gemm : public kernel<T> {
  public:
   using kernel<T>::kernel;
 

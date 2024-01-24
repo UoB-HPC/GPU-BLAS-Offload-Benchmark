@@ -45,4 +45,6 @@
 // External consume function used to ensure naive code is performed and not
 // optimised away, and that all iterations of any library BLAS call are
 // performed.
-extern int consume(void *a, void *b, void *c);
+extern "C" {
+int consume(void* a, void* b, void* c);
+}

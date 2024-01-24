@@ -8,8 +8,6 @@
  *
  * `consume.c` is compiled as a shared object and linked at compile time. */
 
-#include <stdlib.h>
-
 int consume(void *a, void *b, void *c) {
   // Do nothing
   return 0;

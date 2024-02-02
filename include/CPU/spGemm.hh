@@ -11,10 +11,10 @@ namespace cpu {
         using kernel<T>::kernel;
 
         /** Initialise the required data structures. */
-        virtual void initialise(int n, float sparsity) = 0;
+        virtual void initialise(int n, double sparsity) = 0;
 
     protected:
         /** Matrix size -- matrix will be nxn */
         int n_ = 0;
-
+    };
 }  // namespace cpu

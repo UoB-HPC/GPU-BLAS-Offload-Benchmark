@@ -28,7 +28,7 @@ std::ofstream initCSVFile(const std::string filename) {
  * Function does not close the file. */
 void writeLineToCsv(std::ofstream& file, const std::string device,
                     const std::string kernel, const int M, const int N,
-                    const int K, const double totalProbSize, const int iters,
+                    const int K, const double sparsity, const double totalProbSize, const int iters,
                     const double totalTime, const double gflops) {
   if (!file.is_open()) {
     std::cout << "ERROR - Attempted to write line to a closed CSV file."
@@ -36,7 +36,8 @@ void writeLineToCsv(std::ofstream& file, const std::string device,
     exit(1);
   }
   file << device << "," << kernel << "," << M << "," << N << "," << K << ","
-       << std::fixed << std::setprecision(3) << totalProbSize << "," << iters
+       << std::fixed << std::setprecision(5) << sparsity << "," << std::fixed
+       << std::setprecision(3) << totalProbSize << "," << iters
        << "," << std::fixed << std::setprecision(5) << totalTime << ","
        << std::fixed << std::setprecision(3) << gflops << std::endl;
 }

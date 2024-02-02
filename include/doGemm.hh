@@ -22,6 +22,7 @@ class doGemm {
       : iterations_(iters),
         upperLimit_(upperLimit),
         gemmCpu_(iterations_),
+        spGemmCpu_(iterations_),
         gemmGpu_(iterations_) {
     static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
                   "ERROR - doGemm can only be constructed using one of the "
@@ -87,7 +88,7 @@ class doGemm {
     csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
                          "_sparse_graph.csv");
     for (int dim = 1; dim <= upperLimit_; dim++) {
-        callSparseKernels(csvFile, dim);
+        callSparseKernels(csvFile, dim, 0.999);
     }
     // Close file
     csvFile.close();
@@ -175,7 +176,7 @@ class doGemm {
   /** The number of iterations to perform per problem size. */
   const int iterations_;
 
-  /** The maximum value of the largest problem size dimention. */
+  /** The maximum value of the largest problem size dimension. */
   const int upperLimit_;
 
   cpu::gemm_cpu<T> gemmCpu_;

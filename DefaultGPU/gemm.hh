@@ -37,7 +37,7 @@ class gemm_gpu : public gemm<T> {
 
   /** Call the extern consume() function. */
   void callConsume() override {
-    consume((void*)A_.data(), (void*)B_.data(), (void*)C_.data());
+    // Default GPU implementation - do nothing.
   }
 };
 #endif

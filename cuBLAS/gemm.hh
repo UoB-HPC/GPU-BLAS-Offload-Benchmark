@@ -137,9 +137,7 @@ class gemm_gpu : public gemm<T> {
   }
 
   /** Call the extern consume() function. */
-  void callConsume() override {
-    consume((void*)A_.data(), (void*)B_.data(), (void*)C_.data());
-  }
+  void callConsume() override { consume((void*)A_, (void*)B_, (void*)C_); }
 
   /** Whether or not matrices A, B, and C should be moved from host to device,
    * and from device back to host, every iteration or once before & after all

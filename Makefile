@@ -80,11 +80,13 @@ HEADER_FILES += $(wildcard DefaultGPU/*.hh)
 else ifeq ($(GPU_LIBRARY), CUBLAS)
 # Do cuBLAS stuff
 ifeq ($(COMPILER), NVIDIA)
-CXXFLAGS += -lcublas
+CXXFLAGS += -cudalib=cublas
 # Error to select ArmPL otherwise
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with cuBLAS)
 endif
+SRC_FILES += $(wildcard cuBLAS/*.cc)
+HEADER_FILES += $(wildcard cuBLAS/*.hh)
 else ifeq ($(GPU_LIBRARY), ONEMKL)
 # Do OneMKL stuff
 $(error The GPU_LIBRARY $(GPU_LIBRARY) is currently not supported.)

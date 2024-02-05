@@ -1,7 +1,10 @@
 
 
 #ifdef GPU_CUBLAS
-#include "cublas_v2.h"
+#include <cublas_v2.h>
+#include <cuda_runtime.h>
+
+#include "cublas_utils.h"
 #endif
 
 #include "../include/GPU/gemm.hh"

@@ -55,7 +55,7 @@ __Example:__ For a square GEMM, the problem size will iterate up to `M=N=K=D`.\
 __Example:__ For a rectangular GEMM where `M=N` and `K=M/4`, the probelm size will iterate up to`M=N=D` and `K=D/4`.
 
 
-For the CPU kernels it is also recommended to set the relevant environment variables. For example, when using ArmPL, setting `OMP_NUM_THREADS`, `OMP_PROC_BIND`, and `OMP_PLACES` can be beneficial.
+For the CPU kernels it is also recommended to set the relevant environment variables. For example, when using ArmPL, setting `OMP_NUM_THREADS`, `OMP_PROC_BIND`, and `OMP_PLACES` is be beneficial.
 
 
 # BLAS Kernels Supported
@@ -90,8 +90,8 @@ The kernels listed below are computed by the benchmark for a wide range of probl
      - [x] Increase each dimension by 1 each run until reached upper-limit (user defined?).
      - [x] Each for `n` iterations (user defined?).
    - [ ] Running each BLAS kernel for all input types & shapes on GPU.
-     - [x] Increase each dimension by 1 each run until reached upper-limit (user defined?).
-     - [x] Each for `n` iterations (user defined?).
+     - [] Increase each dimension by 1 each run until reached upper-limit (user defined?).
+     - [] Each for `n` iterations (user defined?).
        - [ ] Offload data once at start, once at end.
        - [ ] Offload data each iteration.
    - [x] Calculate GLFOPs achieved for each BLAS kernel run.
@@ -102,7 +102,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - [x] Selecting the compiler + compiler specific flags.
    - [x] Selecting the CPU library target (ArmPL, oneMKL, OpenBLAS) + relevant flags.
    - [x] Selecting the GPU library target (cuBLAS, oneMKL) + relevant flags.
- - [ ] Add naive implementations of kernels for Default CPU
+ - [ ] Add naive implementations of kernels for Default CPU + Default GPU
    - [x] GEMM 
    - [ ] GEMV 
    - [ ] SpMM 

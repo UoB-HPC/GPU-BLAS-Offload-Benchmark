@@ -19,21 +19,23 @@ endif
 # -------
 
 ifndef COMPILER
-$(warning COMPILER not set (use ARM, CLANG, GNU, or INTEL))
+$(warning COMPILER not set (use ARM, CLANG, GNU, INTEL, or NVIDIA))
 COMPILER=GNU
 endif
 
-CC_ARM     = armclang++
-CC_CLANG   = clang++
-CC_GNU     = g++
-CC_INTEL   = icc
-CC = $(CC_$(COMPILER))
+CXX_ARM     = armclang++
+CXX_CLANG   = clang++
+CXX_GNU     = g++
+CXX_INTEL   = icc
+CXX_NVIDIA  = nvc++
+CXX = $(CXX_$(COMPILER))
 
-CFLAGS_ARM     = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CFLAGS_CLANG   = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CFLAGS_GNU     = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CFLAGS_INTEL   = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CFLAGS = $(CFLAGS_$(COMPILER))
+CXXFLAGS_ARM     = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_CLANG   = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_GNU     = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_INTEL   = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_NVIDIA   = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS = $(CXXFLAGS_$(COMPILER))
 
 SRC_FILES = $(wildcard src/*.cc)
 HEADER_FILES = $(wildcard include/*.hh)
@@ -47,7 +49,7 @@ HEADER_FILES += $(wildcard DefaultCPU/*.hh)
 else ifeq ($(CPU_LIBRARY), ARMPL)
 # Add ARM compiler options
 ifeq ($(COMPILER), ARM)
-CFLAGS += -armpl=ilp64,parallel -fopenmp
+CXXFLAGS += -armpl=ilp64,parallel -fopenmp
 # Error to select ArmPL otherwise
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
@@ -77,7 +79,12 @@ SRC_FILES += $(wildcard DefaultGPU/*.cc)
 HEADER_FILES += $(wildcard DefaultGPU/*.hh)
 else ifeq ($(GPU_LIBRARY), CUBLAS)
 # Do cuBLAS stuff
-$(error The GPU_LIBRARY $(GPU_LIBRARY) is currently not supported.)
+ifeq ($(COMPILER), NVIDIA)
+CXXFLAGS += -lcublas
+# Error to select ArmPL otherwise
+else
+$(error Selected compiler $(COMPILER) is not currently compatible with cuBLAS)
+endif
 else ifeq ($(GPU_LIBRARY), ONEMKL)
 # Do OneMKL stuff
 $(error The GPU_LIBRARY $(GPU_LIBRARY) is currently not supported.)
@@ -93,10 +100,10 @@ endif
 # -------
 
 ifdef CPU_LIBRARY
-CFLAGS += -DCPU_$(CPU_LIBRARY)
+CXXFLAGS += -DCPU_$(CPU_LIBRARY)
 endif
 ifdef GPU_LIBRARY
-CFLAGS += -DGPU_$(GPU_LIBRARY)
+CXXFLAGS += -DGPU_$(GPU_LIBRARY)
 endif
 
 LDFLAGS = -lm 
@@ -111,7 +118,7 @@ all: $(EXE)
 
 $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
 	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/consume.so
-	$(CC) $(CFLAGS) $(SRC_FILES) src/Consume/consume.so $(LDFLAGS) -o $@
+	$(CXX) $(CXXFLAGS) $(SRC_FILES) src/Consume/consume.so $(LDFLAGS) -o $@
 
 clean:
 	rm -f $(EXE) src/Consume/consume.so

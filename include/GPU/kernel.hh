@@ -18,7 +18,7 @@ class kernel {
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime =
         std::chrono::high_resolution_clock::now();
 
-    // Perform all GPU BLAS calls
+    // Perform all GPU BLAS calls & callConsume()
     callKernel(iterations_);
 
     // Stop Timer
@@ -32,6 +32,9 @@ class kernel {
  private:
   /** Make a call to the BLAS Library Kernel. */
   virtual void callKernel(const int iterations) = 0;
+
+  /** Call the extern consume() function. */
+  virtual void callConsume() override = 0;
 
   /** The number of iterations to perform per problem size. */
   const int iterations_;

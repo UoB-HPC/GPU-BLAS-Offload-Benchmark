@@ -77,7 +77,7 @@ class gemm_cpu : public gemm<T> {
   /** Input matrix B. */
   std::vector<T> B_;
 
-  /** Input matrix C. */
+  /** Output matrix C. */
   std::vector<T> C_;
 };
 #endif

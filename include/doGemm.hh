@@ -12,6 +12,8 @@
 
 #if defined GPU_DEFAULT
 #include "../DefaultGPU/gemm.hh"
+#elif defined GPU_CUBLAS
+#include "../cuBLAS/gemm.hh"
 #endif
 
 template <typename T>

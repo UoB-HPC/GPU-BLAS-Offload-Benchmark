@@ -34,7 +34,7 @@ class kernel {
   virtual void callKernel(const int iterations) = 0;
 
   /** Call the extern consume() function. */
-  virtual void callConsume() override = 0;
+  virtual void callConsume() = 0;
 
   /** The number of iterations to perform per problem size. */
   const int iterations_;

@@ -34,6 +34,11 @@ class gemm_gpu : public gemm<T> {
   virtual void callKernel(const int iterations) override {
     // Default GPU implementation - do nothing.
   }
+
+  /** Call the extern consume() function. */
+  void callConsume() override {
+    consume((void*)A_.data(), (void*)B_.data(), (void*)C_.data());
+  }
 };
 #endif
 }  // namespace gpu

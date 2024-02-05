@@ -8,7 +8,7 @@
 #include "../include/utilities.hh"
 
 namespace gpu {
-// #ifdef GPU_CUBLAS
+#ifdef GPU_CUBLAS
 /** A class for GEMM GPU BLAS kernels. */
 template <typename T>
 class gemm_gpu : public gemm<T> {
@@ -164,5 +164,5 @@ class gemm_gpu : public gemm<T> {
   /** Input matrix C, held on the device. */
   T* C_device_;
 };
-// #endif
+#endif
 }  // namespace gpu

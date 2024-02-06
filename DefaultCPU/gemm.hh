@@ -1,5 +1,6 @@
 #pragma once
 
+#if defined CPU_DEFAULT
 #include <time.h>
 
 #include <vector>
@@ -8,8 +9,6 @@
 #include "../include/utilities.hh"
 
 namespace cpu {
-
-#if defined CPU_DEFAULT
 /** A class for GEMM CPU BLAS kernels. */
 template <typename T>
 class gemm_cpu : public gemm<T> {
@@ -77,5 +76,5 @@ class gemm_cpu : public gemm<T> {
   /** Output matrix C. */
   std::vector<T> C_;
 };
-#endif
 }  // namespace cpu
+#endif

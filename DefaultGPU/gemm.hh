@@ -1,5 +1,6 @@
 #pragma once
 
+#if defined GPU_DEFAULT
 #include <time.h>
 
 #include <cmath>
@@ -9,8 +10,6 @@
 #include "../include/utilities.hh"
 
 namespace gpu {
-
-#if defined GPU_DEFAULT
 /** A class for GEMM GPU BLAS kernels. */
 template <typename T>
 class gemm_gpu : public gemm<T> {
@@ -40,5 +39,5 @@ class gemm_gpu : public gemm<T> {
     // Default GPU implementation - do nothing.
   }
 };
-#endif
 }  // namespace gpu
+#endif

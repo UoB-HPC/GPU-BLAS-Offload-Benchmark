@@ -1,21 +1,14 @@
-
+#pragma once
 
 #ifdef GPU_CUBLAS
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
-#endif
 
 #include "../include/GPU/gemm.hh"
 #include "../include/utilities.hh"
-
-#define cudaCheckError(f)                                                                                    \
-  do { if(cudaError_t e = (f); e != cudaSuccess) {                                                           \
-   std::cout << "CUDA error: " << __FILE__ << ":" << __LINE__ << ": " << cudaGetErrorString(e) << std::endl; \
-   exit(1);                                                                                                  \
-  } } while (false)
+#include "common.hh"
 
 namespace gpu {
-#ifdef GPU_CUBLAS
 /** A class for GEMM GPU BLAS kernels. */
 template <typename T>
 class gemm_gpu : public gemm<T> {
@@ -68,9 +61,12 @@ class gemm_gpu : public gemm<T> {
     cublasCreate(&handle);
     if (offloadOnce_) {
       // Offload data from host to the device.
-      cudaCheckError(cudaMemcpy(A_device_, A_, sizeof(T) * m_ * k_, cudaMemcpyHostToDevice));
-      cudaCheckError(cudaMemcpy(B_device_, B_, sizeof(T) * k_ * n_, cudaMemcpyHostToDevice));
-      cudaCheckError(cudaMemcpy(C_device_, C_, sizeof(T) * m_ * n_, cudaMemcpyHostToDevice));
+      cudaCheckError(cudaMemcpy(A_device_, A_, sizeof(T) * m_ * k_,
+                                cudaMemcpyHostToDevice));
+      cudaCheckError(cudaMemcpy(B_device_, B_, sizeof(T) * k_ * n_,
+                                cudaMemcpyHostToDevice));
+      cudaCheckError(cudaMemcpy(C_device_, C_, sizeof(T) * m_ * n_,
+                                cudaMemcpyHostToDevice));
       // Call GPU BLAS library GEMM kernels
       for (int i = 0; i < iterations; i++) {
         if constexpr (std::is_same_v<T, float>) {
@@ -96,16 +92,22 @@ class gemm_gpu : public gemm<T> {
         }
       }
       // Offload data from device to host
-      cudaCheckError(cudaMemcpy(A_, A_device_, sizeof(T) * m_ * k_, cudaMemcpyDeviceToHost));
-      cudaCheckError(cudaMemcpy(B_, B_device_, sizeof(T) * k_ * n_, cudaMemcpyDeviceToHost));
-      cudaCheckError(cudaMemcpy(C_, C_device_, sizeof(T) * m_ * n_, cudaMemcpyDeviceToHost));
+      cudaCheckError(cudaMemcpy(A_, A_device_, sizeof(T) * m_ * k_,
+                                cudaMemcpyDeviceToHost));
+      cudaCheckError(cudaMemcpy(B_, B_device_, sizeof(T) * k_ * n_,
+                                cudaMemcpyDeviceToHost));
+      cudaCheckError(cudaMemcpy(C_, C_device_, sizeof(T) * m_ * n_,
+                                cudaMemcpyDeviceToHost));
       callConsume();
     } else {
       for (int i = 0; i < iterations; i++) {
         // Offload data from host to the device.
-        cudaCheckError(cudaMemcpy(A_device_, A_, sizeof(T) * m_ * k_, cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(B_device_, B_, sizeof(T) * k_ * n_, cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(C_device_, C_, sizeof(T) * m_ * n_, cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(A_device_, A_, sizeof(T) * m_ * k_,
+                                  cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(B_device_, B_, sizeof(T) * k_ * n_,
+                                  cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(C_device_, C_, sizeof(T) * m_ * n_,
+                                  cudaMemcpyHostToDevice));
         if constexpr (std::is_same_v<T, float>) {
           const float alpha = ALPHA;
           const float beta = BETA;
@@ -128,9 +130,12 @@ class gemm_gpu : public gemm<T> {
           }
         }
         // Offload data from device to host
-        cudaCheckError(cudaMemcpy(A_, A_device_, sizeof(T) * m_ * k_, cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(B_, B_device_, sizeof(T) * k_ * n_, cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(C_, C_device_, sizeof(T) * m_ * n_, cudaMemcpyDeviceToHost));
+        cudaCheckError(cudaMemcpy(A_, A_device_, sizeof(T) * m_ * k_,
+                                  cudaMemcpyDeviceToHost));
+        cudaCheckError(cudaMemcpy(B_, B_device_, sizeof(T) * k_ * n_,
+                                  cudaMemcpyDeviceToHost));
+        cudaCheckError(cudaMemcpy(C_, C_device_, sizeof(T) * m_ * n_,
+                                  cudaMemcpyDeviceToHost));
         callConsume();
       }
     }
@@ -173,5 +178,5 @@ class gemm_gpu : public gemm<T> {
   /** Input matrix C, held on the device. */
   T* C_device_;
 };
-#endif
 }  // namespace gpu
+#endif

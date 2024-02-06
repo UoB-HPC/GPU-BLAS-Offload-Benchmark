@@ -115,9 +115,11 @@ class doGemm {
                    calcGflops(calcFlops(M, N, K), iterations_, gpuTime_every));
   }
 
-  /** A function for calculating FLOPs performed by a GEMM. */
+  /** A function for calculating FLOPs performed by a GEMM.
+   * C = alpha*AB + beta*C */
   uint64_t calcFlops(const int M, const int N, const int K) const {
-    return ((uint64_t)M * (uint64_t)N * (uint64_t)K * 2);
+    return ((ALPHA * (2 * (uint64_t)M * (uint64_t)N * (uint64_t)K)) +
+            (BETA * (uint64_t)M * (uint64_t)N));
   }
 
   /** A function for calculating the total GEMM problem size in KiB. */

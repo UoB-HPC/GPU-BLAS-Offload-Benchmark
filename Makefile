@@ -30,13 +30,13 @@ CXX_INTEL   = icc
 CXX_NVIDIA  = nvc++
 CXX = $(CXX_$(COMPILER))
 
-CXXFLAGS_ARM     = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_CLANG   = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_GNU     = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_INTEL   = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_NVIDIA  = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_GNU     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_NVIDIA  = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 
-idndef CXXFLAGS
+ifndef CXXFLAGS
 CXXFLAGS = $(CXXFLAGS_$(COMPILER))
 else
 CXXFLAGS += $(CXXFLAGS_$(COMPILER))
@@ -51,7 +51,6 @@ HEADER_FILES = $(wildcard include/*.hh)
 
 ifndef CPU_LIBRARY
 $(warning CPU_LIBRARY not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
-SRC_FILES += $(wildcard DefaultCPU/*.cc)
 HEADER_FILES += $(wildcard DefaultCPU/*.hh)
 
 else ifeq ($(CPU_LIBRARY), ARMPL)
@@ -62,7 +61,6 @@ CXXFLAGS += -armpl=ilp64,parallel -fopenmp
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
 endif
-SRC_FILES += $(wildcard ArmPL/*.cc)
 HEADER_FILES += $(wildcard ArmPL/*.hh)
 
 else ifeq ($(CPU_LIBRARY), ONEMKL)
@@ -87,7 +85,6 @@ endif
 
 ifndef GPU_LIBRARY
 $(warning GPU_LIBRARY not set (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
-SRC_FILES += $(wildcard DefaultGPU/*.cc)
 HEADER_FILES += $(wildcard DefaultGPU/*.hh)
 
 else ifeq ($(GPU_LIBRARY), CUBLAS)
@@ -101,7 +98,6 @@ CXXFLAGS += -lcublas -lcudart
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with cuBLAS)
 endif
-SRC_FILES += $(wildcard cuBLAS/*.cc)
 HEADER_FILES += $(wildcard cuBLAS/*.hh)
 
 else ifeq ($(GPU_LIBRARY), ONEMKL)

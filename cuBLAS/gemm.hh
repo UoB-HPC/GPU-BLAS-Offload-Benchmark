@@ -59,6 +59,10 @@ class gemm_gpu : public gemm<T> {
     // Create a handle for CUBLAS
     cublasHandle_t handle;
     cublasCreate(&handle);
+
+    const T alpha = ALPHA;
+    const T beta = BETA;
+
     if (offloadOnce_) {
       // Offload data from host to the device.
       cudaCheckError(cudaMemcpy(A_device_, A_, sizeof(T) * m_ * k_,
@@ -70,22 +74,16 @@ class gemm_gpu : public gemm<T> {
       // Call GPU BLAS library GEMM kernels
       for (int i = 0; i < iterations; i++) {
         if constexpr (std::is_same_v<T, float>) {
-          const float alpha = ALPHA;
-          const float beta = BETA;
-          cublasStatus_t stat = cublasSgemm(
-              handle, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_device_,
-              MAX(1, m_), B_device_, MAX(1, k_), &beta, C_device_, MAX(1, m_));
-          if (stat != CUBLAS_STATUS_SUCCESS) {
+          if (cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
+                          A_device_, MAX(1, m_), B_device_, MAX(1, k_), &beta,
+                          C_device_, MAX(1, m_)) != CUBLAS_STATUS_SUCCESS) {
             std::cout << "cuBLAS error:" << stat << std::endl;
             exit(1);
           }
         } else if constexpr (std::is_same_v<T, double>) {
-          const double alpha = ALPHA;
-          const double beta = BETA;
-          cublasStatus_t stat = cublasDgemm(
-              handle, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_device_,
-              MAX(1, m_), B_device_, MAX(1, k_), &beta, C_device_, MAX(1, m_));
-          if (stat != CUBLAS_STATUS_SUCCESS) {
+          if (cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
+                          A_device_, MAX(1, m_), B_device_, MAX(1, k_), &beta,
+                          C_device_, MAX(1, m_)) != CUBLAS_STATUS_SUCCESS) {
             std::cout << "cuBLAS error:" << stat << std::endl;
             exit(1);
           }
@@ -109,22 +107,16 @@ class gemm_gpu : public gemm<T> {
         cudaCheckError(cudaMemcpy(C_device_, C_, sizeof(T) * m_ * n_,
                                   cudaMemcpyHostToDevice));
         if constexpr (std::is_same_v<T, float>) {
-          const float alpha = ALPHA;
-          const float beta = BETA;
-          cublasStatus_t stat = cublasSgemm(
-              handle, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_device_,
-              MAX(1, m_), B_device_, MAX(1, k_), &beta, C_device_, MAX(1, m_));
-          if (stat != CUBLAS_STATUS_SUCCESS) {
+          if (cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
+                          A_device_, MAX(1, m_), B_device_, MAX(1, k_), &beta,
+                          C_device_, MAX(1, m_)) != CUBLAS_STATUS_SUCCESS) {
             std::cout << "cuBLAS error:" << stat << std::endl;
             exit(1);
           }
         } else if constexpr (std::is_same_v<T, double>) {
-          const double alpha = ALPHA;
-          const double beta = BETA;
-          cublasStatus_t stat = cublasDgemm(
-              handle, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_device_,
-              MAX(1, m_), B_device_, MAX(1, k_), &beta, C_device_, MAX(1, m_));
-          if (stat != CUBLAS_STATUS_SUCCESS) {
+          if (cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
+                          A_device_, MAX(1, m_), B_device_, MAX(1, k_), &beta,
+                          C_device_, MAX(1, m_)) != CUBLAS_STATUS_SUCCESS) {
             std::cout << "cuBLAS error:" << stat << std::endl;
             exit(1);
           }

@@ -81,6 +81,10 @@ else ifeq ($(GPU_LIBRARY), CUBLAS)
 # Do cuBLAS stuff
 ifeq ($(COMPILER), NVIDIA)
 CXXFLAGS += -cudalib=cublas
+else ifeq ($(COMPILER), GNU)
+$(warning Add CXXFLAGS=-I<dir containing CUBLAS header> if cuBLAS is installed at non-standard location (e.g /opt/nvidia/hpc_sdk/Linux_x86_64/24.1/math_libs/include))
+CXXFLAGS += -lcublas
+
 # Error to select ArmPL otherwise
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with cuBLAS)

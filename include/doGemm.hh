@@ -18,9 +18,11 @@
 template <typename T>
 class doGemm {
  public:
-  doGemm(const int iters, const int upperLimit)
+  doGemm(const int iters, const int upperLimit, bool dense, bool sparse)
       : iterations_(iters),
         upperLimit_(upperLimit),
+        dense_(dense),
+        sparse_(sparse),
         gemmCpu_(iterations_),
         spGemmCpu_(iterations_),
         gemmGpu_(iterations_) {
@@ -32,66 +34,74 @@ class doGemm {
   /** Run all problem types and write data to CSV files. */
   void collectData() {
     // Square Problem Sizes...
-    std::ofstream csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
-                                        getKernelName() + "_square.csv");
-    for (int dim = 1; dim <= upperLimit_; dim++) {
-      const int M = dim, N = dim, K = dim;
-        callDenseKernels(csvFile, M, N, K);
-    }
-    // Close file
-    csvFile.close();
-
-    // Rectangular Problem Sizes:
-    // Tall and thin (16M x K)...
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_rectangular_16MxK.csv");
-    for (int dim = 16; dim <= upperLimit_; dim += 16) {
-      const int M = dim, N = dim, K = (dim / 16);
-        callDenseKernels(csvFile, M, N, K);
-    }
-    // Close file
-    csvFile.close();
-
-    // Tall and thin (M x 32)...
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_rectangular_Mx32.csv");
-    if (upperLimit_ >= 32) {
+    std::ofstream csvFile;
+    if (dense_) {
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
+                            getKernelName() + "_square.csv");
       for (int dim = 1; dim <= upperLimit_; dim++) {
-        const int M = dim, N = dim, K = 32;
-          callDenseKernels(csvFile, M, N, K);
-      }
-    }
-    // Close file
-    csvFile.close();
-
-    // Short and wide (M x 16K)...
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_rectangular_Mx16K.csv");
-    for (int dim = 16; dim <= upperLimit_; dim += 16) {
-      const int M = (dim / 16), N = (dim / 16), K = dim;
+        const int M = dim, N = dim, K = dim;
         callDenseKernels(csvFile, M, N, K);
-    }
-    // Close file
-    csvFile.close();
-
-    // Short and wide (32 x K)...
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_rectangular_32xK.csv");
-    if (upperLimit_ >= 32) {
-      for (int dim = 1; dim <= upperLimit_; dim++) {
-        const int M = 32, N = 32, K = dim;
-          callDenseKernels(csvFile, M, N, K);
       }
+      // Close file
+      csvFile.close();
+
+      // Rectangular Problem Sizes:
+      // Tall and thin (16M x K)...
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_rectangular_16MxK.csv");
+      for (int dim = 16; dim <= upperLimit_; dim += 16) {
+        const int M = dim, N = dim, K = (dim / 16);
+        callDenseKernels(csvFile, M, N, K);
+      }
+      // Close file
+      csvFile.close();
+
+      // Tall and thin (M x 32)...
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_rectangular_Mx32.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = 1; dim <= upperLimit_; dim++) {
+          const int M = dim, N = dim, K = 32;
+          callDenseKernels(csvFile, M, N, K);
+        }
+      }
+      // Close file
+      csvFile.close();
+
+      // Short and wide (M x 16K)...
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_rectangular_Mx16K.csv");
+      for (int dim = 16; dim <= upperLimit_; dim += 16) {
+        const int M = (dim / 16), N = (dim / 16), K = dim;
+        callDenseKernels(csvFile, M, N, K);
+      }
+      // Close file
+      csvFile.close();
+
+      // Short and wide (32 x K)...
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_rectangular_32xK.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = 1; dim <= upperLimit_; dim++) {
+          const int M = 32, N = 32, K = dim;
+          callDenseKernels(csvFile, M, N, K);
+        }
+      }
+      // Close file
+      csvFile.close();
     }
 
-    // Sparse graph matrix (N x N)
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                         "_sparse_graph.csv");
-    for (int dim = 1; dim <= upperLimit_; dim++) {
-        callSparseKernels(csvFile, dim, 0.999);
+    if (sparse_) {
+      // Sparse graph matrix (N x N)
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_sparse_graph.csv");
+      for (int dim = 1; dim <= upperLimit_; dim++) {
+        callSparseKernels(csvFile, dim, 0.99);
+      }
+      // Close file
+      csvFile.close();
     }
-    // Close file
-    csvFile.close();
+
   }
 
  private:
@@ -127,7 +137,7 @@ class doGemm {
       std::string kernelName = getKernelName();
 
       // Perform CPU
-      spGemmCpu_.initialise(N, sparsity);
+      spGemmCpu_.initialise(N, sparsity, false);
       double cpuTime = spGemmCpu_.compute();
       writeLineToCsv(csvFile, "cpu", kernelName, N, N, N, sparsity, probSize,
                      iterations_, cpuTime,
@@ -178,6 +188,10 @@ class doGemm {
 
   /** The maximum value of the largest problem size dimension. */
   const int upperLimit_;
+
+  /** Boolean values to keep a track of whether dense/sparse kernels are being run */
+  bool dense_;
+  bool sparse_;
 
   cpu::gemm_cpu<T> gemmCpu_;
   cpu::spGemm_cpu<T> spGemmCpu_;

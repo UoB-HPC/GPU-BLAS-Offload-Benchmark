@@ -2,6 +2,8 @@
 
 int iters = 10;
 int upperLimit = 128;
+bool sparse = true;
+bool dense = true;
 
 int main(int argc, char** argv) {
   getParameters(argc, argv);
@@ -20,13 +22,13 @@ int main(int argc, char** argv) {
 
   // SGEMM Comparison
   std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
-  doGemm<float> sgemm(iters, upperLimit);
+  doGemm<float> sgemm(iters, upperLimit, dense, sparse);
   sgemm.collectData();
   std::cout << "Finished!" << std::endl;
 
   // DGEMM Comparison
   std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
-  doGemm<double> dgemm(iters, upperLimit);
+  doGemm<double> dgemm(iters, upperLimit, dense, sparse);
   dgemm.collectData();
   std::cout << "Finished!" << std::endl;
   return 0;
@@ -34,6 +36,8 @@ int main(int argc, char** argv) {
 
 void printBenchmarkConfig(const int iters, const int upperLimit) {
   std::string gpuEnabledStr = (GPU_ENABLED) ? "True" : "False";
+  std::string denseStr = dense ? "True" : "False";
+  std::string sparseStr = sparse ? "True" : "False";
   unsigned int ompThreads =
       (getenv("OMP_NUM_THREADS") != NULL) ? atoi(getenv("OMP_NUM_THREADS")) : 1;
   const char* ompProcBind =
@@ -50,6 +54,9 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
   std::cout << "\tOMP_NUM_THREADS: " << ompThreads << std::endl;
   std::cout << "\tOMP_PROC_BIND: " << ompProcBind << std::endl;
   std::cout << "\tOMP_PLACES: " << ompPlaces << std::endl;
+  std::cout << "\tOMP_PLACES: " << ompPlaces << std::endl;
+  std::cout << "\tRunning dense kernels: " << denseStr << std::endl;
+  std::cout << "\tRunning sparse kernels: " << sparseStr << std::endl;
   std::cout << std::endl;
 #ifdef CPU_DEFAULT
   std::cout
@@ -97,8 +104,16 @@ void getParameters(int argc, char* argv[]) {
       std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
                    "(default: "
                 << upperLimit << ")" << std::endl;
+      std::cout << "  --dense                      Run only the dense matrix kernels "
+                   "(cannot be run in combination with --sparse)" << std::endl;
+      std::cout << "  -s --sparse                  Run only the sparse matrix kernels "
+                   "(cannot be run in combination with --dense)" << std::endl;
       std::cout << std::endl;
       exit(0);
+    } else if (!strcmp(argv[i], "--sparse") || !strcmp(argv[i], "-s")) {
+      dense = false;
+    } else if (!strcmp(argv[i], "--dense")) {
+      sparse = false;
     } else {
       std::cout << "Unrecognized argument '" << argv[i] << "' (try '--help')"
                 << std::endl;

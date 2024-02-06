@@ -11,7 +11,7 @@ namespace cpu {
         using kernel<T>::kernel;
 
         /** Initialise the required data structures. */
-        virtual void initialise(int n, double sparsity) = 0;
+        virtual void initialise(int n, double sparsity, bool binary) = 0;
 
     protected:
         /** Matrix size -- matrix will be nxn */

@@ -22,15 +22,18 @@ namespace cpu {
         using spGemm<T>::n_;
 
         /** Initialise the required data structures. */
-        virtual void initialise(int n, double sparsity) override {
+        virtual void initialise(int n, double sparsity, bool binary) override {
             n_ = n;
+            isBinary_ = binary;
 
             A_.assign(n * n, 0.0);
             B_.assign(n * n, 0.0);
-            C_.assign(n * n, 0.0);
+            C_.reserve(n * n);
 
             // Random number generator objects for use in descent
             std::default_random_engine gen;
+            gen.seed(std::chrono::system_clock::now()
+                             .time_since_epoch().count());
             std::uniform_real_distribution<double> dist(0.0, 1.0);
 
             // Work out number of edges needed to achieve target sparsity
@@ -39,67 +42,55 @@ namespace cpu {
             // Initialise the matrices
             // Using a=0.45 and b=c=0.22 as default probabilities
             for (int i = 0; i < edges; i++) {
-                while (!rMat(A_, n, 0, n-1, 0, n-1,
+                while (!rMat(&A_, n, 0, n-1, 0, n-1,
                              0.45, 0.22, 0.22,
-                             gen, dist)) {
-                    gen.seed(std::chrono::system_clock::now()
-                                .time_since_epoch().count());
-                }
-                while (!rMat(B_, n, 0, n-1, 0, n-1,
+                             &gen, dist)) {}
+                while (!rMat(&B_, n, 0, n-1, 0, n-1,
                              0.45, 0.22, 0.22,
-                             gen, dist)) {}
+                             &gen, dist)) {}
             }
-      }
+        }
 
     private:
-        bool rMat(std::vector<T>& M, int n, int x1, int x2, int y1, int y2,
-                  float a, float b, float c, std::default_random_engine gen,
+        bool rMat(std::vector<T>* M, int n, int x1, int x2, int y1, int y2,
+                  float a, float b, float c, std::default_random_engine* gen,
                   std::uniform_real_distribution<double> dist) {
             // If a 1x1 submatrix, then add an edge and return out
             if (x1 >= x2 && y1 >= y2) {
-                if (abs(M[(y1 * n) + x1]) > 0.5) {
+                if (abs(M->at((y1 * n) + x1)) > 0.1) {
                     return false;
                 } else {
-                    M[(int) (y1 * n) + x1] = 1.0;
+                    // Add 1.0 if this is a binary graph, and a random real number otherwise
+                    M->at((int) (y1 * n) + x1) = (isBinary_) ? 1.0 : (((rand() % 10000) / 100.0) - 50.0);
                     return true;
                 }
             } else {
                 // Divide up the matrix
-                int xMidPoint = x1 + (int)((x2 - x1) / 2);
-                int yMidPoint = y1 + (int)((y2 - y1) / 2);
+                int xMidPoint = x1 + floor((x2 - x1) / 2);
+                int yMidPoint = y1 + floor((y2 - y1) / 2);
 
-                // ToDo - consider if need to check for non-square matrices
-
-                // Introduce some noise to the quarter probabilities
-                float newA = a + (-0.01 + (dist(gen) * 0.02));
-                float newB = b + (-0.01 + (dist(gen) * 0.02));
-                float newC = c + (-0.01 + (dist(gen) * 0.02));
-                // Make sure noise doesn't make impossible probabilities
-                if ((newA + newB + newC) > 0.98 ||
-                    newA < 0.02 || newB < 0.02 || newC < 0.02) {
-                    newA = 0.45;
-                    newB = 0.22;
-                    newC = 0.22;
-                }
-
-//                float newA = a;
-//                float newB = b;
-//                float newC = c;
+                // ToDo -- add some noise to these values between iterations
+                float newA = a;
+                float newB = b;
+                float newC = c;
 
                 // Work out which quarter to recurse into
-                float randomNum = dist(gen);
+                // There are some ugly ternary operators here to avoid going out of bounds in the edge case
+                // that we are already at 1 width or 1 height
+                float randomNum = dist(*gen);
                 if (randomNum < a) {
                     return rMat(M, n, x1, xMidPoint, y1, yMidPoint,
                                 newA, newB, newC, gen, dist);
                 } else if (randomNum < (a + b)) {
-                    return rMat(M, n, xMidPoint + 1, x2, y1, yMidPoint,
+                    return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2, y1, yMidPoint,
                                 newA, newB, newC, gen, dist);
                 } else if (randomNum < (a + b + c)) {
-                    return rMat(M, n, x1, xMidPoint, yMidPoint + 1, y2,
+                    return rMat(M, n, x1, xMidPoint, ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2,
                                 newA, newB, newC, gen, dist);
                 } else {
-                    return rMat(M, n, xMidPoint + 1, x2, yMidPoint + 1, y2,
-                                newA, newB, newC, gen, dist);
+                    return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2,
+                                ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2, newA, newB, newC,
+                                gen, dist);
                 }
             }
         }
@@ -147,6 +138,8 @@ namespace cpu {
 
         /** Input matrix C. */
         std::vector<T> C_;
+
+        bool isBinary_;
 
     };
 

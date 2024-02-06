@@ -77,7 +77,6 @@ $(error The CPU_LIBRARY $(CPU_LIBRARY) is currently not supported.)
 
 else
 $(warning Provided CPU_LIBRARY not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
-SRC_FILES += $(wildcard DefaultCPU/*.cc)
 HEADER_FILES += $(wildcard DefaultCPU/*.hh)
 endif
 
@@ -110,7 +109,6 @@ $(error The GPU_LIBRARY $(GPU_LIBRARY) is currently not supported.)
 
 else
 $(warning Provided GPU_LIBRARY not valid (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
-SRC_FILES += $(wildcard DefaultGPU/*.cc)
 HEADER_FILES += $(wildcard DefaultGPU/*.hh)
 endif
 

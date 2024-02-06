@@ -28,7 +28,7 @@ class kernel {
     std::chrono::duration<double> time_s = endTime - startTime;
 
     // Do any necessary cleanup (free pointers, close library handles, etc.)
-    postCallCleanup();
+    postCallKernelCleanup();
 
     return time_s.count();
   }

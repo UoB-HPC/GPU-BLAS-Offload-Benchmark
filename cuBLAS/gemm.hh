@@ -131,10 +131,16 @@ class gemm_gpu : public gemm<T> {
         callConsume();
       }
     }
+  }
 
+  /** Call the extern consume() function. */
+  void callConsume() override { consume((void*)A_, (void*)B_, (void*)C_); }
+
+  /** Do any necessary cleanup (free pointers, close library handles, etc.)
+   * after Kernel has been called. */
+  virtual void postCallKernelCleanup() override {
     // Destroy the handle
     cublasDestroy(handle);
-
     // Free the memory held on host and device
     free(A_);
     free(B_);
@@ -143,9 +149,6 @@ class gemm_gpu : public gemm<T> {
     cudaFree(B_device_);
     cudaFree(C_device_);
   }
-
-  /** Call the extern consume() function. */
-  void callConsume() override { consume((void*)A_, (void*)B_, (void*)C_); }
 
   /** Whether or not matrices A, B, and C should be moved from host to device,
    * and from device back to host, every iteration or once before & after all

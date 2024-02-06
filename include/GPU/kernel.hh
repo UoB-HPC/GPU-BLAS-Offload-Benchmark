@@ -26,6 +26,10 @@ class kernel {
         std::chrono::high_resolution_clock::now();
     // Get time elapsed in seconds
     std::chrono::duration<double> time_s = endTime - startTime;
+
+    // Do any necessary cleanup (free pointers, close library handles, etc.)
+    postCallCleanup();
+
     return time_s.count();
   }
 
@@ -35,6 +39,10 @@ class kernel {
 
   /** Call the extern consume() function. */
   virtual void callConsume() = 0;
+
+  /** Do any necessary cleanup (free pointers, close library handles, etc.)
+   * after Kernel has been called. */
+  virtual void postCallKernelCleanup() = 0;
 
   /** The number of iterations to perform per problem size. */
   const int iterations_;

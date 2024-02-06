@@ -38,6 +38,12 @@ class gemm_gpu : public gemm<T> {
   void callConsume() override {
     // Default GPU implementation - do nothing.
   }
+
+  /** Do any necessary cleanup (free pointers, close library handles, etc.)
+   * after Kernel has been called. */
+  virtual void postCallKernelCleanup() override {
+    // Default GPU implementation - do nothing.
+  }
 };
 }  // namespace gpu
 #endif

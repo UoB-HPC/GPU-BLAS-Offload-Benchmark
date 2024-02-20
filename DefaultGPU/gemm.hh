@@ -24,7 +24,8 @@ class gemm_gpu : public gemm<T> {
   }
 
   /** Initialise the required data structures. */
-  virtual void initialise(bool offloadOnce, int m, int n, int k) override {
+  virtual void initialise(gpuOffloadType offload, int m, int n,
+                          int k) override {
     // Default GPU implementation - do nothing.
   }
 

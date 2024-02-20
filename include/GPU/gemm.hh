@@ -11,17 +11,18 @@ class gemm : public kernel<T> {
   using kernel<T>::kernel;
 
   /** Initialise the required data structures.
-   * `offloadOnce` refers to whether the data should be offloaded to/from the
-   * GPU every iteration, or offloaded once before all iterations and collected
-   * after all iterations.
-   *  - TRUE = offload before all iterations, collect after all iterations
-   *  - FALSE = offload to/from each iteration */
-  virtual void initialise(bool offloadOnce, int m, int n, int k) = 0;
+   * `offload` refers to the data offload type:
+   *  - Once:    Move data from host to device before all iterations & move from
+   *             device to host after all iterations
+   *  - Always:  Move data from host to device and device to host each iteration
+   *  - Unified: Initialise data as unified memory; no data movement semantics
+   *             required */
+  virtual void initialise(gpuOffloadType offload, int m, int n, int k) = 0;
 
  protected:
   /** Whether data should be offloaded to/from the GPU each iteration, or just
    * before & after. */
-  bool offloadOnce_ = false;
+  gpuOffloadType offload_ = gpuOffloadType::always;
 
   /** Matrix dimension M. */
   int m_ = 0;

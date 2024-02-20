@@ -18,7 +18,7 @@ class kernel {
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime =
         std::chrono::high_resolution_clock::now();
 
-    // Perform all GPU BLAS calls & callConsume()
+    // Perform all GPU BLAS calls
     callKernel(iterations_);
 
     // Stop Timer

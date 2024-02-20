@@ -101,16 +101,23 @@ class doGemm {
                    calcGflops(calcFlops(M, N, K), iterations_, cpuTime));
 
     // Perform GPU
-    // - Offload to/from GPU once before all iterations and once after
-    gemmGpu_.initialise(true, M, N, K);
+    // - ONCE : Offload to/from GPU once before all iterations and once after
+    gemmGpu_.initialise(gpuOffloadType::once, M, N, K);
     double gpuTime_once = gemmGpu_.compute();
     writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,
                    iterations_, gpuTime_once,
                    calcGflops(calcFlops(M, N, K), iterations_, gpuTime_once));
-    // - Offload to/from GPU every iteration
-    gemmGpu_.initialise(false, M, N, K);
+    // - ALWAYS: Offload to/from GPU every iteration
+    gemmGpu_.initialise(gpuOffloadType::always, M, N, K);
     double gpuTime_every = gemmGpu_.compute();
     writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K, probSize,
+                   iterations_, gpuTime_every,
+                   calcGflops(calcFlops(M, N, K), iterations_, gpuTime_every));
+    // - UNIFIED : data passed from host to device (and device to host) as
+    //             needed
+    gemmGpu_.initialise(gpuOffloadType::unified, M, N, K);
+    double gpuTime_every = gemmGpu_.compute();
+    writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, K, probSize,
                    iterations_, gpuTime_every,
                    calcGflops(calcFlops(M, N, K), iterations_, gpuTime_every));
   }

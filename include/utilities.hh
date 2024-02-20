@@ -42,6 +42,13 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
+// Define enum class for GPU offload type
+enum class gpuOffloadType : uint8_t {
+  always = 0,
+  once,
+  unified,
+};
+
 // External consume function used to ensure naive code is performed and not
 // optimised away, and that all iterations of any library BLAS call are
 // performed.

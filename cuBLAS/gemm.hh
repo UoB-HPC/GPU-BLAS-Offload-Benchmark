@@ -4,7 +4,7 @@
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 
-#include "../include/kernels/GPU/gemm.hh"
+#include "../include/kernels_/GPU/gemm.hh"
 #include "../include/utilities.hh"
 #include "common.hh"
 
@@ -213,9 +213,9 @@ class gemm_gpu : public gemm<T> {
     cublasDestroy(handle_);
 
     // Destroy streams after use
-    cudaCheckError(cudaStreamDestroy(s1));
-    cudaCheckError(cudaStreamDestroy(s2));
-    cudaCheckError(cudaStreamDestroy(s3));
+    cudaCheckError(cudaStreamDestroy(s1_));
+    cudaCheckError(cudaStreamDestroy(s2_));
+    cudaCheckError(cudaStreamDestroy(s3_));
 
     if (offload_ == gpuOffloadType::unified) {
       cudaFree(A_);

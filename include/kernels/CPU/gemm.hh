@@ -28,6 +28,7 @@ class gemm : public ::gemm<T> {
     C_ = (T*)malloc(sizeof(T) * m_ * n_);
 
     // Initialise the matricies
+    srand(SEED);
     for (int y = 0; y < m; y++) {
       for (int x = 0; x < k; x++) {
         A_[y * k + x] = (((T)(rand() % 10000) / 100.0) - 30.0);
@@ -43,7 +44,7 @@ class gemm : public ::gemm<T> {
  private:
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
-  virtual void postCallKernelCleanup() override {
+  void postCallKernelCleanup() override {
     free(A_);
     free(B_);
     free(C_);

@@ -2,6 +2,8 @@
 
 #include <chrono>
 
+#include "../utilities.hh"
+
 /** A generic abstract class defining the operation of timing a GEMM BLAS
  * kernel for n iterations. */
 template <typename T>
@@ -11,7 +13,7 @@ class gemm {
 
   /** Call the BLAS kernel n times.
    * Returns the time elapsed for n BLAS calls in seconds. */
-  double compute() {
+  time_checksum compute() {
     // Start timer
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime =
         std::chrono::high_resolution_clock::now();
@@ -29,9 +31,11 @@ class gemm {
     // Get time elapsed in seconds
     std::chrono::duration<double> time_s = endTime - startTime;
 
+    double checksum = calcChecksum();
+
     postCallKernelCleanup();
 
-    return time_s.count();
+    return {time_s.count(), checksum};
   }
 
  private:
@@ -49,6 +53,16 @@ class gemm {
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
   virtual void postCallKernelCleanup() = 0;
+
+  double calcChecksum() {
+    // Checksum for GEMM calculated by summing all four corners of A, B and C
+    // together
+    double retVal =
+        A_[0] + A_[m_ - 1] + A_[k_ - 1] + A_[((m_ - 1) * k_) + (k_ - 1)];
+    retVal += B_[0] + B_[k_ - 1] + B_[n_ - 1] + B_[((k_ - 1) * n_) + (n_ - 1)];
+    retVal += C_[0] + C_[m_ - 1] + C_[n_ - 1] + C_[((m_ - 1) * n_) + (n_ - 1)];
+    return retVal;
+  }
 
  protected:
   /** Call the extern consume() function. */

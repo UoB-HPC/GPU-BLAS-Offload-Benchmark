@@ -21,7 +21,7 @@ class gemm_cpu : public gemm<T> {
 
  private:
   /** Perform the GEMM kernel `iterations_` times. */
-  virtual void callGemm() override {
+  void callGemm() override {
     /** A naive implementation of a GEMM. Alpha and Beta are always 1 and 0
      * respectively.
      * Operation takes the form of C[M,N] = A[M,K] * B[K,N].
@@ -44,11 +44,11 @@ class gemm_cpu : public gemm<T> {
 
   /** Perform any required steps before the calling the GEMM kernel that should
    * be timed. */
-  virtual void preLoopRequirements() override {}
+  void preLoopRequirements() override {}
 
   /** Perform any required steps after the calling the GEMM kernel that should
    * be timed. */
-  virtual void postLoopRequirements() override {}
+  void postLoopRequirements() override {}
 };
 
 }  // namespace cpu

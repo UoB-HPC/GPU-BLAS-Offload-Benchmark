@@ -16,9 +16,9 @@ class gemm_gpu : public gemm<T> {
 
   /** Call the BLAS kernel n times, with 1 warmup run.
    * Returns the time elapsed for n BLAS calls in seconds. */
-  double compute() {
+  time_checksum compute() {
     // Override function in base `kernel` class as DefaultGPU should do nothing.
-    return INFINITY;
+    return {INFINITY, INFINITY};
   }
 
   /** Initialise the required data structures. */

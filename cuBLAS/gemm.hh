@@ -63,6 +63,7 @@ class gemm_gpu : public gemm<T> {
     }
 
     // Initialise the host matricies
+    srand(SEED);
     for (int y = 0; y < m_; y++) {
       for (int x = 0; x < k_; x++) {
         A_[y * k_ + x] = (((T)(rand() % 10000) / 100.0) - 30.0);

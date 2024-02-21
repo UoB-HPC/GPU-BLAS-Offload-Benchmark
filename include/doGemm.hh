@@ -109,17 +109,18 @@ class doGemm {
                    calcGflops(calcFlops(M, N, K), iterations_, gpuTime_once));
     // - ALWAYS: Offload to/from GPU every iteration
     gemmGpu_.initialise(gpuOffloadType::always, M, N, K);
-    double gpuTime_every = gemmGpu_.compute();
+    double gpuTime_always = gemmGpu_.compute();
     writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K, probSize,
-                   iterations_, gpuTime_every,
-                   calcGflops(calcFlops(M, N, K), iterations_, gpuTime_every));
+                   iterations_, gpuTime_always,
+                   calcGflops(calcFlops(M, N, K), iterations_, gpuTime_always));
     // - UNIFIED : data passed from host to device (and device to host) as
     //             needed
     gemmGpu_.initialise(gpuOffloadType::unified, M, N, K);
-    double gpuTime_every = gemmGpu_.compute();
-    writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, K, probSize,
-                   iterations_, gpuTime_every,
-                   calcGflops(calcFlops(M, N, K), iterations_, gpuTime_every));
+    double gpuTime_unified = gemmGpu_.compute();
+    writeLineToCsv(
+        csvFile, "gpu_unified", kernelName, M, N, K, probSize, iterations_,
+        gpuTime_unified,
+        calcGflops(calcFlops(M, N, K), iterations_, gpuTime_unified));
   }
 
   /** A function for calculating FLOPs performed by a GEMM.

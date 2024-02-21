@@ -37,9 +37,9 @@ class gemm_gpu : public gemm<T> {
     cublasCreate(&handle_);
 
     if (offload_ == gpuOffloadType::unified) {
-      cudaMallocManaged(&A_, sizeof(T) * m_ * k_);
-      cudaMallocManaged(&B_, sizeof(T) * m_ * k_);
-      cudaMallocManaged(&C_, sizeof(T) * m_ * k_);
+      cudaCheckError(cudaMallocManaged(&A_, sizeof(T) * m_ * k_));
+      cudaCheckError(cudaMallocManaged(&B_, sizeof(T) * m_ * k_));
+      cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * m_ * k_));
     } else {
       // Allocate matrices on host
       A_ = (T*)malloc(sizeof(T) * m_ * k_);
@@ -70,16 +70,28 @@ class gemm_gpu : public gemm<T> {
     const T alpha = ALPHA;
     const T beta = BETA;
 
+    // Initialise 3 streams to asynchronously move data between host and device
+    cudaStream_t s1;
+    cudaStream_t s2;
+    cudaStream_t s3;
+    cudaCheckError(cudaStreamCreate(&s1));
+    cudaCheckError(cudaStreamCreate(&s2));
+    cudaCheckError(cudaStreamCreate(&s3));
+    // Get device identifier
+    int gpuDevice;
+    cudaCheckError(cudaGetDevice(&gpuDevice));
+
     switch (offload_) {
       case gpuOffloadType::always: {
         for (int i = 0; i < iterations; i++) {
           // Offload data from host to the device.
-          cudaCheckError(cudaMemcpy(A_device_, A_, sizeof(T) * m_ * k_,
-                                    cudaMemcpyHostToDevice));
-          cudaCheckError(cudaMemcpy(B_device_, B_, sizeof(T) * k_ * n_,
-                                    cudaMemcpyHostToDevice));
-          cudaCheckError(cudaMemcpy(C_device_, C_, sizeof(T) * m_ * n_,
-                                    cudaMemcpyHostToDevice));
+          cudaCheckError(cudaMemcpyAsync(A_device_, A_, sizeof(T) * m_ * k_,
+                                         cudaMemcpyHostToDevice, s1));
+          cudaCheckError(cudaMemcpyAsync(B_device_, B_, sizeof(T) * k_ * n_,
+                                         cudaMemcpyHostToDevice, s2));
+          cudaCheckError(cudaMemcpyAsync(C_device_, C_, sizeof(T) * m_ * n_,
+                                         cudaMemcpyHostToDevice, s3));
+          cudaCheckError(cudaDeviceSynchronize());
           if constexpr (std::is_same_v<T, float>) {
             cublasStatus_t stat =
                 cublasSgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_,
@@ -100,24 +112,26 @@ class gemm_gpu : public gemm<T> {
             }
           }
           // Offload data from device to host
-          cudaCheckError(cudaMemcpy(A_, A_device_, sizeof(T) * m_ * k_,
-                                    cudaMemcpyDeviceToHost));
-          cudaCheckError(cudaMemcpy(B_, B_device_, sizeof(T) * k_ * n_,
-                                    cudaMemcpyDeviceToHost));
-          cudaCheckError(cudaMemcpy(C_, C_device_, sizeof(T) * m_ * n_,
-                                    cudaMemcpyDeviceToHost));
+          cudaCheckError(cudaMemcpyAsync(A_, A_device_, sizeof(T) * m_ * k_,
+                                         cudaMemcpyDeviceToHost, s1));
+          cudaCheckError(cudaMemcpyAsync(B_, B_device_, sizeof(T) * k_ * n_,
+                                         cudaMemcpyDeviceToHost, s2));
+          cudaCheckError(cudaMemcpyAsync(C_, C_device_, sizeof(T) * m_ * n_,
+                                         cudaMemcpyDeviceToHost, s3));
+          cudaCheckError(cudaDeviceSynchronize());
           callConsume();
         }
         break;
       }
       case gpuOffloadType::once: {
         // Offload data from host to the device.
-        cudaCheckError(cudaMemcpy(A_device_, A_, sizeof(T) * m_ * k_,
-                                  cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(B_device_, B_, sizeof(T) * k_ * n_,
-                                  cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(C_device_, C_, sizeof(T) * m_ * n_,
-                                  cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpyAsync(A_device_, A_, sizeof(T) * m_ * k_,
+                                       cudaMemcpyHostToDevice, s1));
+        cudaCheckError(cudaMemcpyAsync(B_device_, B_, sizeof(T) * k_ * n_,
+                                       cudaMemcpyHostToDevice, s2));
+        cudaCheckError(cudaMemcpyAsync(C_device_, C_, sizeof(T) * m_ * n_,
+                                       cudaMemcpyHostToDevice, s3));
+        cudaCheckError(cudaDeviceSynchronize());
         // Call GPU BLAS library GEMM kernels
         for (int i = 0; i < iterations; i++) {
           if constexpr (std::is_same_v<T, float>) {
@@ -141,12 +155,13 @@ class gemm_gpu : public gemm<T> {
           }
         }
         // Offload data from device to host
-        cudaCheckError(cudaMemcpy(A_, A_device_, sizeof(T) * m_ * k_,
-                                  cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(B_, B_device_, sizeof(T) * k_ * n_,
-                                  cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(C_, C_device_, sizeof(T) * m_ * n_,
-                                  cudaMemcpyDeviceToHost));
+        cudaCheckError(cudaMemcpyAsync(A_, A_device_, sizeof(T) * m_ * k_,
+                                       cudaMemcpyDeviceToHost, s1));
+        cudaCheckError(cudaMemcpyAsync(B_, B_device_, sizeof(T) * k_ * n_,
+                                       cudaMemcpyDeviceToHost, s2));
+        cudaCheckError(cudaMemcpyAsync(C_, C_device_, sizeof(T) * m_ * n_,
+                                       cudaMemcpyDeviceToHost, s3));
+        cudaCheckError(cudaDeviceSynchronize());
         callConsume();
         break;
       }
@@ -171,10 +186,23 @@ class gemm_gpu : public gemm<T> {
             }
           }
         }
-        cudaDeviceSynchronize();
+        // Ensure all data resides on host once work has completed
+        cudaCheckError(
+            cudaMemPrefetchAsync(A_, sizeof(T) * m_ * k_, cudaCpuDeviceId, s1));
+        cudaCheckError(
+            cudaMemPrefetchAsync(B_, sizeof(T) * k_ * n_, cudaCpuDeviceId, s2));
+        cudaCheckError(
+            cudaMemPrefetchAsync(C_, sizeof(T) * m_ * n_, cudaCpuDeviceId, s3));
+        // Ensure all async GPU work has completed
+        cudaCheckError(cudaDeviceSynchronize());
+        callConsume();
         break;
       }
     }
+    // Destroy streams after use
+    cudaCheckError(cudaStreamDestroy(s1));
+    cudaCheckError(cudaStreamDestroy(s2));
+    cudaCheckError(cudaStreamDestroy(s3));
   }
 
   /** Call the extern consume() function. */

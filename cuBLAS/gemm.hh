@@ -164,6 +164,16 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::unified: {
+        // Get GPU device id
+        int gpuDevice;
+        cudaCheckError(cudaGetDevice(&gpuDevice));
+        // Prefetch memory to device
+        cudaCheckError(
+            cudaMemPrefetchAsync(A_, sizeof(T) * m_ * k_, gpuDevice, s1));
+        cudaCheckError(
+            cudaMemPrefetchAsync(B_, sizeof(T) * k_ * n_, gpuDevice, s2));
+        cudaCheckError(
+            cudaMemPrefetchAsync(C_, sizeof(T) * m_ * n_, gpuDevice, s3));
         // Call GPU BLAS library GEMM kernels
         for (int i = 0; i < iterations; i++) {
           if constexpr (std::is_same_v<T, float>) {

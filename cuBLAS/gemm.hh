@@ -92,6 +92,7 @@ class gemm_gpu : public gemm<T> {
                                        cudaMemcpyHostToDevice, s2_));
         cudaCheckError(cudaMemcpyAsync(C_device_, C_, sizeof(T) * m_ * n_,
                                        cudaMemcpyHostToDevice, s3_));
+        break;
       }
       case gpuOffloadType::unified: {
         // Prefetch memory to device
@@ -107,7 +108,7 @@ class gemm_gpu : public gemm<T> {
   }
 
   /** Make a call to the BLAS Library Kernel. */
-  void callGemm(const int iterations) override {
+  void callGemm() override {
     switch (offload_) {
       case gpuOffloadType::always: {
         // Offload data from host to the device.
@@ -146,7 +147,27 @@ class gemm_gpu : public gemm<T> {
         cudaCheckError(cudaDeviceSynchronize());
         break;
       }
-      case gpuOffloadType::once:
+      case gpuOffloadType::once: {
+        // Call cuBLAS GEMM kernel
+        if constexpr (std::is_same_v<T, float>) {
+          cublasStatus_t stat = cublasSgemm(
+              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_device_,
+              MAX(1, m_), B_device_, MAX(1, k_), &beta, C_device_, MAX(1, m_));
+          if (stat != CUBLAS_STATUS_SUCCESS) {
+            std::cout << "cuBLAS error:" << stat << std::endl;
+            exit(1);
+          }
+        } else if constexpr (std::is_same_v<T, double>) {
+          cublasStatus_t stat = cublasDgemm(
+              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_device_,
+              MAX(1, m_), B_device_, MAX(1, k_), &beta, C_device_, MAX(1, m_));
+          if (stat != CUBLAS_STATUS_SUCCESS) {
+            std::cout << "cuBLAS error:" << stat << std::endl;
+            exit(1);
+          }
+        }
+        break;
+      }
       case gpuOffloadType::unified: {
         // Call cuBLAS GEMM kernel
         if constexpr (std::is_same_v<T, float>) {

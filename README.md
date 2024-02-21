@@ -2,11 +2,15 @@
 GPU-BLOB is a benchmark tool which can be used to determine at what point (i.e. problem size) it is worthwhile to offload select BLAS computations to the GPU on a heterogeneous system.
 Not only can this aid to help programmers understand the characteristics of the hardware they are optimising for, but also whether or not it would be useful for them to utilise the GPU at all for their specific application.
 
-For each supported BLAS kernel (listed below) GPU-BLOB will run `n` iterations of each kernel, gradually increasing the problem size to gather large amounts of performance data. Said data can then be used to determine at
+For each supported BLAS kernel (listed below) GPU-BLOB will run `n` iterations of each kernel on CPU and GPU, gradually increasing the problem size to gather large amounts of performance data. Said data can then be used to determine at
 what point does the GPU's performance advantage over the CPU outweigh the cost of offloading data to/from the GPU.\
 Each BLAS kernel is tested with a range of different problem size designs in an attempt to capture the performance differences that can occur between different problem sets when utilising the same underlying kernel.
 
-All computations performed by a vendor BLAS library are assumed to be functionally correct. As such, no verification of correct results will be performed or displayed.
+<!-- All computations performed by a vendor BLAS library are assumed to be functionally correct. A checksum is calculated after each CPU and GPU run for each problem size to ensure the libraries are computing the same result.\
+Only when an error occurs will any checksum be displayed to the user. -->
+
+GFLOP/s are calculated using the following Total FLOPs formulas. The compute time excludes any initialisation, but does include any data movement to/from the GPU device:
+ - **GEMM** : Alpha * (2 * M * N * K) + Beta * (M * N)
 
 # Build Options
 Select the compiler you wish to use
@@ -20,7 +24,7 @@ This option defaults to `GNU`.
 ### <u>CPU BLAS Library</u>
 Specify which CPU BLAS Library you are using:
 ```bash
-make COMPILER=GNU CPU_LIBRARY=ARMPL
+make COMPILER=GNU CPU_LIB=ARMPL
 ```
 The supported Libraries are as follows:
  - Arm Performance Libraries : `ARMPL`
@@ -35,7 +39,7 @@ If no library is selected then a naive solution to each kernel will be performed
 ### <u>GPU BLAS Library</u>
 Specify which GPU BLAS Library you are using:
 ```bash
-make COMPILER=GNU CPU_LIBRARY=ARMPL GPU_LIBRARY=CUBLAS
+make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS
 ```
 The supported Libraries are as follows:
  - NVIDIA cuBLAS : `CUBLAS`
@@ -47,7 +51,7 @@ If no library is selected then no GPU BLAS kernels will be executed.
 ### <u>Additional Flags</u>
 Any additional flags can be passed to the Makefile using `CXXFLAGS=`:
 ```bash
-make COMPILER=GNU CPU_LIBRARY=ARMPL GPU_LIBRARY=CUBLAS CXXFLAGS="-I/my/include/dir -g"
+make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS CXXFLAGS="-I/my/include/dir -g"
 ```
 
 
@@ -73,7 +77,7 @@ When using ArmPL, setting the following environment variables is beneficial:
 ### <u>cuBLAS</u>
 When using cuBLAS, it is important to pin the initialised data on the host to the correct NUMA domain to ensure data-offload is done optimally:
  1. Use `nvidia-smi topo -m` to find out what the device's NUMA affinaty is.
- 2. Prefix the run command with `numactl -Na -Ma` where `a` is the NUMA node the device is connected to.
+ 2. Prefix the run command with `numactl -Na -ma` where `a` is the NUMA node the device is connected to.
  3. If a device cannot be found, ensure `CUDA_VISIBLE_DEVICES` is set correctly.
 
 

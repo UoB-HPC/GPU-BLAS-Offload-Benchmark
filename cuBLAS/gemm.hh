@@ -38,8 +38,8 @@ class gemm_gpu : public gemm<T> {
 
     if (offload_ == gpuOffloadType::unified) {
       cudaCheckError(cudaMallocManaged(&A_, sizeof(T) * m_ * k_));
-      cudaCheckError(cudaMallocManaged(&B_, sizeof(T) * m_ * k_));
-      cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * m_ * k_));
+      cudaCheckError(cudaMallocManaged(&B_, sizeof(T) * k_ * n_));
+      cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * m_ * n_));
     } else {
       // Allocate matrices on host
       A_ = (T*)malloc(sizeof(T) * m_ * k_);
@@ -71,9 +71,7 @@ class gemm_gpu : public gemm<T> {
     const T beta = BETA;
 
     // Initialise 3 streams to asynchronously move data between host and device
-    cudaStream_t s1;
-    cudaStream_t s2;
-    cudaStream_t s3;
+    cudaStream_t s1, s2, s3;
     cudaCheckError(cudaStreamCreate(&s1));
     cudaCheckError(cudaStreamCreate(&s2));
     cudaCheckError(cudaStreamCreate(&s3));

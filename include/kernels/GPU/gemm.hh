@@ -1,14 +1,14 @@
 #pragma once
 
-#include "kernel.hh"
+#include "../gemm.hh"
 
 namespace gpu {
 
 /** An abstract class for GEMM BLAS kernels. */
 template <typename T>
-class gemm : public kernel<T> {
+class gemm : public ::gemm<T> {
  public:
-  using kernel<T>::kernel;
+  using ::gemm<T>::gemm;
 
   /** Initialise the required data structures.
    * `offload` refers to the data offload type:
@@ -23,14 +23,5 @@ class gemm : public kernel<T> {
   /** Whether data should be offloaded to/from the GPU each iteration, or just
    * before & after. */
   gpuOffloadType offload_ = gpuOffloadType::always;
-
-  /** Matrix dimension M. */
-  int m_ = 0;
-
-  /** Matrix dimension N. */
-  int n_ = 0;
-
-  /** Matrix dimension K. */
-  int k_ = 0;
 };
 }  // namespace gpu

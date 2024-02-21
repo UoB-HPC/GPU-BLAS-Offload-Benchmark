@@ -1,12 +1,10 @@
 #pragma once
 
 #if defined GPU_DEFAULT
-#include <time.h>
 
 #include <cmath>
-#include <vector>
 
-#include "../include/GPU/gemm.hh"
+#include "../include/kernels/GPU/gemm.hh"
 #include "../include/utilities.hh"
 
 namespace gpu {
@@ -31,12 +29,19 @@ class gemm_gpu : public gemm<T> {
 
  private:
   /** Make a class to the BLAS Library Kernel. */
-  virtual void callKernel(const int iterations) override {
+  virtual void callGemm() override {
     // Default GPU implementation - do nothing.
   }
 
-  /** Call the extern consume() function. */
-  void callConsume() override {
+  /** Perform any required steps before the calling the GEMM kernel that should
+   * be timed. */
+  virtual void preLoopRequirements() override {
+    // Default GPU implementation - do nothing.
+  }
+
+  /** Perform any required steps after the calling the GEMM kernel that should
+   * be timed. */
+  virtual void postLoopRequirements() override {
     // Default GPU implementation - do nothing.
   }
 

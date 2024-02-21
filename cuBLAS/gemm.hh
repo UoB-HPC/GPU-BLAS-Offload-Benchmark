@@ -4,7 +4,7 @@
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 
-#include "../include/kernels_/GPU/gemm.hh"
+#include "../include/kernels/GPU/gemm.hh"
 #include "../include/utilities.hh"
 #include "common.hh"
 
@@ -107,7 +107,7 @@ class gemm_gpu : public gemm<T> {
   }
 
   /** Make a call to the BLAS Library Kernel. */
-  virtual void callGemm(const int iterations) {
+  void callGemm(const int iterations) override {
     switch (offload_) {
       case gpuOffloadType::always: {
         // Offload data from host to the device.

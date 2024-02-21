@@ -22,32 +22,31 @@ class gemm_gpu : public gemm<T> {
   }
 
   /** Initialise the required data structures. */
-  virtual void initialise(gpuOffloadType offload, int m, int n,
-                          int k) override {
+  void initialise(gpuOffloadType offload, int m, int n, int k) override {
     // Default GPU implementation - do nothing.
   }
 
  private:
   /** Make a class to the BLAS Library Kernel. */
-  virtual void callGemm() override {
+  void callGemm() override {
     // Default GPU implementation - do nothing.
   }
 
   /** Perform any required steps before the calling the GEMM kernel that should
    * be timed. */
-  virtual void preLoopRequirements() override {
+  void preLoopRequirements() override {
     // Default GPU implementation - do nothing.
   }
 
   /** Perform any required steps after the calling the GEMM kernel that should
    * be timed. */
-  virtual void postLoopRequirements() override {
+  void postLoopRequirements() override {
     // Default GPU implementation - do nothing.
   }
 
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
-  virtual void postCallKernelCleanup() override {
+  void postCallKernelCleanup() override {
     // Default GPU implementation - do nothing.
   }
 };

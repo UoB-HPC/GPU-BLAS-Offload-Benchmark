@@ -20,22 +20,22 @@ class gemm_cpu : public gemm<T> {
   using gemm<T>::C_;
 
  private:
-  /** Perform the GEMM kernel `iterations_` times. */
+  /** Perform the GEMM kernel. */
   void callGemm() override {
-    /** A naive implementation of a GEMM. Alpha and Beta are always 1 and 0
-     * respectively.
+    /** A naive implementation of a column-major GEMM. Alpha and Beta are always
+     * 1 and 0 respectively.
      * Operation takes the form of C[M,N] = A[M,K] * B[K,N].
-     * A return value is required to ensure that the compiler does not
-     * optimise away this function. */
+     * callConsume() is required to ensure that the compiler does not optimise
+     * away this function. */
     int x, y, z;
     T acc;
     for (x = 0; x < m_; x++) {
       for (y = 0; y < n_; y++) {
         acc = 0.0;
         for (z = 0; z < k_; z++) {
-          acc += A_[x * k_ + z] * B_[z * n_ + y];
+          acc += A_[z * m_ + x] * B_[y * n_ + z];
         }
-        C_[x * n_ + y] = acc;
+        C_[y * m_ + x] = acc;
       }
     }
     // Ensure compiler doesn't optimise away the work being done

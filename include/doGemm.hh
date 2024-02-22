@@ -114,10 +114,11 @@ class doGemm {
 
 // Make sure all checksums match if default GPU kernel not run
 #if !defined GPU_DEFAULT
-    if (!((cpuTime.checksum == gpuTime_once.checksum) &&
-          (cpuTime.checksum == gpuTime_always.checksum) &&
-          (cpuTime.checksum == gpuTime_unified.checksum))) {
-      std::cerr << "ERROR - GEMM kernel checksums do not match:\n\tInput "
+    if (!(cpuTime.checksum == gpuTime_once.checksum &&
+          cpuTime.checksum == gpuTime_always.checksum &&
+          cpuTime.checksum == gpuTime_unified.checksum)) {
+      std::cerr << "ERROR - " << getKernelName()
+                << " kernel checksums do not match:\n\tInput "
                    "dimensions: M="
                 << M << ", N=" << N << ", K=" << K << std::endl;
       std::cerr << "\tCPU Checksum = " << cpuTime.checksum << std::endl;

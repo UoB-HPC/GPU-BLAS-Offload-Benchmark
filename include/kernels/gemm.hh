@@ -1,6 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
+#include <limits>
 
 #include "../utilities.hh"
 
@@ -31,7 +34,7 @@ class gemm {
     // Get time elapsed in seconds
     std::chrono::duration<double> time_s = endTime - startTime;
 
-    double checksum = calcChecksum();
+    uint64_t checksum = calcChecksum();
 
     postCallKernelCleanup();
 
@@ -54,14 +57,17 @@ class gemm {
    * after Kernel has been called. */
   virtual void postCallKernelCleanup() = 0;
 
-  double calcChecksum() {
+  uint64_t calcChecksum() {
     // Checksum for GEMM calculated by summing all four corners of A, B and C
     // together
     double retVal =
         A_[0] + A_[m_ - 1] + A_[k_ - 1] + A_[((m_ - 1) * k_) + (k_ - 1)];
     retVal += B_[0] + B_[k_ - 1] + B_[n_ - 1] + B_[((k_ - 1) * n_) + (n_ - 1)];
     retVal += C_[0] + C_[m_ - 1] + C_[n_ - 1] + C_[((m_ - 1) * n_) + (n_ - 1)];
-    return retVal;
+    retVal = fabs(retVal);
+
+    return std::min(static_cast<uint64_t>(std::floor(retVal)),
+                    std::numeric_limits<uint64_t>::max());
   }
 
  protected:

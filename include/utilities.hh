@@ -38,10 +38,6 @@
 // Define output directory for csv files.
 #define CSV_DIR "CSV_Results"
 
-// Define MIN and MAX Macros
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
-
 // Define seed for random number generation
 const unsigned int SEED = 19123105;
 
@@ -55,7 +51,7 @@ enum class gpuOffloadType : uint8_t {
 // Define struct which contains a runtime and checksum value
 struct time_checksum {
   double runtime;
-  double checksum;
+  uint64_t checksum;
 };
 
 // External consume function used to ensure naive code is performed and not

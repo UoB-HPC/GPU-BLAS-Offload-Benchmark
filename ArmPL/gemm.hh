@@ -4,6 +4,8 @@
 #include <armpl.h>
 #include <omp.h>
 
+#include <algorithm>
+
 #include "../include/kernels/CPU/gemm.hh"
 #include "../include/utilities.hh"
 
@@ -26,10 +28,12 @@ class gemm_cpu : public gemm<T> {
   void callGemm() override {
     if constexpr (std::is_same_v<T, float>) {
       cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, ALPHA,
-                  A_, MAX(1, m_), B_, MAX(1, k_), BETA, C_, MAX(1, m_));
+                  A_, std::max(1, m_), B_, std::max(1, k_), BETA, C_,
+                  std::max(1, m_));
     } else if constexpr (std::is_same_v<T, double>) {
       cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, ALPHA,
-                  A_, MAX(1, m_), B_, MAX(1, k_), BETA, C_, MAX(1, m_));
+                  A_, std::max(1, m_), B_, std::max(1, k_), BETA, C_,
+                  std::max(1, m_));
     } else {
       // Un-specialised class will not do any work - print error and exit.
       std::cout << "ERROR - Datatype for ArmPL CPU GEMM kernel not supported."

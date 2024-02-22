@@ -33,7 +33,7 @@ class gemm_cpu : public gemm<T> {
       for (y = 0; y < n_; y++) {
         acc = 0.0;
         for (z = 0; z < k_; z++) {
-          acc += A_[z * m_ + x] * B_[y * n_ + z];
+          acc += A_[z * m_ + x] * B_[y * k_ + z];
         }
         C_[y * m_ + x] = acc;
       }

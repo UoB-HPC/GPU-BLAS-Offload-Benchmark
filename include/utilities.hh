@@ -51,7 +51,7 @@ enum class gpuOffloadType : uint8_t {
 // Define struct which contains a runtime and checksum value
 struct time_checksum {
   double runtime;
-  uint64_t checksum;
+  double checksum;
 };
 
 // External consume function used to ensure naive code is performed and not

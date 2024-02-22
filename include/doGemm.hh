@@ -114,19 +114,23 @@ class doGemm {
 
 // Make sure all checksums match if default GPU kernel not run
 #if !defined GPU_DEFAULT
-    if (!(cpuTime.checksum == gpuTime_once.checksum &&
-          cpuTime.checksum == gpuTime_always.checksum &&
-          cpuTime.checksum == gpuTime_unified.checksum)) {
+    if (!((std::fabs(cpuTime.checksum - gpuTime_once.checksum) < 0.05) &&
+          (std::fabs(cpuTime.checksum - gpuTime_always.checksum) < 0.05) &&
+          (std::fabs(cpuTime.checksum - gpuTime_unified.checksum) < 0.05))) {
       std::cerr << "ERROR - " << getKernelName()
                 << " kernel checksums do not match:\n\tInput "
                    "dimensions: M="
                 << M << ", N=" << N << ", K=" << K << std::endl;
-      std::cerr << "\tCPU Checksum = " << cpuTime.checksum << std::endl;
-      std::cerr << "\tGPU (Once) Checksum = " << gpuTime_once.checksum
+      std::cerr << std::setprecision(10)
+                << "\tCPU Checksum = " << cpuTime.checksum << std::endl;
+      std::cerr << std::setprecision(10)
+                << "\tGPU (Once) Checksum = " << gpuTime_once.checksum
                 << std::endl;
-      std::cerr << "\tGPU (Always) Checksum = " << gpuTime_always.checksum
+      std::cerr << std::setprecision(10)
+                << "\tGPU (Always) Checksum = " << gpuTime_always.checksum
                 << std::endl;
-      std::cerr << "\tGPU (Unified) Checksum = " << gpuTime_unified.checksum
+      std::cerr << std::setprecision(10)
+                << "\tGPU (Unified) Checksum = " << gpuTime_unified.checksum
                 << std::endl;
       exit(1);
     }

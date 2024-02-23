@@ -49,12 +49,12 @@ class tablePrinter {
   void calcColumnWidths() {
     for (size_t i = 0; i < columnHeaders_.size(); i++) {
       // Find max width from columnHeader and each Row
-      int maxWidth = columnHeaders_[i].size();
+      size_t maxWidth = columnHeaders_[i].size();
       for (size_t j = 0; j < rowData_.size(); j++) {
         if (rowData_[j][i].size() > maxWidth) maxWidth = rowData_[j][i].size();
       }
       // Once found max width, add 1 padding to either side
-      colWidths_.push_back(maxWidth + 2);
+      colWidths_.push_back(static_cast<int>(maxWidth + 2));
     }
   }
 

@@ -16,7 +16,7 @@ class gemm {
 
   /** Call the BLAS kernel n times.
    * Returns the time elapsed for n BLAS calls in seconds. */
-  time_checksum compute() {
+  time_checksum_gflop compute() {
     // Start timer
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime =
         std::chrono::high_resolution_clock::now();

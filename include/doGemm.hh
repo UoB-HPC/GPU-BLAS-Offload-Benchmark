@@ -54,8 +54,6 @@ class doGemm {
     for (int dim = 1; dim <= upperLimit_; dim++) {
       const int M = dim, N = dim, K = dim;
       callKernels(csvFile, M, N, K);
-      // Check if any reason to continue
-      if (allOffloadPointsFound()) break;
     }
     // Close file
     csvFile.close();
@@ -73,8 +71,6 @@ class doGemm {
     for (int dim = 16; dim <= upperLimit_; dim += 16) {
       const int M = dim, N = dim, K = (dim / 16);
       callKernels(csvFile, M, N, K);
-      // Check if any reason to continue
-      if (allOffloadPointsFound()) break;
     }
     // Close file
     csvFile.close();
@@ -92,8 +88,6 @@ class doGemm {
       for (int dim = 1; dim <= upperLimit_; dim++) {
         const int M = dim, N = dim, K = 32;
         callKernels(csvFile, M, N, K);
-        // Check if any reason to continue
-        if (allOffloadPointsFound()) break;
       }
     }
     // Close file
@@ -111,8 +105,6 @@ class doGemm {
     for (int dim = 16; dim <= upperLimit_; dim += 16) {
       const int M = (dim / 16), N = (dim / 16), K = dim;
       callKernels(csvFile, M, N, K);
-      // Check if any reason to continue
-      if (allOffloadPointsFound()) break;
     }
     // Close file
     csvFile.close();
@@ -130,8 +122,6 @@ class doGemm {
       for (int dim = 1; dim <= upperLimit_; dim++) {
         const int M = 32, N = 32, K = dim;
         callKernels(csvFile, M, N, K);
-        // Check if any reason to continue
-        if (allOffloadPointsFound()) break;
       }
     }
     // Close file
@@ -263,15 +253,6 @@ class doGemm {
       default:
         return "unknown";
     }
-  }
-
-  /** Check if, for the current problem domain, all offload threshold points
-   * have been identified. */
-  constexpr bool allOffloadPointsFound() const {
-    // Any of the problem dimensions will equal 0 only at initialisation of the
-    // struct
-    return (cpuGpu_once_.M != 0) && (cpuGpu_always_.M != 0) &&
-           (cpuGpu_unified_.M != 0);
   }
 
   /** Print to stdout the offload thresholds. */

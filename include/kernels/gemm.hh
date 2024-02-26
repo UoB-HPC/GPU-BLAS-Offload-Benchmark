@@ -38,18 +38,18 @@ class gemm {
 
     postCallKernelCleanup();
 
-    return {time_s.count(), checksum};
+    return {time_s.count(), checksum, 0.0};
   }
 
  private:
-  /** Perform any required steps before the calling the GEMM kernel that should
+  /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
   virtual void preLoopRequirements() = 0;
 
   /** Perform the GEMM kernel. */
   virtual void callGemm() = 0;
 
-  /** Perform any required steps after the calling the GEMM kernel that should
+  /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   virtual void postLoopRequirements() = 0;
 
@@ -57,11 +57,9 @@ class gemm {
    * after Kernel has been called. */
   virtual void postCallKernelCleanup() = 0;
 
-  double calcChecksum() {
+  constexpr double calcChecksum() {
     // Checksum for GEMM calculated by summing all four corners of C together
-    double retVal = C_[0] + C_[m_ - 1] + C_[(m_ * (n_ - 1))] + C_[m_ * n_ - 1];
-
-    return retVal;
+    return (C_[0] + C_[m_ - 1] + C_[(m_ * (n_ - 1))] + C_[m_ * n_ - 1]);
   }
 
  protected:

@@ -18,7 +18,7 @@ class gemm_gpu : public gemm<T> {
    * Returns the time elapsed for n BLAS calls in seconds. */
   time_checksum_gflop compute() {
     // Override function in base `kernel` class as DefaultGPU should do nothing.
-    return {INFINITY, INFINITY};
+    return {INFINITY, INFINITY, 0.0};
   }
 
   /** Initialise the required data structures. */
@@ -27,18 +27,18 @@ class gemm_gpu : public gemm<T> {
   }
 
  private:
-  /** Make a class to the BLAS Library Kernel. */
+  /** Make a call to the BLAS Library Kernel. */
   void callGemm() override {
     // Default GPU implementation - do nothing.
   }
 
-  /** Perform any required steps before the calling the GEMM kernel that should
+  /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
   void preLoopRequirements() override {
     // Default GPU implementation - do nothing.
   }
 
-  /** Perform any required steps after the calling the GEMM kernel that should
+  /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {
     // Default GPU implementation - do nothing.

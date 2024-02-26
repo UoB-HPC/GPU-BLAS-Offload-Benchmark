@@ -77,7 +77,7 @@ class gemm_gpu : public gemm<T> {
   }
 
  private:
-  /** Perform any required steps before the calling the GEMM kernel that should
+  /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
   void preLoopRequirements() override {
     switch (offload_) {
@@ -197,7 +197,7 @@ class gemm_gpu : public gemm<T> {
     }
   }
 
-  /** Perform any required steps after the calling the GEMM kernel that should
+  /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {
     switch (offload_) {

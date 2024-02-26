@@ -30,13 +30,16 @@ class tablePrinter {
   /** Print the table to stdout - `padding` refers to the number of tabs each
    * line will be prefixed with. */
   void print(int padding) {
+    // Print table title
     std::string prefix(padding, '\t');
     std::cout << prefix << title_ << std::endl;
     prefix = std::string(padding + 1, '\t');
 
+    // Print headers
     std::cout << prefix << hLine_ << std::endl;
     std::cout << prefix << headerLine_ << std::endl;
     std::cout << prefix << hLineD_ << std::endl;
+    // Print all rows
     for (size_t i = 0; i < rows_.size(); i++) {
       std::cout << prefix << rows_[i] << std::endl;
       std::cout << prefix << hLine_ << std::endl;
@@ -48,7 +51,7 @@ class tablePrinter {
   /** Calculates width of each column. */
   void calcColumnWidths() {
     for (size_t i = 0; i < columnHeaders_.size(); i++) {
-      // Find max width from columnHeader and each Row
+      // Find max width of each column using columnHeaders_ and rowData_
       size_t maxWidth = columnHeaders_[i].size();
       for (size_t j = 0; j < rowData_.size(); j++) {
         if (rowData_[j][i].size() > maxWidth) maxWidth = rowData_[j][i].size();
@@ -62,12 +65,17 @@ class tablePrinter {
   void formatHeader() {
     // Initialise stream
     std::stringstream headerStream;
+    // Print left hand table boarder
     headerStream << "|";
     for (size_t i = 0; i < columnHeaders_.size(); i++) {
+      // Calculate how much padding to add after column header
       int suffixPadding = colWidths_[i] - columnHeaders_[i].size() - 1;
+      // Add next column header with padding and right hand column divider to
+      // output stream
       headerStream << " " << columnHeaders_[i]
                    << std::string(suffixPadding, ' ') << "|";
     }
+    // Save formatted column headers
     headerLine_ = headerStream.str();
   }
 
@@ -75,12 +83,18 @@ class tablePrinter {
   void formatRows() {
     for (size_t i = 0; i < rowData_.size(); i++) {
       std::stringstream rowStream;
+      // Print left hand table boarder
       rowStream << "|";
       for (size_t j = 0; j < rowData_[i].size(); j++) {
+        // Calculate how much padding to add after the printed data to fill
+        // column width
         int suffixPadding = colWidths_[j] - rowData_[i][j].size() - 1;
+        // Add next piece of data to output stream with right hand column
+        // divider and padding
         rowStream << " " << rowData_[i][j] << std::string(suffixPadding, ' ')
                   << "|";
       }
+      // Save formatted row
       rows_.push_back(rowStream.str());
     }
   }

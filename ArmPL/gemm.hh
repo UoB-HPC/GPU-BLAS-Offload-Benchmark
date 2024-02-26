@@ -24,7 +24,7 @@ class gemm_cpu : public gemm<T> {
   using gemm<T>::C_;
 
  private:
-  /** Perform the GEMM kernel `iterations_` times. */
+  /** Make call to the GEMM kernel. */
   void callGemm() override {
     if constexpr (std::is_same_v<T, float>) {
       cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, ALPHA,
@@ -44,11 +44,11 @@ class gemm_cpu : public gemm<T> {
     callConsume();
   }
 
-  /** Perform any required steps before the calling the GEMM kernel that should
+  /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
   void preLoopRequirements() override {}
 
-  /** Perform any required steps after the calling the GEMM kernel that should
+  /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {}
 };

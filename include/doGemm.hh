@@ -145,13 +145,13 @@ class doGemm {
   void callKernels(std::ofstream& csvFile, const int M, const int N,
                    const int K) {
     const double probSize = calcKib(M, N, K);
+    const uint64_t flops = calcFlops(M, N, K);
     std::string kernelName = getKernelName();
 
     // Perform CPU kernel
     gemmCpu_.initialise(M, N, K);
     time_checksum_gflop cpuResult = gemmCpu_.compute();
-    cpuResult.gflops =
-        calcGflops(calcFlops(M, N, K), iterations_, cpuResult.runtime);
+    cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
 
     // Perform the GPU kernels
     // - ONCE : Offload to/from GPU once before all iterations and once
@@ -159,20 +159,20 @@ class doGemm {
     gemmGpu_.initialise(gpuOffloadType::once, M, N, K);
     time_checksum_gflop gpuResult_once = gemmGpu_.compute();
     gpuResult_once.gflops =
-        calcGflops(calcFlops(M, N, K), iterations_, gpuResult_once.runtime);
+        calcGflops(flops, iterations_, gpuResult_once.runtime);
 
     // - ALWAYS: Offload to/from GPU every iteration
     gemmGpu_.initialise(gpuOffloadType::always, M, N, K);
     time_checksum_gflop gpuResult_always = gemmGpu_.compute();
     gpuResult_always.gflops =
-        calcGflops(calcFlops(M, N, K), iterations_, gpuResult_always.runtime);
+        calcGflops(flops, iterations_, gpuResult_always.runtime);
 
     // - UNIFIED : data passed from host to device (and device to host) as
     //             needed
     gemmGpu_.initialise(gpuOffloadType::unified, M, N, K);
     time_checksum_gflop gpuResult_unified = gemmGpu_.compute();
     gpuResult_unified.gflops =
-        calcGflops(calcFlops(M, N, K), iterations_, gpuResult_unified.runtime);
+        calcGflops(flops, iterations_, gpuResult_unified.runtime);
 
 // Make sure all checksums match if default GPU kernel not run
 #if !defined GPU_DEFAULT
@@ -198,7 +198,7 @@ class doGemm {
     }
 
     // Check if offload threshold has been achieved for each GPU offload type.
-    // (M == 0) only on the structures initialisation
+    // M can only be 0 when structure is newly initialised
     if ((cpuGpu_once_.M == 0) && cpuResult.gflops < gpuResult_once.gflops) {
       cpuGpu_once_.cpuGflops = cpuResult.gflops;
       cpuGpu_once_.gpuGflops = gpuResult_once.gflops;
@@ -241,13 +241,13 @@ class doGemm {
 
   /** A function for calculating FLOPs performed by a GEMM.
    * C = alpha*AB + beta*C */
-  uint64_t calcFlops(const int M, const int N, const int K) const {
+  constexpr uint64_t calcFlops(const int M, const int N, const int K) const {
     return ((ALPHA * (2 * (uint64_t)M * (uint64_t)N * (uint64_t)K)) +
             (BETA * (uint64_t)M * (uint64_t)N));
   }
 
   /** A function for calculating the total GEMM problem size in KiB. */
-  double calcKib(const int M, const int N, const int K) const {
+  constexpr double calcKib(const int M, const int N, const int K) const {
     uint64_t M_ = (uint64_t)M, N_ = (uint64_t)N, K_ = (uint64_t)K;
     uint64_t probSize = (M_ * K_) + (K_ * N_) + (M_ * N_);
     return ((double)(probSize * (sizeof(T))) / 1024);

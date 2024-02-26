@@ -42,11 +42,11 @@ class gemm_cpu : public gemm<T> {
     callConsume();
   }
 
-  /** Perform any required steps before the calling the GEMM kernel that should
+  /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
   void preLoopRequirements() override {}
 
-  /** Perform any required steps after the calling the GEMM kernel that should
+  /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {}
 };

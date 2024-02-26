@@ -33,7 +33,6 @@ class tablePrinter {
     // Print table title
     std::string prefix(padding, '\t');
     std::cout << prefix << title_ << std::endl;
-    prefix = std::string(padding + 1, '\t');
 
     // Print headers
     std::cout << prefix << hLine_ << std::endl;

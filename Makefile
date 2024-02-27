@@ -39,7 +39,7 @@ CXXFLAGS_NVIDIA  = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 ifndef CXXFLAGS
 CXXFLAGS = $(CXXFLAGS_$(COMPILER))
 else
-CXXFLAGS += $(CXXFLAGS_$(COMPILER))
+override CXXFLAGS += $(CXXFLAGS_$(COMPILER))
 endif
 
 
@@ -56,10 +56,10 @@ HEADER_FILES += $(wildcard DefaultCPU/*.hh)
 else ifeq ($(CPU_LIB), ARMPL)
 # Add ARM compiler options
 ifeq ($(COMPILER), ARM)
-CXXFLAGS += -armpl=ilp64,parallel -fopenmp
-# Error to select ArmPL otherwise
+override CXXFLAGS += -armpl=ilp64,parallel -fopenmp
 else
-$(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
+override CXXFLAGS += -DINTEGER64 -larmpl_ilp64 -larmpl_lp64_mp -fopenmp
+$(warning Must add `CXXFLAGS="-I<ARMPL_DIR>/include_lp64 -I<ARMPL_DIR>/include_ilp64 -L<ARMPL_DIR>/lib"` to make command to use $(COMPILER) with $(CPU_LIB).)
 endif
 HEADER_FILES += $(wildcard ArmPL/*.hh)
 
@@ -89,10 +89,10 @@ HEADER_FILES += $(wildcard DefaultGPU/*.hh)
 else ifeq ($(GPU_LIB), CUBLAS)
 # Do cuBLAS stuff
 ifeq ($(COMPILER), NVIDIA)
-CXXFLAGS += -cudalib=cublas
+override CXXFLAGS += -cudalib=cublas
 else ifeq ($(COMPILER), GNU)
 $(warning Add `CXXFLAGS=-I<dir containing CUBLAS header>` to make command if cuBLAS is installed at non-standard location (e.g /opt/nvidia/hpc_sdk/Linux_x86_64/24.1/math_libs/include))
-CXXFLAGS += -lcublas -lcudart
+override CXXFLAGS += -lcublas -lcudart
 # Error to select cuBLAS otherwise
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with cuBLAS)
@@ -115,10 +115,10 @@ endif
 # -------
 
 ifdef CPU_LIB
-CXXFLAGS += -DCPU_$(CPU_LIB)
+override CXXFLAGS += -DCPU_$(CPU_LIB)
 endif
 ifdef GPU_LIB
-CXXFLAGS += -DGPU_$(GPU_LIB)
+override CXXFLAGS += -DGPU_$(GPU_LIB)
 endif
 
 LDFLAGS = -lm 

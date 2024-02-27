@@ -56,10 +56,11 @@ HEADER_FILES += $(wildcard DefaultCPU/*.hh)
 else ifeq ($(CPU_LIB), ARMPL)
 # Add ARM compiler options
 ifeq ($(COMPILER), ARM)
-override CXXFLAGS += -armpl=ilp64,parallel -fopenmp
+override CXXFLAGS += -armpl=parallel -fopenmp
+# For all other compilers, require additional input flags for linking
 else
-override CXXFLAGS += -DINTEGER64 -larmpl_ilp64 -larmpl_lp64_mp -fopenmp
-$(warning Must add `CXXFLAGS="-I<ARMPL_DIR>/include_lp64 -I<ARMPL_DIR>/include_ilp64 -L<ARMPL_DIR>/lib"` to make command to use $(COMPILER) with $(CPU_LIB).)
+override CXXFLAGS += -larmpl_lp64_mp -fopenmp
+$(warning Must add `CXXFLAGS="-L<ARMPL_DIR>/lib -I<ARMPL_DIR>/include_lp64_mp"` to make command to use $(COMPILER) with $(CPU_LIB).)
 endif
 HEADER_FILES += $(wildcard ArmPL/*.hh)
 

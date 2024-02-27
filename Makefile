@@ -5,6 +5,9 @@ SHELL := bash
 
 MAKEFLAGS += --warn-undefined-variables --no-builtin-rules
 
+NULL :=
+TAB  := $(NULL)          $(NULL)
+
 # -------
 
 MACHINE = $(shell uname -m)
@@ -19,7 +22,7 @@ endif
 # -------
 
 ifndef COMPILER
-$(warning COMPILER not set (use ARM, CLANG, GNU, INTEL, or NVIDIA))
+$(warning COMPILER not set (use ARM, CLANG, GNU, INTEL, or NVIDIA). Using GNU as default)
 COMPILER=GNU
 endif
 
@@ -58,9 +61,15 @@ else ifeq ($(CPU_LIB), ARMPL)
 ifeq ($(COMPILER), ARM)
 override CXXFLAGS += -armpl=parallel -fopenmp
 # For all other compilers, require additional input flags for linking
-else
+else ifneq($(COMPILER), INTEL)
 override CXXFLAGS += -larmpl_lp64_mp -fopenmp
-$(warning Must add `CXXFLAGS="-L<ARMPL_DIR>/lib -I<ARMPL_DIR>/include_lp64_mp"` to make command to use $(COMPILER) with $(CPU_LIB).)
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<ARMPL_DIR>/lib -I<ARMPL_DIR>/include_lp64_mp"` to make command)
+$(info $(TAB)$(TAB)Add `<ARMPL_DIR>/lib` to LD_LIBRARY_PATH via `export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:<ARMPL_DIR>/lib`)
+$(info )
+# INTEL compiler not compatible with ArmPL
+else
+$(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
 endif
 HEADER_FILES += $(wildcard ArmPL/*.hh)
 
@@ -92,7 +101,9 @@ else ifeq ($(GPU_LIB), CUBLAS)
 ifeq ($(COMPILER), NVIDIA)
 override CXXFLAGS += -cudalib=cublas
 else ifeq ($(COMPILER), GNU)
-$(warning Add `CXXFLAGS=-I<dir containing CUBLAS header>` to make command if cuBLAS is installed at non-standard location (e.g /opt/nvidia/hpc_sdk/Linux_x86_64/24.1/math_libs/include))
+$(info )
+$(info Users may be required to add `CXXFLAGS=-I<dir containing CUBLAS header>` to make command if cuBLAS is installed at non-standard location (e.g /opt/nvidia/hpc_sdk/Linux_x86_64/24.1/math_libs/include))
+$(info )
 override CXXFLAGS += -lcublas -lcudart
 # Error to select cuBLAS otherwise
 else

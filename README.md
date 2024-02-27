@@ -28,7 +28,7 @@ make COMPILER=ARM CPU_LIB=ARMPL
 ```
 The supported Libraries are as follows:
  - Arm Performance Libraries : `ARMPL`
-   - Currently only usable with the `ARM` compiler build option.
+   - Requires additional `CXXFLAGS` and possible updating of `LD_LIBRARY_PATH`
  <!-- - Intel OneMKL : `ONEMKL` -->
  <!-- - AMD Optimizing CPU libraries : `AOCL` -->
  <!-- - OpenBLAS : `OPENBLAS` -->
@@ -144,6 +144,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [ ] Add support for AOCL (AMD Optimizing CPU libraries).
  - [ ] Add support for rocBLAS.
  - [ ] Add support for OpenBLAS.
+ - [ ] Add support for BLIS
  - [ ] Add support for NVIDIA NVPL(?) CPU Library
  - [ ] Add support for Apple Accelerate(?)
  - [ ] Add support for Apple Metal Performance Shaders(?)
@@ -152,4 +153,4 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 # Future Work
  - [ ] Add support for Intel AMX.
  - [ ] Add support for IBM Power10 MMA.
- - [ ] Add support for Arm SME (no hardware available).
+ - [ ] Add support for Arm SME (no hardware / libs available).

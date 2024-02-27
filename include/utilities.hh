@@ -38,9 +38,23 @@
 // Define output directory for csv files.
 #define CSV_DIR "CSV_Results"
 
-// Define MIN and MAX Macros
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+// Define seed for random number generation - use seeded srand() to ensure
+// inputs across libraries are consistent & comparable
+const unsigned int SEED = 19123105;
+
+// Define enum class for GPU offload type
+enum class gpuOffloadType : uint8_t {
+  always = 0,
+  once,
+  unified,
+};
+
+// Define struct which contains a runtime, checksum value, and gflop/s value
+struct time_checksum_gflop {
+  double runtime = 0.0;
+  double checksum = 0.0;
+  double gflops = 0.0;
+};
 
 // External consume function used to ensure naive code is performed and not
 // optimised away, and that all iterations of any library BLAS call are

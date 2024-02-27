@@ -19,84 +19,106 @@ endif
 # -------
 
 ifndef COMPILER
-$(warning COMPILER not set (use ARM, CLANG, GNU, or INTEL))
+$(warning COMPILER not set (use ARM, CLANG, GNU, INTEL, or NVIDIA))
 COMPILER=GNU
 endif
 
-CC_ARM     = armclang++
-CC_CLANG   = clang++
-CC_GNU     = g++
-CC_INTEL   = icc
-CC = $(CC_$(COMPILER))
+CXX_ARM     = armclang++
+CXX_CLANG   = clang++
+CXX_GNU     = g++
+CXX_INTEL   = icc
+CXX_NVIDIA  = nvc++
+CXX = $(CXX_$(COMPILER))
 
-CFLAGS_ARM     = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CFLAGS_CLANG   = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CFLAGS_GNU     = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CFLAGS_INTEL   = -std=c++20 -Wall -Ofast -$(ARCHFLAG)=native
-CFLAGS = $(CFLAGS_$(COMPILER))
+CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_GNU     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_NVIDIA  = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+
+ifndef CXXFLAGS
+CXXFLAGS = $(CXXFLAGS_$(COMPILER))
+else
+CXXFLAGS += $(CXXFLAGS_$(COMPILER))
+endif
+
+
 
 SRC_FILES = $(wildcard src/*.cc)
 HEADER_FILES = $(wildcard include/*.hh)
 
 # -------
 
-ifndef CPU_LIBRARY
-$(warning CPU_LIBRARY not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
-SRC_FILES += $(wildcard DefaultCPU/*.cc)
+ifndef CPU_LIB
+$(warning CPU_LIB not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
 HEADER_FILES += $(wildcard DefaultCPU/*.hh)
-else ifeq ($(CPU_LIBRARY), ARMPL)
+
+else ifeq ($(CPU_LIB), ARMPL)
 # Add ARM compiler options
 ifeq ($(COMPILER), ARM)
-CFLAGS += -armpl=ilp64,parallel -fopenmp
+CXXFLAGS += -armpl=ilp64,parallel -fopenmp
 # Error to select ArmPL otherwise
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
 endif
-SRC_FILES += $(wildcard ArmPL/*.cc)
 HEADER_FILES += $(wildcard ArmPL/*.hh)
-else ifeq ($(CPU_LIBRARY), ONEMKL)
+
+else ifeq ($(CPU_LIB), ONEMKL)
 # Do OneMKL stuff
-$(error The CPU_LIBRARY $(CPU_LIBRARY) is currently not supported.)
-else ifeq ($(CPU_LIBRARY), AOCL)
+$(error The CPU_LIB $(CPU_LIB) is currently not supported.)
+
+else ifeq ($(CPU_LIB), AOCL)
 # Do AOCL stuff
-$(error The CPU_LIBRARY $(CPU_LIBRARY) is currently not supported.)
-else ifeq ($(CPU_LIBRARY), OPENBLAS)
+$(error The CPU_LIB $(CPU_LIB) is currently not supported.)
+
+else ifeq ($(CPU_LIB), OPENBLAS)
 # Do OpenBLAS stuff
-$(error The CPU_LIBRARY $(CPU_LIBRARY) is currently not supported.)
+$(error The CPU_LIB $(CPU_LIB) is currently not supported.)
+
 else
-$(warning Provided CPU_LIBRARY not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
-SRC_FILES += $(wildcard DefaultCPU/*.cc)
+$(warning Provided CPU_LIB not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
 HEADER_FILES += $(wildcard DefaultCPU/*.hh)
 endif
 
 # -------
 
-ifndef GPU_LIBRARY
-$(warning GPU_LIBRARY not set (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
-SRC_FILES += $(wildcard DefaultGPU/*.cc)
+ifndef GPU_LIB
+$(warning GPU_LIB not set (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
 HEADER_FILES += $(wildcard DefaultGPU/*.hh)
-else ifeq ($(GPU_LIBRARY), CUBLAS)
+
+else ifeq ($(GPU_LIB), CUBLAS)
 # Do cuBLAS stuff
-$(error The GPU_LIBRARY $(GPU_LIBRARY) is currently not supported.)
-else ifeq ($(GPU_LIBRARY), ONEMKL)
-# Do OneMKL stuff
-$(error The GPU_LIBRARY $(GPU_LIBRARY) is currently not supported.)
-else ifeq ($(GPU_LIBRARY), ROCBLAS)
-# Do rocBLAS stuff
-$(error The GPU_LIBRARY $(GPU_LIBRARY) is currently not supported.)
+ifeq ($(COMPILER), NVIDIA)
+CXXFLAGS += -cudalib=cublas
+else ifeq ($(COMPILER), GNU)
+$(warning Add `CXXFLAGS=-I<dir containing CUBLAS header>` to make command if cuBLAS is installed at non-standard location (e.g /opt/nvidia/hpc_sdk/Linux_x86_64/24.1/math_libs/include))
+CXXFLAGS += -lcublas -lcudart
+# Error to select cuBLAS otherwise
 else
-$(warning Provided GPU_LIBRARY not valid (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
-SRC_FILES += $(wildcard DefaultGPU/*.cc)
+$(error Selected compiler $(COMPILER) is not currently compatible with cuBLAS)
+endif
+HEADER_FILES += $(wildcard cuBLAS/*.hh)
+
+else ifeq ($(GPU_LIB), ONEMKL)
+# Do OneMKL stuff
+$(error The GPU_LIB $(GPU_LIB) is currently not supported.)
+
+else ifeq ($(GPU_LIB), ROCBLAS)
+# Do rocBLAS stuff
+$(error The GPU_LIB $(GPU_LIB) is currently not supported.)
+
+else
+$(warning Provided GPU_LIB not valid (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
 HEADER_FILES += $(wildcard DefaultGPU/*.hh)
 endif
 
 # -------
 
-ifdef CPU_LIBRARY
-CFLAGS += -DCPU_$(CPU_LIBRARY)
+ifdef CPU_LIB
+CXXFLAGS += -DCPU_$(CPU_LIB)
 endif
-ifdef GPU_LIBRARY
-CFLAGS += -DGPU_$(GPU_LIBRARY)
+ifdef GPU_LIB
+CXXFLAGS += -DGPU_$(GPU_LIB)
 endif
 
 LDFLAGS = -lm 
@@ -111,7 +133,7 @@ all: $(EXE)
 
 $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
 	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/consume.so
-	$(CC) $(CFLAGS) $(SRC_FILES) src/Consume/consume.so $(LDFLAGS) -o $@
+	$(CXX) $(CXXFLAGS) $(SRC_FILES) src/Consume/consume.so $(LDFLAGS) -o $@
 
 clean:
 	rm -f $(EXE) src/Consume/consume.so

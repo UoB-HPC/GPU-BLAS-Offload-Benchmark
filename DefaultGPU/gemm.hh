@@ -1,16 +1,13 @@
 #pragma once
 
-#include <time.h>
+#if defined GPU_DEFAULT
 
 #include <cmath>
-#include <vector>
 
-#include "../include/GPU/gemm.hh"
+#include "../include/kernels/GPU/gemm.hh"
 #include "../include/utilities.hh"
 
 namespace gpu {
-
-#if defined GPU_DEFAULT
 /** A class for GEMM GPU BLAS kernels. */
 template <typename T>
 class gemm_gpu : public gemm<T> {
@@ -19,21 +16,39 @@ class gemm_gpu : public gemm<T> {
 
   /** Call the BLAS kernel n times, with 1 warmup run.
    * Returns the time elapsed for n BLAS calls in seconds. */
-  double compute() {
+  time_checksum_gflop compute() {
     // Override function in base `kernel` class as DefaultGPU should do nothing.
-    return INFINITY;
+    return {INFINITY, INFINITY, 0.0};
   }
 
   /** Initialise the required data structures. */
-  virtual void initialise(bool offloadOnce, int m, int n, int k) override {
+  void initialise(gpuOffloadType offload, int m, int n, int k) override {
     // Default GPU implementation - do nothing.
   }
 
  private:
-  /** Make a class to the BLAS Library Kernel. */
-  virtual void callKernel(const int iterations) override {
+  /** Make a call to the BLAS Library Kernel. */
+  void callGemm() override {
+    // Default GPU implementation - do nothing.
+  }
+
+  /** Perform any required steps before calling the GEMM kernel that should
+   * be timed. */
+  void preLoopRequirements() override {
+    // Default GPU implementation - do nothing.
+  }
+
+  /** Perform any required steps after calling the GEMM kernel that should
+   * be timed. */
+  void postLoopRequirements() override {
+    // Default GPU implementation - do nothing.
+  }
+
+  /** Do any necessary cleanup (free pointers, close library handles, etc.)
+   * after Kernel has been called. */
+  void postCallKernelCleanup() override {
     // Default GPU implementation - do nothing.
   }
 };
-#endif
 }  // namespace gpu
+#endif

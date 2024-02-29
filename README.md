@@ -74,7 +74,7 @@ __Example:__ For a rectangular GEMM where `M=N` and `K=M/4`, the probelm size wi
 # Environment Variables
 It is recommended to set the relevant environment variables to ensure the best performance on host and device. 
 
-Many libraries will require updating `$LD_LIBRARY_PATH` if any `include` or `lib` directories were specified in `CXXFLAGS="..."`.
+Many libraries will require updating `$LD_LIBRARY_PATH` if any `lib` directories were specified in `CXXFLAGS="..."`.
 
 ### <u>Arm Performance Libraries</u>
 When using ArmPL, setting the following environment variables is beneficial:

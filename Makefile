@@ -5,6 +5,7 @@ SHELL := bash
 
 MAKEFLAGS += --warn-undefined-variables --no-builtin-rules
 
+# Defining TAB variable for easy indenting of warning messages
 NULL :=
 TAB  := $(NULL)          $(NULL)
 

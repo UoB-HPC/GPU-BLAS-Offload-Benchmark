@@ -5,6 +5,10 @@ SHELL := bash
 
 MAKEFLAGS += --warn-undefined-variables --no-builtin-rules
 
+# Defining TAB variable for easy indenting of warning messages
+NULL :=
+TAB  := $(NULL)          $(NULL)
+
 # -------
 
 MACHINE = $(shell uname -m)
@@ -19,7 +23,7 @@ endif
 # -------
 
 ifndef COMPILER
-$(warning COMPILER not set (use ARM, CLANG, GNU, INTEL, or NVIDIA))
+$(warning COMPILER not set (use ARM, CLANG, GNU, INTEL, or NVIDIA). Using GNU as default)
 COMPILER=GNU
 endif
 
@@ -34,12 +38,12 @@ CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_GNU     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_NVIDIA  = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_NVIDIA  = -std=c++17 -Wall -O3 -fast -$(ARCHFLAG)=native
 
 ifndef CXXFLAGS
 CXXFLAGS = $(CXXFLAGS_$(COMPILER))
 else
-CXXFLAGS += $(CXXFLAGS_$(COMPILER))
+override CXXFLAGS += $(CXXFLAGS_$(COMPILER))
 endif
 
 
@@ -56,8 +60,15 @@ HEADER_FILES += $(wildcard DefaultCPU/*.hh)
 else ifeq ($(CPU_LIB), ARMPL)
 # Add ARM compiler options
 ifeq ($(COMPILER), ARM)
-CXXFLAGS += -armpl=ilp64,parallel -fopenmp
-# Error to select ArmPL otherwise
+override CXXFLAGS += -armpl=parallel -fopenmp
+# For all other compilers, require additional input flags for linking
+else ifneq ($(COMPILER), INTEL)
+override CXXFLAGS += -larmpl_lp64_mp -fopenmp
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<ARMPL_DIR>/lib -I<ARMPL_DIR>/include_lp64_mp"` to make command)
+$(info $(TAB)$(TAB)Add `<ARMPL_DIR>/lib` to `$$LD_LIBRARY_PATH`)
+$(info )
+# INTEL compiler not compatible with ArmPL
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
 endif
@@ -89,14 +100,14 @@ HEADER_FILES += $(wildcard DefaultGPU/*.hh)
 else ifeq ($(GPU_LIB), CUBLAS)
 # Do cuBLAS stuff
 ifeq ($(COMPILER), NVIDIA)
-CXXFLAGS += -cudalib=cublas
-else ifeq ($(COMPILER), GNU)
-$(warning Add `CXXFLAGS=-I<dir containing CUBLAS header>` to make command if cuBLAS is installed at non-standard location (e.g /opt/nvidia/hpc_sdk/Linux_x86_64/24.1/math_libs/include))
-CXXFLAGS += -lcublas -lcudart
-# Error to select cuBLAS otherwise
+override CXXFLAGS += -cudalib=cublas
 else
-$(error Selected compiler $(COMPILER) is not currently compatible with cuBLAS)
-endif
+$(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
+$(info $(TAB)$(TAB)Add `CXXFLAGS=-L<NVHPC_DIR>/.../math_libs/lib64 -L<NVHPC_DIR>/.../cuda/lib64` to make command)
+$(info $(TAB)$(TAB)Add `CXXFLAGS=-I<NVHPC_DIR>/.../math_libs/include -I<NVHPC_DIR>/.../cuda/include` to make command)
+$(info $(TAB)$(TAB)Add both aforementioned `lib64` directories to `$$LD_LIBRARY_PATH`)
+$(info )
+override CXXFLAGS += -lcublas -lcudart
 HEADER_FILES += $(wildcard cuBLAS/*.hh)
 
 else ifeq ($(GPU_LIB), ONEMKL)
@@ -115,10 +126,10 @@ endif
 # -------
 
 ifdef CPU_LIB
-CXXFLAGS += -DCPU_$(CPU_LIB)
+override CXXFLAGS += -DCPU_$(CPU_LIB)
 endif
 ifdef GPU_LIB
-CXXFLAGS += -DGPU_$(GPU_LIB)
+override CXXFLAGS += -DGPU_$(GPU_LIB)
 endif
 
 LDFLAGS = -lm 

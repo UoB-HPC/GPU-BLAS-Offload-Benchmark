@@ -13,22 +13,26 @@ GFLOP/s are calculated using the following Total FLOPs formulas. The compute tim
  - **GEMM** : FLOPs = Alpha * (2 * M * N * K) + Beta * (M * N)
 
 # Build Options
-Select the compiler you wish to use
+Select the compiler you wish to use. Regardless of choice, `gcc` is required in order to build the `Consume.so` external library.
 ``` bash
-make COMPILER=ARM
+make COMPILER=GNU
 ```
-The supported compiler names are: `ARM`, `CLANG`, `GNU`, `INTEL`, `NVIDIA`.\
-This option defaults to `GNU`.
+The supported compiler names are: `ARM`, `CLANG`, `GNU`, `INTEL`, `NVIDIA`, with the default option being `GNU`.\ 
+These compiler choices correspond to:
+ - `ARM` --> armclang++
+ - `CLANG` --> clang++
+ - `GNU` --> g++
+ - `INTEL` --> icc
+ - `NVIDIA` --> nvc++
 
 
 ### <u>CPU BLAS Library</u>
 Specify which CPU BLAS Library you are using:
 ```bash
-make COMPILER=ARM CPU_LIB=ARMPL
+make COMPILER=GNU CPU_LIB=ARMPL
 ```
 The supported Libraries are as follows:
  - Arm Performance Libraries : `ARMPL`
-   - Currently only usable with the `ARM` compiler build option.
  <!-- - Intel OneMKL : `ONEMKL` -->
  <!-- - AMD Optimizing CPU libraries : `AOCL` -->
  <!-- - OpenBLAS : `OPENBLAS` -->
@@ -39,7 +43,7 @@ If no library is selected then a naive solution to each kernel will be performed
 ### <u>GPU BLAS Library</u>
 Specify which GPU BLAS Library you are using:
 ```bash
-make COMPILER=ARM CPU_LIB=ARMPL GPU_LIB=CUBLAS
+make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS
 ```
 The supported Libraries are as follows:
  - NVIDIA cuBLAS : `CUBLAS`
@@ -51,7 +55,7 @@ If no library is selected then no GPU BLAS kernels will be executed.
 ### <u>Additional Flags</u>
 Some combinations of BLAS Libraries and compilers will require additional flags. Many of these have been pre-configured in the Makefile, but some require the inclusion of additional shared objects etc. These can be passed to the Makefile using `CXXFLAGS=`:
 ```bash
-make COMPILER=ARM CPU_LIB=ARMPL GPU_LIB=CUBLAS CXXFLAGS="-I/my/include/dir -g"
+make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS CXXFLAGS="-I/path/to/include -L/path/to/lib"
 ```
 
 
@@ -59,6 +63,8 @@ make COMPILER=ARM CPU_LIB=ARMPL GPU_LIB=CUBLAS CXXFLAGS="-I/my/include/dir -g"
 The benchmark takes the following runtime arguments:
 ```bash
 ./gpu-blob --iterations I --dimension_limit D
+        OR
+./gpu-blob -i I -d D
 ```
 Where `I` (default of `10`) specifies how many iterations each kernel will run, and `D` (default of `128`) specifies the the upper limit for the largest dimention in a problem size.\
 __Example:__ For a square GEMM, the problem size will iterate up to `M=N=K=D`.\
@@ -68,6 +74,8 @@ __Example:__ For a rectangular GEMM where `M=N` and `K=M/4`, the probelm size wi
 # Environment Variables
 It is recommended to set the relevant environment variables to ensure the best performance on host and device. 
 
+Many libraries will require updating `$LD_LIBRARY_PATH` if any `lib` directories were specified in `CXXFLAGS="..."`.
+
 ### <u>Arm Performance Libraries</u>
 When using ArmPL, setting the following environment variables is beneficial:
  - `OMP_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
@@ -75,7 +83,7 @@ When using ArmPL, setting the following environment variables is beneficial:
  - `OMP_PLACES` -- `cores` is often found to perform best
 
 ### <u>cuBLAS</u>
-When using cuBLAS, it is important to pin the initialised data on the host to the correct NUMA domain to ensure data-offload is done optimally:
+When using cuBLAS, it is important to pin the initialised data on the host to the correct NUMA domain (if applicable) to ensure data-offload is done optimally:
  1. Use `nvidia-smi topo -m` to find out what the device's NUMA affinaty is.
  2. Prefix the run command with `numactl -Na -ma` where `a` is the NUMA node the device is connected to.
  3. If a device cannot be found, ensure `CUDA_VISIBLE_DEVICES` is set correctly.
@@ -102,31 +110,12 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - FP32, FP64
    - ...
 
+
+
 # ToDo:
  - [x] Outline what kernels are included in the benchmark, along with how they will be run.
    - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
    - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
- - [x] Consider the suitability of including batched versions of the chosen BLAS kernels.
- - [x] Create main file which contains functionality of:
-   - [x] Print system information such as CPU library used, GPU library used...
-   - [x] Running each BLAS kernel for all input types & shapes on CPU.
-     - [x] Increase each dimension by 1 each run until reached upper-limit (user defined?).
-     - [x] Each for `n` iterations (user defined?).
-   - [x] Running each BLAS kernel for all input types & shapes on GPU.
-     - [x] Increase each dimension by 1 each run until reached upper-limit (user defined?).
-     - [x] Each for `n` iterations (user defined?).
-       - [x] Offload data once at start, once at end.
-       - [x] Offload data each iteration.
-       - [x] Unified memory solution.
-   - [x] Calculate GLFOPs achieved for each BLAS kernel run.
-   - [x] Saving all data to .csv file(s).
-   - [x] Calculate for each kernel at what problem size offloading the computation to the GPU becomes worthwhile.
-     - i.e. the time taken on CPU becomes longer than on GPU
-   - [x] Add checksum to ensure each library implementation is getting the same answer.
- - [x] Create Makefile with options for:
-   - [x] Selecting the compiler + compiler specific flags.
-   - [x] Selecting the CPU library target (ArmPL, oneMKL, OpenBLAS) + relevant flags.
-   - [x] Selecting the GPU library target (cuBLAS, oneMKL) + relevant flags.
  - [ ] Add naive implementations of kernels for Default CPU + Default GPU
    - [x] GEMM 
    - [ ] GEMV 
@@ -140,10 +129,12 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [ ] Add support for cuBLAS.
    - [x] GEMM 
    - [ ] GEMV 
- - [ ] Add support for oneMKL.
- - [ ] Add support for AOCL (AMD Optimizing CPU libraries).
- - [ ] Add support for rocBLAS.
- - [ ] Add support for OpenBLAS.
+ - [ ] Add support for cuSPARSE
+ - [ ] Add support for BLIS
+ - [ ] Add support for oneMKL
+ - [ ] Add support for rocBLAS
+ - [ ] Add support for OpenBLAS
+ - [ ] Add support for AOCL (AMD Optimizing CPU libraries)
  - [ ] Add support for NVIDIA NVPL(?) CPU Library
  - [ ] Add support for Apple Accelerate(?)
  - [ ] Add support for Apple Metal Performance Shaders(?)
@@ -152,4 +143,4 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 # Future Work
  - [ ] Add support for Intel AMX.
  - [ ] Add support for IBM Power10 MMA.
- - [ ] Add support for Arm SME (no hardware available).
+ - [ ] Add support for Arm SME (no hardware / libs available).

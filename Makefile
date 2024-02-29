@@ -37,7 +37,7 @@ CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_GNU     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_NVIDIA  = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_NVIDIA  = -std=c++17 -Wall -O3 -fast -$(ARCHFLAG)=native
 
 ifndef CXXFLAGS
 CXXFLAGS = $(CXXFLAGS_$(COMPILER))
@@ -61,11 +61,11 @@ else ifeq ($(CPU_LIB), ARMPL)
 ifeq ($(COMPILER), ARM)
 override CXXFLAGS += -armpl=parallel -fopenmp
 # For all other compilers, require additional input flags for linking
-else ifneq($(COMPILER), INTEL)
+else ifneq ($(COMPILER), INTEL)
 override CXXFLAGS += -larmpl_lp64_mp -fopenmp
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS="-L<ARMPL_DIR>/lib -I<ARMPL_DIR>/include_lp64_mp"` to make command)
-$(info $(TAB)$(TAB)Add `<ARMPL_DIR>/lib` to LD_LIBRARY_PATH via `export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:<ARMPL_DIR>/lib`)
+$(info $(TAB)$(TAB)Add `<ARMPL_DIR>/lib` to `$$LD_LIBRARY_PATH`)
 $(info )
 # INTEL compiler not compatible with ArmPL
 else
@@ -100,15 +100,13 @@ else ifeq ($(GPU_LIB), CUBLAS)
 # Do cuBLAS stuff
 ifeq ($(COMPILER), NVIDIA)
 override CXXFLAGS += -cudalib=cublas
-else ifeq ($(COMPILER), GNU)
-$(info )
-$(info Users may be required to add `CXXFLAGS=-I<dir containing CUBLAS header>` to make command if cuBLAS is installed at non-standard location (e.g /opt/nvidia/hpc_sdk/Linux_x86_64/24.1/math_libs/include))
+else
+$(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
+$(info $(TAB)$(TAB)Add `CXXFLAGS=-L<NVHPC_DIR>/.../math_libs/lib64 -L<NVHPC_DIR>/.../cuda/lib64` to make command)
+$(info $(TAB)$(TAB)Add `CXXFLAGS=-I<NVHPC_DIR>/.../math_libs/include -I<NVHPC_DIR>/.../cuda/include` to make command)
+$(info $(TAB)$(TAB)Add both aforementioned `lib64` directories to `$$LD_LIBRARY_PATH`)
 $(info )
 override CXXFLAGS += -lcublas -lcudart
-# Error to select cuBLAS otherwise
-else
-$(error Selected compiler $(COMPILER) is not currently compatible with cuBLAS)
-endif
 HEADER_FILES += $(wildcard cuBLAS/*.hh)
 
 else ifeq ($(GPU_LIB), ONEMKL)

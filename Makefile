@@ -30,14 +30,14 @@ endif
 CXX_ARM     = armclang++
 CXX_CLANG   = clang++
 CXX_GNU     = g++
-CXX_INTEL   = icc
+CXX_INTEL   = icx
 CXX_NVIDIA  = nvc++
 CXX = $(CXX_$(COMPILER))
 
 CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_GNU     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -xHOST -$(ARCHFLAG)=native
 CXXFLAGS_NVIDIA  = -std=c++17 -Wall -O3 -fast -$(ARCHFLAG)=native
 
 ifndef CXXFLAGS
@@ -75,8 +75,17 @@ endif
 HEADER_FILES += $(wildcard ArmPL/*.hh)
 
 else ifeq ($(CPU_LIB), ONEMKL)
-# Do OneMKL stuff
-$(error The CPU_LIB $(CPU_LIB) is currently not supported.)
+# Add INTEL compiler options
+ifeq ($(COMPILER), INTEL)
+override CXXFLAGS += -DMKL_INT=int
+# For all other compilers, require additional input flags for linking
+else ifneq ($(COMPILER), ARM)
+override CXXFLAGS += -DMKL_INT=int
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+# ARM compiler not compatible with ONEMKL
+else
+$(error Selected compiler $(COMPILER) is not currently compatible with oneMKL CPU Library)
+endif
 
 else ifeq ($(CPU_LIB), AOCL)
 # Do AOCL stuff

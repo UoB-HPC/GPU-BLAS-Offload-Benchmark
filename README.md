@@ -6,7 +6,7 @@ For each supported BLAS kernel (listed below) GPU-BLOB will run `n` iterations o
 
 Each BLAS kernel is tested with a range of different problem size designs in an attempt to capture the performance differences that can occur between different problem sets when utilising the same underlying kernel. For each BLAS kernel and problem type pair, a table will be displayed which outlines the problem size at which offloading to the GPU became worthwhile. If for the number of iterations and maximum problem dimension this offload threshold cannot be found, the table will show `0` for each problem dimension and `N/A` for the attained GFLOP/s.
 
-All computations performed by each BLAS library are assumed to be functionally correct. However, a simple checksum is calculated after each CPU and GPU run for each problem size to ensure all utilised libraries are computing the same result.\
+All computations performed by each BLAS library are done in column-major and are assumed to be functionally correct. However, a simple checksum is calculated after each CPU and GPU run for each problem size to ensure all utilised libraries are computing the same result.\
 Only when an error occurs will any checksum be displayed to the user.
 
 GFLOP/s are calculated using the following Total FLOPs formulas. The compute time excludes any initialisation, but does include any data movement / prefetching to/from the GPU device:
@@ -22,7 +22,7 @@ These compiler choices correspond to:
  - `ARM` --> armclang++
  - `CLANG` --> clang++
  - `GNU` --> g++
- - `INTEL` --> icc
+ - `INTEL` --> icx (Intel's oneAPI DPC++/C++ Compiler)
  - `NVIDIA` --> nvc++
 
 
@@ -33,7 +33,7 @@ make COMPILER=GNU CPU_LIB=ARMPL
 ```
 The supported Libraries are as follows:
  - Arm Performance Libraries : `ARMPL`
- <!-- - Intel OneMKL : `ONEMKL` -->
+ - Intel OneMKL : `ONEMKL`
  <!-- - AMD Optimizing CPU libraries : `AOCL` -->
  <!-- - OpenBLAS : `OPENBLAS` -->
 
@@ -47,6 +47,7 @@ make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS
 ```
 The supported Libraries are as follows:
  - NVIDIA cuBLAS : `CUBLAS`
+   <!-- - Implies the usage of the cuSPARCE Library (also packaged with NVIDIA's HPC SDK) -->
  <!-- - Intel OneMKL : `ONEMKL` -->
  <!-- - AMD rocBLAS : `ROCBLAS` -->
 
@@ -79,8 +80,14 @@ Many libraries will require updating `$LD_LIBRARY_PATH` if any `lib` directories
 ### <u>Arm Performance Libraries</u>
 When using ArmPL, setting the following environment variables is beneficial:
  - `OMP_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
- - `OMP_PROC_BIND` -- `close` is often found to perform best
- - `OMP_PLACES` -- `cores` is often found to perform best
+ - `OMP_PROC_BIND`
+ - `OMP_PLACES`
+
+### <u>Intel OnMKL</u>
+When using oneMKL as the CPU BLAS Library, setting the following environment variables is beneficial:
+ - `OMP_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
+ - `OMP_PROC_BIND`
+ - `OMP_PLACES`
 
 ### <u>cuBLAS</u>
 When using cuBLAS, it is important to pin the initialised data on the host to the correct NUMA domain (if applicable) to ensure data-offload is done optimally:
@@ -129,9 +136,13 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [ ] Add support for cuBLAS.
    - [x] GEMM 
    - [ ] GEMV 
+ - [ ] Add support for oneMKL
+   - [ ] GEMM
+   - [ ] GEMV
+   - [ ] SpMM
+   - [ ] SpMV
  - [ ] Add support for cuSPARSE
  - [ ] Add support for BLIS
- - [ ] Add support for oneMKL
  - [ ] Add support for rocBLAS
  - [ ] Add support for OpenBLAS
  - [ ] Add support for AOCL (AMD Optimizing CPU libraries)

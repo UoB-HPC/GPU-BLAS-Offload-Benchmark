@@ -11,7 +11,7 @@
 #elif defined CPU_ARMPL
 #include "../ArmPL/gemm.hh"
 #elif defined CPU_ONEMKL
-#include "../oneMKL/gemm_cpu.hh"
+#include "../oneMKL/CPU/gemm.hh"
 #endif
 
 #if defined GPU_DEFAULT

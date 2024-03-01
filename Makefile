@@ -86,6 +86,7 @@ $(warning Users may be required to do the following to use $(COMPILER) with $(CP
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with oneMKL CPU Library)
 endif
+HEADER_FILES+= $(wildcard oneMKL/CPU/*.hh)
 
 else ifeq ($(CPU_LIB), AOCL)
 # Do AOCL stuff
@@ -117,6 +118,7 @@ $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<NVHPC_DIR>/.../math_libs/include -I<NVHPC_DI
 $(info $(TAB)$(TAB)Add both aforementioned `lib64` directories to `$$LD_LIBRARY_PATH`)
 $(info )
 override CXXFLAGS += -lcublas -lcudart
+endif
 HEADER_FILES += $(wildcard cuBLAS/*.hh)
 
 else ifeq ($(GPU_LIB), ONEMKL)

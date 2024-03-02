@@ -34,6 +34,7 @@ make COMPILER=GNU CPU_LIB=ARMPL
 The supported Libraries are as follows:
  - Arm Performance Libraries : `ARMPL`
  - Intel OneMKL : `ONEMKL`
+   - Requires the use of an additional `MKLROOT` make option specifying the root directory of the oneMKL Library.
  <!-- - AMD Optimizing CPU libraries : `AOCL` -->
  <!-- - OpenBLAS : `OPENBLAS` -->
 

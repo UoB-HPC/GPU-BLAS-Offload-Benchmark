@@ -5,8 +5,8 @@
 
 #include <algorithm>
 
-#include "../include/kernels/CPU/gemm.hh"
-#include "../include/utilities.hh"
+#include "../../include/kernels/CPU/gemm.hh"
+#include "../../include/utilities.hh"
 
 namespace cpu {
 /** A class for GEMM CPU BLAS kernels. */

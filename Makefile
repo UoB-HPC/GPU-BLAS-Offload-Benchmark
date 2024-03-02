@@ -30,14 +30,14 @@ endif
 CXX_ARM     = armclang++
 CXX_CLANG   = clang++
 CXX_GNU     = g++
-CXX_INTEL   = icx
+CXX_INTEL   = icpx
 CXX_NVIDIA  = nvc++
 CXX = $(CXX_$(COMPILER))
 
 CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_GNU     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -xHOST -$(ARCHFLAG)=native
+CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_NVIDIA  = -std=c++17 -Wall -O3 -fast -$(ARCHFLAG)=native
 
 ifndef CXXFLAGS
@@ -75,14 +75,26 @@ endif
 HEADER_FILES += $(wildcard ArmPL/*.hh)
 
 else ifeq ($(CPU_LIB), ONEMKL)
+# Ensure MKLROOT is defined
+ifndef ($(MKLROOT))
+$(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Library)
+endif
 # Add INTEL compiler options
 ifeq ($(COMPILER), INTEL)
-override CXXFLAGS += -DMKL_INT=int
-# For all other compilers, require additional input flags for linking
-else ifneq ($(COMPILER), ARM)
-override CXXFLAGS += -DMKL_INT=int
+override CXXFLAGS += -L${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qmkl=parallel -DMKL_INT=int
+# Add GNU compiler options
+else ifeq ($(COMPILER), GNU)
+override CXXFLAGS += -m64 -L${MKLROOT}/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -I"${MKLROOT}/include" -DMKL_INT=int
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
-# ARM compiler not compatible with ONEMKL
+$(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
+$(info )
+# Add CLANG compiler options
+else ifeq ($(COMPILER), CLANG)
+override CXXFLAGS += -L${MKLROOT}/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -m64 -I"${MKLROOT}/include" -DMKL_INT=int
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+$(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
+$(info )
+# Other compilers not compatible with ONEMKL
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with oneMKL CPU Library)
 endif

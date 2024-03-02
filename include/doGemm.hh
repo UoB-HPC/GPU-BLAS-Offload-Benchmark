@@ -168,9 +168,12 @@ class doGemm {
 
 // Make sure all checksums match if default GPU kernel not run
 #if !defined GPU_DEFAULT
-    if (!((std::fabs(cpuResult.checksum - gpuResult_once.checksum) < 0.5) &&
-          (std::fabs(cpuResult.checksum - gpuResult_always.checksum) < 0.5) &&
-          (std::fabs(cpuResult.checksum - gpuResult_unified.checksum) < 0.5))) {
+    if (!((std::fabs(cpuResult.checksum - gpuResult_once.checksum) <
+           CHECK_ERROR) &&
+          (std::fabs(cpuResult.checksum - gpuResult_always.checksum) <
+           CHECK_ERROR) &&
+          (std::fabs(cpuResult.checksum - gpuResult_unified.checksum) <
+           CHECK_ERROR))) {
       std::cerr << "ERROR - " << getKernelName()
                 << " kernel checksums do not match:\n\tInput "
                    "dimensions: M="
@@ -189,6 +192,7 @@ class doGemm {
       exit(1);
     }
 
+    // TODO: clean up the below logic
     // If CPU.gflops > GPU.gflops, reset offload structures
     if ((cpuGpu_once_.M != 0) && cpuResult.gflops >= gpuResult_once.gflops) {
       cpuGpu_once_.cpuGflops = 0.0;

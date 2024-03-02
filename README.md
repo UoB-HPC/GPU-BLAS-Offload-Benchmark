@@ -121,6 +121,8 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 
 
 # ToDo:
+ - [ ] Create python script to auto generate a png graph for each csv file (x-axis = matrix size, y-axis=GFLOP/s)
+ - [ ] Add option to not run any CPU kernel (i.e. GPU only)
  - [x] Outline what kernels are included in the benchmark, along with how they will be run.
    - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
    - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.

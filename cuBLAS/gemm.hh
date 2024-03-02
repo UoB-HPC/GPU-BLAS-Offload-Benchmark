@@ -14,6 +14,7 @@ template <typename T>
 class gemm_gpu : public gemm<T> {
  public:
   using gemm<T>::gemm;
+  using gemm<T>::initInputMatrices;
   using gemm<T>::m_;
   using gemm<T>::n_;
   using gemm<T>::k_;
@@ -62,18 +63,8 @@ class gemm_gpu : public gemm<T> {
       cudaCheckError(cudaMalloc((void**)&C_device_, sizeof(T) * m_ * n_));
     }
 
-    // Initialise the host matricies
-    srand(SEED);
-    for (int y = 0; y < m_; y++) {
-      for (int x = 0; x < k_; x++) {
-        A_[y * k_ + x] = (((T)(rand() % 10000) / 100.0) - 30.0);
-      }
-    }
-    for (int y = 0; y < k_; y++) {
-      for (int x = 0; x < n_; x++) {
-        B_[y * n_ + x] = (((T)(rand() % 10000) / 100.0) - 30.0);
-      }
-    }
+    // Initialise the host input matricies (A_ and B_)
+    initInputMatrices();
   }
 
  private:

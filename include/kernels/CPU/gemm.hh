@@ -9,6 +9,7 @@ template <typename T>
 class gemm : public ::gemm<T> {
  public:
   using ::gemm<T>::gemm;
+  using ::gemm<T>::initInputMatrices;
   using ::gemm<T>::m_;
   using ::gemm<T>::n_;
   using ::gemm<T>::k_;
@@ -28,17 +29,7 @@ class gemm : public ::gemm<T> {
     C_ = (T*)malloc(sizeof(T) * m_ * n_);
 
     // Initialise the matricies
-    srand(SEED);
-    for (int y = 0; y < m; y++) {
-      for (int x = 0; x < k; x++) {
-        A_[y * k + x] = (((T)(rand() % 10000) / 100.0) - 30.0);
-      }
-    }
-    for (int y = 0; y < k; y++) {
-      for (int x = 0; x < n; x++) {
-        B_[y * n + x] = (((T)(rand() % 10000) / 100.0) - 30.0);
-      }
-    }
+    initInputMatrices();
   }
 
  private:

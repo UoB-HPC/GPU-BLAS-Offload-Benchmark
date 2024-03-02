@@ -189,8 +189,35 @@ class doGemm {
       exit(1);
     }
 
+    // If CPU.gflops > GPU.gflops, reset offload structures
+    if ((cpuGpu_once_.M != 0) && cpuResult.gflops >= gpuResult_once.gflops) {
+      cpuGpu_once_.cpuGflops = 0.0;
+      cpuGpu_once_.gpuGflops = 0.0;
+      cpuGpu_once_.probSize_kib = 0.0;
+      cpuGpu_once_.M = 0;
+      cpuGpu_once_.N = 0;
+      cpuGpu_once_.K = 0;
+    }
+    if ((cpuGpu_always_.M != 0) &&
+        cpuResult.gflops >= gpuResult_always.gflops) {
+      cpuGpu_always_.cpuGflops = 0.0;
+      cpuGpu_always_.gpuGflops = 0.0;
+      cpuGpu_always_.probSize_kib = 0.0;
+      cpuGpu_always_.M = 0;
+      cpuGpu_always_.N = 0;
+      cpuGpu_always_.K = 0;
+    }
+    if ((cpuGpu_unified_.M != 0) &&
+        cpuResult.gflops >= gpuResult_unified.gflops) {
+      cpuGpu_unified_.cpuGflops = 0.0;
+      cpuGpu_unified_.gpuGflops = 0.0;
+      cpuGpu_unified_.probSize_kib = 0.0;
+      cpuGpu_unified_.M = 0;
+      cpuGpu_unified_.N = 0;
+      cpuGpu_unified_.K = 0;
+    }
+
     // Check if offload threshold has been achieved for each GPU offload type.
-    // M can only be 0 when structure is newly initialised
     if ((cpuGpu_once_.M == 0) && cpuResult.gflops < gpuResult_once.gflops) {
       cpuGpu_once_.cpuGflops = cpuResult.gflops;
       cpuGpu_once_.gpuGflops = gpuResult_once.gflops;

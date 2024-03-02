@@ -76,21 +76,21 @@ HEADER_FILES += $(wildcard ArmPL/*.hh)
 
 else ifeq ($(CPU_LIB), ONEMKL)
 # Ensure MKLROOT is defined
-ifndef ($(MKLROOT))
+ifndef MKLROOT
 $(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Library)
 endif
 # Add INTEL compiler options
 ifeq ($(COMPILER), INTEL)
-override CXXFLAGS += -L${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qmkl=parallel -DMKL_INT=int
+override CXXFLAGS += -L$(MKLROOT)/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qmkl=parallel -DMKL_INT=int
 # Add GNU compiler options
 else ifeq ($(COMPILER), GNU)
-override CXXFLAGS += -m64 -L${MKLROOT}/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -I"${MKLROOT}/include" -DMKL_INT=int
+override CXXFLAGS += -m64 -L$(MKLROOT)/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -I"${MKLROOT}/include" -DMKL_INT=int
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
 $(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
 $(info )
 # Add CLANG compiler options
 else ifeq ($(COMPILER), CLANG)
-override CXXFLAGS += -L${MKLROOT}/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -m64 -I"${MKLROOT}/include" -DMKL_INT=int
+override CXXFLAGS += -L$(MKLROOT)/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -m64 -I"${MKLROOT}/include" -DMKL_INT=int
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
 $(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
 $(info )

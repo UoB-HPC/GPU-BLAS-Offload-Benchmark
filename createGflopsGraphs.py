@@ -67,7 +67,7 @@ for i in range(0, len(gemmFilenames)):
     x_name = ""
     xVals = []
     if splitFileName[1] == "square.csv":
-        x_name = "M=N=K"
+        x_name = "Value of M, N, K"
         inputTypeStr = "Square (M=N=K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
@@ -75,19 +75,19 @@ for i in range(0, len(gemmFilenames)):
         inputTypeStr = splitFileName[1][0].upper() + splitFileName[1][1:] + " " + splitFileName[2][:-4]
         probTypeStr = splitFileName[2][:-4]
         if probTypeStr == "16MxK":
-            x_name = "M=N, M=16K"
+            x_name = "Value of K, where M=16K and N=16K"
             for j in range(0, len(mnk)):
                 xVals.append(mnk[j][2])
         elif probTypeStr == "32xK":
-            x_name = "K (M=N=32)"
+            x_name = "Value of K, where M=N=32"
             for j in range(0, len(mnk)):
                 xVals.append(mnk[j][2])
         elif probTypeStr == "Mx16K":
-            x_name = "M=N, K=16M"
+            x_name = "Value of M and N, where K=16M"
             for j in range(0, len(mnk)):
                 xVals.append(mnk[j][0])
         elif probTypeStr == "Mx32":
-            x_name = "M=N (K=32)"
+            x_name = "Value of M and N, where K=32"
             for j in range(0, len(mnk)):
                 xVals.append(mnk[j][0])
 
@@ -103,7 +103,7 @@ for i in range(0, len(gemmFilenames)):
     title = "{}GEMM Performance for {} Style Inputs - {} iterations per problem size".format(kernel[0].upper(), inputTypeStr, iters)
 
     # Make Graph
-    fig1 = plt.figure(figsize=(24,14))
+    fig1 = plt.figure(figsize=(25,14))
     ax1 = fig1.add_subplot()
 
     ax1.plot(xVals, cpu_Gflops, color="#332288", marker=".", label="CPU")
@@ -111,15 +111,38 @@ for i in range(0, len(gemmFilenames)):
     ax1.plot(xVals, gpuA_Gflops, color="#CC6677", marker="+", label="GPU (Offload Always)")
     ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
 
-    maxGflops = max(int(max(cpu_Gflops)), int(max(gpuO_Gflops)), int(max(gpuA_Gflops)), int(max(gpuA_Gflops)))
+    # TODO: Fix x and y tick counts and ranges
+    NUM_TICK = 8
+    numXVals = len(xVals)
+    if numXVals < NUM_TICK:
+        # Print all labels
+        plt.xticks(ticks=range(0, numXVals, 1), labels=xVals)
+    else:
+        # Calculate labels
+        locInterval = int((numXVals) / (NUM_TICK-1))
+        tickLocs = [0]
+        for q in range(1, (NUM_TICK-1)):
+            tickLocs.append(1 + (locInterval * q))
+        tickLocs.append(numXVals - 1)
 
-    # TODO: fix x-tick count when there are too many
-    # plt.xticks(list(range(0, int(xVals[-1]), int(int(xVals[-1])/4))))
-    numXTicks = len(ax1.get_xticks())
-    if numXTicks > 25:
-        ax1.set_xticks(ax1.get_xticks()[::(numXTicks%5)])
-    # plt.yticks(list(range(0, maxGflops, max(1, int(maxGflops/25))))))
-    plt.margins(x=0, y=0.01)
+        labelInterval = int(int(xVals[-1]) / (NUM_TICK-1))
+        tickLabs = [0]
+        for q in range(1, (NUM_TICK-1)):
+            tickLabs.append(labelInterval * q)
+        tickLabs.append(int(xVals[-1]))
+
+        plt.xticks(ticks=tickLocs, labels=tickLabs)
+
+    # Force setting of y-axis labels. If this isn't done then the range is weird...
+    yLoc, yLab = plt.yticks()
+    yLoc = yLoc.tolist()
+    # Remove negative first element of the list
+    if yLoc[0] != 0:
+        yLoc = yLoc[1:]
+    plt.ylim(0, yLoc[-1])
+    plt.yticks(ticks=yLoc)
+
+    plt.margins(x=0.01, y=0.01)
     plt.legend(loc='upper left', fancybox=True, ncol = 1)
     plt.xlabel(x_name, fontsize=16)
     plt.ylabel(y_name, fontsize=16)

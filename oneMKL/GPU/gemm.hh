@@ -140,7 +140,7 @@ class gemm_gpu : public gemm<T> {
                     << "OpenCL status: " << get_error_code(e) << std::endl;
         }
 
-        gemm_done.wait();
+        gemmDone_.wait();
         break;
       }
     }
@@ -190,13 +190,13 @@ class gemm_gpu : public gemm<T> {
   sycl::queue gpuQueue_;
 
   /** Device buffer for matrix A. */
-  sycl::buffer<T, 1> A_buffer_;
+  sycl::buffer<T, 1> A_buffer_ = sycl::buffer<T, 1>(A_, 0);
 
   /** Device buffer for matrix B. */
-  sycl::buffer<T, 1> B_buffer_;
+  sycl::buffer<T, 1> B_buffer_ = sycl::buffer<T, 1>(B_, 0);
 
   /** Device buffer for matrix C. */
-  sycl::buffer<T, 1> C_buffer_;
+  sycl::buffer<T, 1> C_buffer_ = sycl::buffer<T, 1>(C_, 0);
 
   /** SYCL event indicating when the GEMM has completed. Used for Unified Memory
    * operation. */

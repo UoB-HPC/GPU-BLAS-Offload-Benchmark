@@ -96,8 +96,6 @@ class sp_gemm_gpu : public gemm<T> {
 		// Initialise the host matricies
 		// cusparseSpGEMM() works on CSR format only.  This helpfully makes our
 		// sparse matrix format decision for us!
-		// ToDo -- do the RMAT instantiation of A_ and B_.  Need to think about
-		//  how this can be done in the context of CSR.
 
 		// Initialise the matrices
 		// Set initial values to 0

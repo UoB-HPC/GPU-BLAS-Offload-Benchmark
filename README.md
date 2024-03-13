@@ -90,12 +90,6 @@ When using oneMKL as the CPU BLAS Library, setting the following environment var
  - `OMP_PROC_BIND`
  - `OMP_PLACES`
 
-### <u>cuBLAS</u>
-When using cuBLAS, it is important to pin the initialised data on the host to the correct NUMA domain (if applicable) to ensure data-offload is done optimally:
- 1. Use `nvidia-smi topo -m` to find out what the device's NUMA affinaty is.
- 2. Prefix the run command with `numactl -Na -ma` where `a` is the NUMA node the device is connected to.
- 3. If a device cannot be found, ensure `CUDA_VISIBLE_DEVICES` is set correctly.
-
 
 # BLAS Kernels Supported
 The kernels listed below are computed by the benchmark for a wide range of problem sizes and shapes.
@@ -121,38 +115,54 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 
 
 # ToDo:
- - [ ] Create python script to auto generate a png graph for each csv file (x-axis = matrix size, y-axis=GFLOP/s)
- - [ ] Add option to not run any CPU kernel (i.e. GPU only)
+ - [ ] Add command line option to not run any CPU kernel (i.e. GPU only)
+ - [ ] Add minimum start dimension command line option
+ - [ ] Add FP16 support for kernels
+ - [ ] Add support for ArmPL.
+   - [x] GEMM 
+   - [ ] GEMV 
+ - [ ] Add support for cuBLAS.
+   - [x] GEMM 
+   - [ ] GEMV 
+ - [ ] Add support for oneMKL (CPU & GPU)
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for rocBLAS
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for OpenBLAS
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for BLIS
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for AOCL (AMD Optimizing CPU libraries)(?)
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for NVPL CPU Library(?)
+   - [ ] GEMM
+   - [ ] GEMV
+
+ - [x] Create python script to auto generate a png graph for each csv file (x-axis = matrix size, y-axis=GFLOP/s)
  - [x] Outline what kernels are included in the benchmark, along with how they will be run.
-   - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
-   - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
+ - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
+ - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
  - [ ] Add naive implementations of kernels for Default CPU + Default GPU
    - [x] GEMM 
    - [ ] GEMV 
    - [ ] SpMM 
    - [ ] SpMV 
- - [ ] Add support for ArmPL.
-   - [x] GEMM 
-   - [ ] GEMV 
+ - [ ] Add support for ArmPL Sparce
    - [ ] SpMM 
    - [ ] SpMV 
- - [ ] Add support for cuBLAS.
-   - [x] GEMM 
-   - [ ] GEMV 
- - [ ] Add support for oneMKL
-   - [ ] GEMM
-   - [ ] GEMV
+ - [ ] Add support for cuSPARSE
    - [ ] SpMM
    - [ ] SpMV
- - [ ] Add support for cuSPARSE
- - [ ] Add support for BLIS
- - [ ] Add support for rocBLAS
- - [ ] Add support for OpenBLAS
- - [ ] Add support for AOCL (AMD Optimizing CPU libraries)
- - [ ] Add support for NVIDIA NVPL(?) CPU Library
+ - [ ] Add support for oneMKL Sparce
+   - [ ] SpMM
+   - [ ] SpMV
  - [ ] Add support for Apple Accelerate(?)
  - [ ] Add support for Apple Metal Performance Shaders(?)
- - [ ] Add batched versions of appropriate BLAS kernels
 
 # Future Work
  - [ ] Add support for Intel AMX.

@@ -23,6 +23,16 @@ class gemm_gpu : public gemm<T> {
   using gemm<T>::C_;
   using gemm<T>::offload_;
 
+  ~gemm_gpu() {
+    // Destroy the handle
+    cublasDestroy(handle_);
+
+    // Destroy streams after use
+    cudaCheckError(cudaStreamDestroy(s1_));
+    cudaCheckError(cudaStreamDestroy(s2_));
+    cudaCheckError(cudaStreamDestroy(s3_));
+  }
+
   /** Initialise the required data structures.
    * `offload` refers to the data offload type:
    *  - Once:    Move data from host to device before all iterations & move from
@@ -31,22 +41,26 @@ class gemm_gpu : public gemm<T> {
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
   void initialise(gpuOffloadType offload, int m, int n, int k) override {
-    offload_ = offload;
+    if (!alreadyInitialised_) {
+      alreadyInitialised_ = true;
+      // Perform set-up which doesn't need to happen every problem size change.
+      // Create a handle for CUBLAS
+      cublasCreate(&handle_);
 
+      // Get device identifier
+      cudaCheckError(cudaGetDevice(&gpuDevice_));
+
+      // Initialise 3 streams to asynchronously move data between host and
+      // device
+      cudaCheckError(cudaStreamCreate(&s1_));
+      cudaCheckError(cudaStreamCreate(&s2_));
+      cudaCheckError(cudaStreamCreate(&s3_));
+    }
+
+    offload_ = offload;
     m_ = m;
     n_ = n;
     k_ = k;
-
-    // Create a handle for CUBLAS
-    cublasCreate(&handle_);
-
-    // Get device identifier
-    cudaCheckError(cudaGetDevice(&gpuDevice_));
-
-    // Initialise 3 streams to asynchronously move data between host and device
-    cudaCheckError(cudaStreamCreate(&s1_));
-    cudaCheckError(cudaStreamCreate(&s2_));
-    cudaCheckError(cudaStreamCreate(&s3_));
 
     if (offload_ == gpuOffloadType::unified) {
       cudaCheckError(cudaMallocManaged(&A_, sizeof(T) * m_ * k_));
@@ -226,14 +240,6 @@ class gemm_gpu : public gemm<T> {
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
-    // Destroy the handle
-    cublasDestroy(handle_);
-
-    // Destroy streams after use
-    cudaCheckError(cudaStreamDestroy(s1_));
-    cudaCheckError(cudaStreamDestroy(s2_));
-    cudaCheckError(cudaStreamDestroy(s3_));
-
     if (offload_ == gpuOffloadType::unified) {
       cudaFree(A_);
       cudaFree(B_);
@@ -248,6 +254,9 @@ class gemm_gpu : public gemm<T> {
       cudaFree(C_device_);
     }
   }
+
+  /** Whether the initialise function has been called before. */
+  bool alreadyInitialised_ = false;
 
   /** Handle used when calling cuBLAS. */
   cublasHandle_t handle_;

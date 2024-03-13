@@ -1,7 +1,7 @@
 #pragma once
 
 #ifdef GPU_CUBLAS
-#include <cublas_v2.h>
+#include "cusparse.h"
 #include <cuda_runtime.h>
 
 #include "../include/kernels/GPU/gemm.hh"
@@ -14,9 +14,7 @@ template <typename T>
 class sp_gemm_gpu : public gemm<T> {
  public:
   using gemm<T>::gemm;
-  using gemm<T>::m_;
   using gemm<T>::n_;
-  using gemm<T>::k_;
   using gemm<T>::A_;
   using gemm<T>::B_;
   using gemm<T>::C_;
@@ -29,15 +27,28 @@ class sp_gemm_gpu : public gemm<T> {
    *  - Always:  Move data from host to device and device to host each iteration
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
-  void initialise(gpuOffloadType offload, int m, int n, int k) override {
+  void initialise(gpuOffloadType offload, int n, float sparsity) override {
     offload_ = offload;
 
-    m_ = m;
-    n_ = n;
-    k_ = k;
+		// Create a handle for cuSPARSE
+    cusparseCreate(&handle_);
 
-    // Create a handle for CUBLAS
-    cublasCreate(&handle_);
+    n_ = n;
+
+		// Create descriptors for matrices A->C
+		cusparseMatDescr_t descrA, descrB, descrC;
+
+		cusparseCreateMatDescr(&descrA);
+		cusparseCreateMatDescr(&descrB);
+		cusparseCreateMatDescr(&descrC);
+
+		cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
+		cusparseSetMatType(descrB, CUSPARSE_MATRIX_TYPE_GENERAL);
+		cusparseSetMatType(descrC, CUSPARSE_MATRIX_TYPE_GENERAL);
+
+		cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
+		cusparseSetMatIndexBase(descrB, CUSPARSE_INDEX_BASE_ZERO);
+		cusparseSetMatIndexBase(descrC, CUSPARSE_INDEX_BASE_ZERO);
 
     // Get device identifier
     cudaCheckError(cudaGetDevice(&gpuDevice_));
@@ -47,38 +58,96 @@ class sp_gemm_gpu : public gemm<T> {
     cudaCheckError(cudaStreamCreate(&s2_));
     cudaCheckError(cudaStreamCreate(&s3_));
 
+
+		// Work out number of edges needed to achieve target sparsity
+		int edges = 1 + (int) (n_ * n_ * (1 - sparsity));
+
     if (offload_ == gpuOffloadType::unified) {
-      cudaCheckError(cudaMallocManaged(&A_, sizeof(T) * m_ * k_));
-      cudaCheckError(cudaMallocManaged(&B_, sizeof(T) * k_ * n_));
-      cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * m_ * n_));
+      cudaCheckError(cudaMallocManaged(&A_, sizeof(T) * n_ * n_));
+      cudaCheckError(cudaMallocManaged(&B_, sizeof(T) * n_ * n_));
+      cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * n_ * n_));
+			cudaCheckError(cudaMallocManaged(&DANnzPerRow, sizeof(int) * n_));
     } else {
       // Allocate matrices on host
-      A_ = (T*)malloc(sizeof(T) * m_ * k_);
-      B_ = (T*)malloc(sizeof(T) * k_ * n_);
-      C_ = (T*)malloc(sizeof(T) * m_ * n_);
+			A_ = (T*)malloc(sizeof(T) * n_ * n_);
+			B_ = (T*)malloc(sizeof(T) * n_ * n_);
+			C_ = (T*)malloc(sizeof(T) * n_ * n_);
+
       // Allocate matrices on device
-      cudaCheckError(cudaMalloc((void**)&A_device_, sizeof(T) * m_ * k_));
-      cudaCheckError(cudaMalloc((void**)&B_device_, sizeof(T) * k_ * n_));
-      cudaCheckError(cudaMalloc((void**)&C_device_, sizeof(T) * m_ * n_));
+      cudaCheckError(cudaMalloc((void**)&A_device_, sizeof(T) * n_ * n_));
+      cudaCheckError(cudaMalloc((void**)&B_device_, sizeof(T) * n_ * n_));
+      cudaCheckError(cudaMalloc((void**)&C_device_, sizeof(T) * n_ * n_));
+			// Alloce non-zero vector for A
+			cudaCheckError(cudaMalloc((void**)&dANnzPerRow, sizeof(int) * n_));
     }
 
-    // Initialise the host matricies
-    srand(SEED);
-    for (int y = 0; y < m_; y++) {
-      for (int x = 0; x < k_; x++) {
-        A_[y * k_ + x] = (((T)(rand() % 10000) / 100.0) - 30.0);
-      }
-    }
-    for (int y = 0; y < k_; y++) {
-      for (int x = 0; x < n_; x++) {
-        B_[y * n_ + x] = (((T)(rand() % 10000) / 100.0) - 30.0);
-      }
-    }
+		// Initialise the host matricies
+		// cusparseSpGEMM() works on CSR format only.  This helpfully makes our
+		// sparse matrix format decision for us!
+		// ToDo -- do the RMAT instantiation of A_ and B_.  Need to think about
+		//  how this can be done in the context of CSR.
+
+		// Initialise the matrices
+		// Using a=0.45 and b=c=0.22 as default probabilities
+		for (int i = 0; i < edges; i++) {
+			while (!rMat(A_, n, 0, n - 1, 0, n - 1,
+			             0.45, 0.22, 0.22,
+			             &gen, dist, false)) {}
+			while (!rMat(B_, n, 0, n - 1, 0, n - 1,
+			             0.45, 0.22, 0.22,
+			             &gen, dist, false)) {}
+		}
   }
 
  private:
+		bool rMat(T* M, int n, int x1, int x2, int y1, int y2,
+					        float a, float b, float c, std::default_random_engine* gen,
+					        std::uniform_real_distribution<double> dist, bool bin) {
+					// If a 1x1 submatrix, then add an edge and return out
+					if (x1 >= x2 && y1 >= y2) {
+						if (abs(M[(y1 * n) + x1]) > 0.1) {
+							return false;
+						} else {
+							// Add 1.0 if this is a binary graph, and a random real number otherwise
+							M[(int) (y1 * n) + x1] = (bin) ? 1.0 : (((rand() % 10000) /
+											100.0) - 50.0);
+							return true;
+						}
+					} else {
+						// Divide up the matrix
+						int xMidPoint = x1 + floor((x2 - x1) / 2);
+						int yMidPoint = y1 + floor((y2 - y1) / 2);
+
+						// ToDo -- add some noise to these values between iterations
+						float newA = a;
+						float newB = b;
+						float newC = c;
+
+						// Work out which quarter to recurse into
+						// There are some ugly ternary operators here to avoid going out of bounds in the edge case
+						// that we are already at 1 width or 1 height
+						float randomNum = dist(*gen);
+						if (randomNum < a) {
+							return rMat(M, n, x1, xMidPoint, y1, yMidPoint,
+							            newA, newB, newC, gen, dist, bin);
+						} else if (randomNum < (a + b)) {
+							return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2, y1, yMidPoint,
+							            newA, newB, newC, gen, dist, bin);
+						} else if (randomNum < (a + b + c)) {
+							return rMat(M, n, x1, xMidPoint, ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2,
+							            newA, newB, newC, gen, dist, bin);
+						} else {
+							return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2,
+							            ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2, newA, newB, newC,
+							            gen, dist, bin);
+						}
+					}
+					return true;
+				}
+
   /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
+	// ToDo -- update this to apply to CSR format
   void preLoopRequirements() override {
     switch (offload_) {
       case gpuOffloadType::always: {
@@ -119,79 +188,20 @@ class sp_gemm_gpu : public gemm<T> {
                                        cudaMemcpyHostToDevice, s2_));
         cudaCheckError(cudaMemcpyAsync(C_device_, C_, sizeof(T) * m_ * n_,
                                        cudaMemcpyHostToDevice, s3_));
-        // Call cuBLAS GEMM kernel
-        if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat =
-              cublasSgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
-                          A_device_, std::max(1, m_), B_device_,
-                          std::max(1, k_), &beta, C_device_, std::max(1, m_));
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
-        } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat =
-              cublasDgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
-                          A_device_, std::max(1, m_), B_device_,
-                          std::max(1, k_), &beta, C_device_, std::max(1, m_));
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
-        }
-        // Offload data from device to host
-        cudaCheckError(cudaMemcpyAsync(A_, A_device_, sizeof(T) * m_ * k_,
-                                       cudaMemcpyDeviceToHost, s1_));
-        cudaCheckError(cudaMemcpyAsync(B_, B_device_, sizeof(T) * k_ * n_,
-                                       cudaMemcpyDeviceToHost, s2_));
-        cudaCheckError(cudaMemcpyAsync(C_, C_device_, sizeof(T) * m_ * n_,
-                                       cudaMemcpyDeviceToHost, s3_));
-        // Ensure device has finished all work.
-        cudaCheckError(cudaDeviceSynchronize());
+        // Call cuSPARSE SpGEMM kernel
+				// ToDo -- implement
         break;
       }
       case gpuOffloadType::once: {
-        // Call cuBLAS GEMM kernel
-        if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat =
-              cublasSgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
-                          A_device_, std::max(1, m_), B_device_,
-                          std::max(1, k_), &beta, C_device_, std::max(1, m_));
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
-        } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat =
-              cublasDgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
-                          A_device_, std::max(1, m_), B_device_,
-                          std::max(1, k_), &beta, C_device_, std::max(1, m_));
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
-        }
+        // Call cuSPRASE SpGEMM kernel
+				// ToDo -- implement
+
         break;
       }
       case gpuOffloadType::unified: {
-        // Call cuBLAS GEMM kernel
-        if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat = cublasSgemm(
-              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_,
-              std::max(1, m_), B_, std::max(1, k_), &beta, C_, std::max(1, m_));
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
-        } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat = cublasDgemm(
-              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_,
-              std::max(1, m_), B_, std::max(1, k_), &beta, C_, std::max(1, m_));
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
-        }
+        // Call cuSPARSE SpGEMM kernel
+				// ToDo -- implement
+
         break;
       }
     }
@@ -199,6 +209,7 @@ class sp_gemm_gpu : public gemm<T> {
 
   /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
+	// ToDo -- check that this all still works
   void postLoopRequirements() override {
     switch (offload_) {
       case gpuOffloadType::always: {
@@ -236,7 +247,7 @@ class sp_gemm_gpu : public gemm<T> {
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
     // Destroy the handle
-    cublasDestroy(handle_);
+    cusparseDestroy(handle_);
 
     // Destroy streams after use
     cudaCheckError(cudaStreamDestroy(s1_));
@@ -284,6 +295,9 @@ class sp_gemm_gpu : public gemm<T> {
 
   /** Input matrix C, held on the device. */
   T* C_device_;
+
+	/** Vector for number non-zeros, held on the device */
+	int* dANnzPerRow;
 
   /** The constant value Alpha. */
   const T alpha = ALPHA;

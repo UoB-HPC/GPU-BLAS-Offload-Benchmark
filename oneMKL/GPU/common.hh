@@ -20,19 +20,4 @@ static const std::function<void(sycl::exception_list)> exception_handler =
       }
     };
 
-// Functions to extract an error code from a sycl::exception.
-// Taken from the oneMKL common_for_examples.hpp file that is included in the
-// oneAPI Base Toolkit
-template <typename T, typename std::enable_if<
-                          has_member_code_meta<T>::value>::type* = nullptr>
-auto get_error_code(T x) {
-  return x.code().value();
-};
-
-template <typename T, typename std::enable_if<
-                          !has_member_code_meta<T>::value>::type* = nullptr>
-auto get_error_code(T x) {
-  return x.get_cl_code();
-};
-
 #endif

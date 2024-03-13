@@ -104,7 +104,7 @@ class gemm_gpu : public gemm<T> {
           std::cout << "ERROR - Caught synchronous SYCL exception during GEMM "
                        "(Always):\n"
                     << e.what() << std::endl
-                    << "OpenCL status: " << get_error_code(e) << std::endl;
+                    << "OpenCL status: " << e.code().value() << std::endl;
         }
         // TODO - Offload data from device to host
         break;
@@ -121,7 +121,7 @@ class gemm_gpu : public gemm<T> {
           std::cout << "ERROR - Caught synchronous SYCL exception during GEMM "
                        "(Once):\n"
                     << e.what() << std::endl
-                    << "OpenCL status: " << get_error_code(e) << std::endl;
+                    << "OpenCL status: " << e.code().value() << std::endl;
         }
         break;
       }
@@ -137,7 +137,7 @@ class gemm_gpu : public gemm<T> {
           std::cout << "ERROR - Caught synchronous SYCL exception during GEMM "
                        "(Unified):\n"
                     << e.what() << std::endl
-                    << "OpenCL status: " << get_error_code(e) << std::endl;
+                    << "OpenCL status: " << e.code().value() << std::endl;
         }
 
         gemmDone_.wait();

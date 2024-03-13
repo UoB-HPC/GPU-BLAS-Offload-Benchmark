@@ -66,7 +66,19 @@ class sp_gemm_gpu : public gemm<T> {
       cudaCheckError(cudaMallocManaged(&A_, sizeof(T) * n_ * n_));
       cudaCheckError(cudaMallocManaged(&B_, sizeof(T) * n_ * n_));
       cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * n_ * n_));
-			cudaCheckError(cudaMallocManaged(&DANnzPerRow, sizeof(int) * n_));
+
+			cudaCheckError(cudaMallocManaged(&A_val_, sizeof(T) * edges));
+			cudaCheckError(cudaMallocManaged(&A_col_, sizeof(int) * edges));
+			cudaCheckError(cudaMallocManaged(&A_row_, sizeof(int) * edges));
+
+			cudaCheckError(cudaMallocManaged(&B_val_, sizeof(T) * edges));
+			cudaCheckError(cudaMallocManaged(&B_col_, sizeof(int) * edges));
+			cudaCheckError(cudaMallocManaged(&B_row_, sizeof(int) * edges));
+
+			cudaCheckError(cudaMallocManaged(&C_val_, sizeof(T) * edges));
+			cudaCheckError(cudaMallocManaged(&C_col_, sizeof(int) * edges));
+			cudaCheckError(cudaMallocManaged(&C_row_, sizeof(int) * edges));
+//			cudaCheckError(cudaMallocManaged(&DANnzPerRow, sizeof(int) * n_));
     } else {
       // Allocate matrices on host
 			A_ = (T*)malloc(sizeof(T) * n_ * n_);
@@ -78,7 +90,7 @@ class sp_gemm_gpu : public gemm<T> {
       cudaCheckError(cudaMalloc((void**)&B_device_, sizeof(T) * n_ * n_));
       cudaCheckError(cudaMalloc((void**)&C_device_, sizeof(T) * n_ * n_));
 			// Alloce non-zero vector for A
-			cudaCheckError(cudaMalloc((void**)&dANnzPerRow, sizeof(int) * n_));
+//			cudaCheckError(cudaMalloc((void**)&dANnzPerRow, sizeof(int) * n_));
     }
 
 		// Initialise the host matricies
@@ -88,6 +100,11 @@ class sp_gemm_gpu : public gemm<T> {
 		//  how this can be done in the context of CSR.
 
 		// Initialise the matrices
+		// Set initial values to 0
+		for (int i = 0; i < (n_ * n_); i++) {
+			A_[i] = 0.0;
+			B_[i] = 0.0;
+		}
 		// Using a=0.45 and b=c=0.22 as default probabilities
 		for (int i = 0; i < edges; i++) {
 			while (!rMat(A_, n, 0, n - 1, 0, n - 1,
@@ -97,57 +114,17 @@ class sp_gemm_gpu : public gemm<T> {
 			             0.45, 0.22, 0.22,
 			             &gen, dist, false)) {}
 		}
+
+//		for (int i = 0; i < (n_ * n_); i++) {
+//			C_[i] = 0.0;
+//		}
   }
 
  private:
-		bool rMat(T* M, int n, int x1, int x2, int y1, int y2,
-					        float a, float b, float c, std::default_random_engine* gen,
-					        std::uniform_real_distribution<double> dist, bool bin) {
-					// If a 1x1 submatrix, then add an edge and return out
-					if (x1 >= x2 && y1 >= y2) {
-						if (abs(M[(y1 * n) + x1]) > 0.1) {
-							return false;
-						} else {
-							// Add 1.0 if this is a binary graph, and a random real number otherwise
-							M[(int) (y1 * n) + x1] = (bin) ? 1.0 : (((rand() % 10000) /
-											100.0) - 50.0);
-							return true;
-						}
-					} else {
-						// Divide up the matrix
-						int xMidPoint = x1 + floor((x2 - x1) / 2);
-						int yMidPoint = y1 + floor((y2 - y1) / 2);
 
-						// ToDo -- add some noise to these values between iterations
-						float newA = a;
-						float newB = b;
-						float newC = c;
-
-						// Work out which quarter to recurse into
-						// There are some ugly ternary operators here to avoid going out of bounds in the edge case
-						// that we are already at 1 width or 1 height
-						float randomNum = dist(*gen);
-						if (randomNum < a) {
-							return rMat(M, n, x1, xMidPoint, y1, yMidPoint,
-							            newA, newB, newC, gen, dist, bin);
-						} else if (randomNum < (a + b)) {
-							return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2, y1, yMidPoint,
-							            newA, newB, newC, gen, dist, bin);
-						} else if (randomNum < (a + b + c)) {
-							return rMat(M, n, x1, xMidPoint, ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2,
-							            newA, newB, newC, gen, dist, bin);
-						} else {
-							return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2,
-							            ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2, newA, newB, newC,
-							            gen, dist, bin);
-						}
-					}
-					return true;
-				}
 
   /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
-	// ToDo -- update this to apply to CSR format
   void preLoopRequirements() override {
     switch (offload_) {
       case gpuOffloadType::always: {
@@ -188,8 +165,8 @@ class sp_gemm_gpu : public gemm<T> {
                                        cudaMemcpyHostToDevice, s2_));
         cudaCheckError(cudaMemcpyAsync(C_device_, C_, sizeof(T) * m_ * n_,
                                        cudaMemcpyHostToDevice, s3_));
-        // Call cuSPARSE SpGEMM kernel
-				// ToDo -- implement
+
+
         break;
       }
       case gpuOffloadType::once: {
@@ -269,6 +246,51 @@ class sp_gemm_gpu : public gemm<T> {
     }
   }
 
+	bool rMat(T* M, int n, int x1, int x2, int y1, int y2,
+					        float a, float b, float c, std::default_random_engine* gen,
+					        std::uniform_real_distribution<double> dist, bool bin) {
+			// If a 1x1 submatrix, then add an edge and return out
+			if (x1 >= x2 && y1 >= y2) {
+				if (abs(M[(y1 * n) + x1]) > 0.1) {
+					return false;
+				} else {
+					// Add 1.0 if this is a binary graph, and a random real number otherwise
+					M[(int) (y1 * n) + x1] = (bin) ? 1.0 : (((rand() % 10000) /
+									100.0) - 50.0);
+					return true;
+				}
+			} else {
+				// Divide up the matrix
+				int xMidPoint = x1 + floor((x2 - x1) / 2);
+				int yMidPoint = y1 + floor((y2 - y1) / 2);
+
+				// ToDo -- add some noise to these values between iterations
+				float newA = a;
+				float newB = b;
+				float newC = c;
+
+				// Work out which quarter to recurse into
+				// There are some ugly ternary operators here to avoid going out of bounds in the edge case
+				// that we are already at 1 width or 1 height
+				float randomNum = dist(*gen);
+				if (randomNum < a) {
+					return rMat(M, n, x1, xMidPoint, y1, yMidPoint,
+					            newA, newB, newC, gen, dist, bin);
+				} else if (randomNum < (a + b)) {
+					return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2, y1, yMidPoint,
+					            newA, newB, newC, gen, dist, bin);
+				} else if (randomNum < (a + b + c)) {
+					return rMat(M, n, x1, xMidPoint, ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2,
+					            newA, newB, newC, gen, dist, bin);
+				} else {
+					return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2,
+					            ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2, newA, newB, newC,
+					            gen, dist, bin);
+				}
+			}
+			return true;
+		}
+
   /** Handle used when calling cuBLAS. */
   cublasHandle_t handle_;
 
@@ -297,7 +319,11 @@ class sp_gemm_gpu : public gemm<T> {
   T* C_device_;
 
 	/** Vector for number non-zeros, held on the device */
-	int* dANnzPerRow;
+//	int* dANnzPerRow;
+
+	/** CSR format vectors for matrices A, B and C on the device */
+	T* A_val_, B_val_, C_val_;
+	int* A_col_, A_row_, B_col_, B_row_, C_col_, C_row_;
 
   /** The constant value Alpha. */
   const T alpha = ALPHA;

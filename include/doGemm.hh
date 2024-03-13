@@ -18,6 +18,8 @@
 #include "../DefaultGPU/gemm.hh"
 #elif defined GPU_CUBLAS
 #include "../cuBLAS/gemm.hh"
+#elif defined GPU_ONEMKL
+#include "../oneMKL/GPU/gemm.hh"
 #endif
 
 /** Struct to hold key values at the point at which offloading to GPU becomes

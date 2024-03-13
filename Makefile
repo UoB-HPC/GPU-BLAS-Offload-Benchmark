@@ -134,8 +134,18 @@ endif
 HEADER_FILES += $(wildcard cuBLAS/*.hh)
 
 else ifeq ($(GPU_LIB), ONEMKL)
-# Do OneMKL stuff
-$(error The GPU_LIB $(GPU_LIB) is currently not supported.)
+ifeq ($(COMPILER), INTEL)
+# Ensure MKLROOT is defined
+ifndef MKLROOT
+$(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Library)
+endif
+# Add compiler and link options
+override CXXFLAGS += -fsycl -L$(MKLROOT)/lib -lmkl_sycl_blas -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -lsycl -lpthread -lm -ldl  -fsycl -DMKL_ILP64  -I"$(MKLROOT)/include"
+# `lmkl_tbb_thread` can replace `lmkl_sequential`
+else
+# Only Intel DPC++ compiler is supported for OneMKL GPU implementation.
+$(error Selected compiler $(COMPILER) is not currently compatible with oneMKL GPU Library)
+endif
 
 else ifeq ($(GPU_LIB), ROCBLAS)
 # Do rocBLAS stuff

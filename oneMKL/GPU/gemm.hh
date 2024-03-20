@@ -59,9 +59,9 @@ class gemm_gpu : public gemm<T> {
       B_ = (T*)malloc(sizeof(T) * k_ * n_);
       C_ = (T*)malloc(sizeof(T) * m_ * n_);
       // Allocate matrices on device
-      A_buffer_ = sycl::buffer<T, 1>(A_, m_ * k_);
-      B_buffer_ = sycl::buffer<T, 1>(B_, k_ * n_);
-      C_buffer_ = sycl::buffer<T, 1>(C_, m_ * n_);
+      A_buffer_ = sycl::buffer<T, 1>(A_, A_ + (m_ * k_));
+      B_buffer_ = sycl::buffer<T, 1>(B_, B_ + (k_ * n_));
+      C_buffer_ = sycl::buffer<T, 1>(C_, C_ + (m_ * n_));
     }
 
     // Initialise the host input matricies (A_ and B_)
@@ -78,11 +78,26 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::once: {
-        // TODO - Offload data from host to the device.
+        // Offload data from host to the device.
+        gpuQueue_.submit([&](sycl::handler& cgh) {
+          cgh.copy(
+              A_, A_buffer_.get_access<sycl::access::mode::discard_write>(cgh));
+        });
+        gpuQueue_.submit([&](sycl::handler& cgh) {
+          cgh.copy(
+              B_, B_buffer_.get_access<sycl::access::mode::discard_write>(cgh));
+        });
+        gpuQueue_.submit([&](sycl::handler& cgh) {
+          cgh.copy(
+              C_, C_buffer_.get_access<sycl::access::mode::discard_write>(cgh));
+        });
         break;
       }
       case gpuOffloadType::unified: {
-        // TODO - Prefetch memory to device
+        // Prefetch memory to device
+        gpuQueue_.prefetch(A_, sizeof(T) * m_ * k_);
+        gpuQueue_.prefetch(B_, sizeof(T) * k_ * n_);
+        gpuQueue_.prefetch(C_, sizeof(T) * m_ * n_);
         break;
       }
     }

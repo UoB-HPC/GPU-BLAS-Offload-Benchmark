@@ -47,21 +47,18 @@ class gemm_gpu : public gemm<T> {
     k_ = k;
 
     if (offload_ == gpuOffloadType::unified) {
-      A_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * k_, myGpu_,
-                                   gpuQueue_.get_context());
-      B_ = (T*)sycl::malloc_shared(sizeof(T) * k_ * n_, myGpu_,
-                                   gpuQueue_.get_context());
-      C_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * n_, myGpu_,
-                                   gpuQueue_.get_context());
+      A_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * k_, gpuQueue_);
+      B_ = (T*)sycl::malloc_shared(sizeof(T) * k_ * n_, gpuQueue_);
+      C_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * n_, gpuQueue_);
     } else {
       // Allocate matrices on host
       A_ = (T*)malloc(sizeof(T) * m_ * k_);
       B_ = (T*)malloc(sizeof(T) * k_ * n_);
       C_ = (T*)malloc(sizeof(T) * m_ * n_);
       // Allocate matrices on device
-      A_buffer_ = sycl::buffer<T, 1>(A_, A_ + (m_ * k_));
-      B_buffer_ = sycl::buffer<T, 1>(B_, B_ + (k_ * n_));
-      C_buffer_ = sycl::buffer<T, 1>(C_, C_ + (m_ * n_));
+      A_buffer_ = sycl::buffer<T, 1>(m_ * k_);
+      B_buffer_ = sycl::buffer<T, 1>(k_ * n_);
+      C_buffer_ = sycl::buffer<T, 1>(m_ * n_);
     }
 
     // Initialise the host input matricies (A_ and B_)
@@ -83,10 +80,11 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::unified: {
-        // Prefetch memory to device
-        gpuQueue_.prefetch(A_, sizeof(T) * m_ * k_);
-        gpuQueue_.prefetch(B_, sizeof(T) * k_ * n_);
-        gpuQueue_.prefetch(C_, sizeof(T) * m_ * n_);
+        // Prefetch memory to device --- prefetch broken / not working
+        // gpuQueue_.prefetch(A_, sizeof(T) * m_ * k_);
+        // gpuQueue_.prefetch(B_, sizeof(T) * k_ * n_);
+        // gpuQueue_.prefetch(C_, sizeof(T) * m_ * n_);
+        gpuQueue_.wait_and_throw();
         break;
       }
     }
@@ -165,6 +163,7 @@ class gemm_gpu : public gemm<T> {
       }
       case gpuOffloadType::unified: {
         // TODO - Ensure all data resides on host once work has completed
+        gpuQueue_.wait_and_throw();
         break;
       }
     }
@@ -174,9 +173,9 @@ class gemm_gpu : public gemm<T> {
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
     if (offload_ == gpuOffloadType::unified) {
-      sycl::free(A_, gpuQueue_.get_context());
-      sycl::free(B_, gpuQueue_.get_context());
-      sycl::free(C_, gpuQueue_.get_context());
+      sycl::free(A_, gpuQueue_);
+      sycl::free(B_, gpuQueue_);
+      sycl::free(C_, gpuQueue_);
     } else {
       // Free the memory held on host and device
       free(A_);
@@ -203,6 +202,7 @@ class gemm_gpu : public gemm<T> {
                C_buffer_.template get_access<sycl::access::mode::discard_write>(
                    cgh));
     });
+    gpuQueue_.wait_and_throw();
   }
 
   /** For non USM implementations, copy A_, B_ and C_ to the host CPU from the
@@ -220,6 +220,7 @@ class gemm_gpu : public gemm<T> {
       cgh.copy(C_buffer_.template get_access<sycl::access::mode::read>(cgh),
                C_);
     });
+    gpuQueue_.wait_and_throw();
   }
 
   /** Whether the initialise function has been called before. */
@@ -232,13 +233,13 @@ class gemm_gpu : public gemm<T> {
   sycl::queue gpuQueue_;
 
   /** Device buffer for matrix A. */
-  sycl::buffer<T, 1> A_buffer_ = sycl::buffer<T, 1>(A_, 0);
+  sycl::buffer<T, 1> A_buffer_ = {sycl::range<1>(0)};
 
   /** Device buffer for matrix B. */
-  sycl::buffer<T, 1> B_buffer_ = sycl::buffer<T, 1>(B_, 0);
+  sycl::buffer<T, 1> B_buffer_ = {sycl::range<1>(0)};
 
   /** Device buffer for matrix C. */
-  sycl::buffer<T, 1> C_buffer_ = sycl::buffer<T, 1>(C_, 0);
+  sycl::buffer<T, 1> C_buffer_ = {sycl::range<1>(0)};
 
   /** Weather or not matrix A should be transposed. */
   oneapi::mkl::transpose transA_ = oneapi::mkl::transpose::nontrans;

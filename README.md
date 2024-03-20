@@ -90,6 +90,9 @@ When using oneMKL as the CPU BLAS Library, setting the following environment var
  - `OMP_PROC_BIND`
  - `OMP_PLACES`
 
+<!-- When using oneMKL as the GPU BLAS Librar, you may need to set the following environment variables:
+ - `export ONEAPI_DEVICE_SELECTOR="opencl:gpu"` -- to correct device indexes -->
+
 
 # BLAS Kernels Supported
 The kernels listed below are computed by the benchmark for a wide range of problem sizes and shapes.

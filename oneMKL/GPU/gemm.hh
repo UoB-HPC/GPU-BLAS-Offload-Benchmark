@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef GPU_ONEMKL
+// #ifdef GPU_ONEMKL
 
 #include "../../include/kernels/GPU/gemm.hh"
 #include "../../include/utilities.hh"
@@ -47,12 +47,12 @@ class gemm_gpu : public gemm<T> {
     k_ = k;
 
     if (offload_ == gpuOffloadType::unified) {
-      A_ = (T*)malloc_shared(sizeof(T) * m_ * k_, myGpu_,
-                             gpuQueue_.get_context());
-      B_ = (T*)malloc_shared(sizeof(T) * k_ * n_, myGpu_,
-                             gpuQueue_.get_context());
-      C_ = (T*)malloc_shared(sizeof(T) * m_ * n_, myGpu_,
-                             gpuQueue_.get_context());
+      A_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * k_, myGpu_,
+                                   gpuQueue_.get_context());
+      B_ = (T*)sycl::malloc_shared(sizeof(T) * k_ * n_, myGpu_,
+                                   gpuQueue_.get_context());
+      C_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * n_, myGpu_,
+                                   gpuQueue_.get_context());
     } else {
       // Allocate matrices on host
       A_ = (T*)malloc(sizeof(T) * m_ * k_);
@@ -95,11 +95,11 @@ class gemm_gpu : public gemm<T> {
         // TODO - Offload data from host to the device.
         // Call cuBLAS GEMM kernel
         try {
-          oneapi::mkl::blas::gemm(gpuQueue_, transA_, transB_, (int64_t)m_,
-                                  (int64_t)n_, (int64_t)k_, alpha, A_buffer_,
-                                  (int64_t)std::max(1, m_), B_buffer_,
-                                  (int64_t)std::max(1, k_), beta, C_buffer_,
-                                  (int64_t)std::max(1, m_));
+          oneapi::mkl::blas::column_major::gemm(
+              gpuQueue_, transA_, transB_, (int64_t)m_, (int64_t)n_,
+              (int64_t)k_, alpha, A_buffer_, (int64_t)std::max(1, m_),
+              B_buffer_, (int64_t)std::max(1, k_), beta, C_buffer_,
+              (int64_t)std::max(1, m_));
         } catch (sycl::exception const& e) {
           std::cout << "ERROR - Caught synchronous SYCL exception during GEMM "
                        "(Always):\n"
@@ -112,11 +112,11 @@ class gemm_gpu : public gemm<T> {
       case gpuOffloadType::once: {
         // Call cuBLAS GEMM kernel
         try {
-          oneapi::mkl::blas::gemm(gpuQueue_, transA_, transB_, (int64_t)m_,
-                                  (int64_t)n_, (int64_t)k_, alpha, A_buffer_,
-                                  (int64_t)std::max(1, m_), B_buffer_,
-                                  (int64_t)std::max(1, k_), beta, C_buffer_,
-                                  (int64_t)std::max(1, m_));
+          oneapi::mkl::blas::column_major::gemm(
+              gpuQueue_, transA_, transB_, (int64_t)m_, (int64_t)n_,
+              (int64_t)k_, alpha, A_buffer_, (int64_t)std::max(1, m_),
+              B_buffer_, (int64_t)std::max(1, k_), beta, C_buffer_,
+              (int64_t)std::max(1, m_));
         } catch (sycl::exception const& e) {
           std::cout << "ERROR - Caught synchronous SYCL exception during GEMM "
                        "(Once):\n"
@@ -128,19 +128,17 @@ class gemm_gpu : public gemm<T> {
       case gpuOffloadType::unified: {
         // Call cuBLAS GEMM kernel
         try {
-          gemmDone_ = oneapi::mkl::blas::gemm(
+          oneapi::mkl::blas::column_major::gemm(
               gpuQueue_, transA_, transB_, (int64_t)m_, (int64_t)n_,
               (int64_t)k_, alpha, A_, (int64_t)std::max(1, m_), B_,
-              (int64_t)std::max(1, k_), beta, C_, (int64_t)std::max(1, m_),
-              gemmDependencies_);
+              (int64_t)std::max(1, k_), beta, C_, (int64_t)std::max(1, m_), {})
+              .wait_and_throw();
         } catch (sycl::exception const& e) {
           std::cout << "ERROR - Caught synchronous SYCL exception during GEMM "
                        "(Unified):\n"
                     << e.what() << std::endl
                     << "OpenCL status: " << e.code().value() << std::endl;
         }
-
-        gemmDone_.wait();
         break;
       }
     }
@@ -169,9 +167,9 @@ class gemm_gpu : public gemm<T> {
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
     if (offload_ == gpuOffloadType::unified) {
-      free(A_, gpuQueue_.get_context());
-      free(B_, gpuQueue_.get_context());
-      free(C_, gpuQueue_.get_context());
+      sycl::free(A_, gpuQueue_.get_context());
+      sycl::free(B_, gpuQueue_.get_context());
+      sycl::free(C_, gpuQueue_.get_context());
     } else {
       // Free the memory held on host and device
       free(A_);
@@ -198,14 +196,6 @@ class gemm_gpu : public gemm<T> {
   /** Device buffer for matrix C. */
   sycl::buffer<T, 1> C_buffer_ = sycl::buffer<T, 1>(C_, 0);
 
-  /** SYCL event indicating when the GEMM has completed. Used for Unified Memory
-   * operation. */
-  sycl::event gemmDone_;
-
-  /** A vector of SYCL events passed into the unified memory GEMM oneMKL call.
-   */
-  std::vector<sycl::event> gemmDependencies_;
-
   /** Weather or not matrix A should be transposed. */
   oneapi::mkl::transpose transA_ = oneapi::mkl::transpose::nontrans;
 
@@ -220,4 +210,4 @@ class gemm_gpu : public gemm<T> {
 };
 }  // namespace gpu
 
-#endif
+// #endif

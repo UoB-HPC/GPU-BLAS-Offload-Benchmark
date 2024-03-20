@@ -81,15 +81,21 @@ class gemm_gpu : public gemm<T> {
         // Offload data from host to the device.
         gpuQueue_.submit([&](sycl::handler& cgh) {
           cgh.copy(
-              A_, A_buffer_.get_access<sycl::access::mode::discard_write>(cgh));
+              A_,
+              A_buffer_.template get_access<sycl::access::mode::discard_write>(
+                  cgh));
         });
         gpuQueue_.submit([&](sycl::handler& cgh) {
           cgh.copy(
-              B_, B_buffer_.get_access<sycl::access::mode::discard_write>(cgh));
+              B_,
+              B_buffer_.template get_access<sycl::access::mode::discard_write>(
+                  cgh));
         });
         gpuQueue_.submit([&](sycl::handler& cgh) {
           cgh.copy(
-              C_, C_buffer_.get_access<sycl::access::mode::discard_write>(cgh));
+              C_,
+              C_buffer_.template get_access<sycl::access::mode::discard_write>(
+                  cgh));
         });
         break;
       }

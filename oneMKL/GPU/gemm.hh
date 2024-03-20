@@ -79,24 +79,7 @@ class gemm_gpu : public gemm<T> {
       }
       case gpuOffloadType::once: {
         // Offload data from host to the device.
-        gpuQueue_.submit([&](sycl::handler& cgh) {
-          cgh.copy(
-              A_,
-              A_buffer_.template get_access<sycl::access::mode::discard_write>(
-                  cgh));
-        });
-        gpuQueue_.submit([&](sycl::handler& cgh) {
-          cgh.copy(
-              B_,
-              B_buffer_.template get_access<sycl::access::mode::discard_write>(
-                  cgh));
-        });
-        gpuQueue_.submit([&](sycl::handler& cgh) {
-          cgh.copy(
-              C_,
-              C_buffer_.template get_access<sycl::access::mode::discard_write>(
-                  cgh));
-        });
+        copyToDevice();
         break;
       }
       case gpuOffloadType::unified: {
@@ -113,8 +96,9 @@ class gemm_gpu : public gemm<T> {
   void callGemm() override {
     switch (offload_) {
       case gpuOffloadType::always: {
-        // TODO - Offload data from host to the device.
-        // Call cuBLAS GEMM kernel
+        // Offload data from host to the device.
+        copyToDevice();
+        // Call oneMKL GEMM kernel
         try {
           oneapi::mkl::blas::column_major::gemm(
               gpuQueue_, transA_, transB_, (int64_t)m_, (int64_t)n_,
@@ -127,11 +111,12 @@ class gemm_gpu : public gemm<T> {
                     << e.what() << std::endl
                     << "OpenCL status: " << e.code().value() << std::endl;
         }
-        // TODO - Offload data from device to host
+        // Offload data from device to host
+        copyToHost();
         break;
       }
       case gpuOffloadType::once: {
-        // Call cuBLAS GEMM kernel
+        // Call oneMKL GEMM kernel
         try {
           oneapi::mkl::blas::column_major::gemm(
               gpuQueue_, transA_, transB_, (int64_t)m_, (int64_t)n_,
@@ -147,7 +132,7 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::unified: {
-        // Call cuBLAS GEMM kernel
+        // Call oneMKL GEMM kernel
         try {
           oneapi::mkl::blas::column_major::gemm(
               gpuQueue_, transA_, transB_, (int64_t)m_, (int64_t)n_,
@@ -174,7 +159,8 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::once: {
-        // TODO - Offload data from device to host
+        // Offload data from device to host
+        copyToHost();
         break;
       }
       case gpuOffloadType::unified: {
@@ -197,6 +183,43 @@ class gemm_gpu : public gemm<T> {
       free(B_);
       free(C_);
     }
+  }
+
+  /** For non USM implementations, copy A_, B_ and C_ to the device from the
+   * host CPU. */
+  void copyToDevice() {
+    gpuQueue_.submit([&](sycl::handler& cgh) {
+      cgh.copy(A_,
+               A_buffer_.template get_access<sycl::access::mode::discard_write>(
+                   cgh));
+    });
+    gpuQueue_.submit([&](sycl::handler& cgh) {
+      cgh.copy(B_,
+               B_buffer_.template get_access<sycl::access::mode::discard_write>(
+                   cgh));
+    });
+    gpuQueue_.submit([&](sycl::handler& cgh) {
+      cgh.copy(C_,
+               C_buffer_.template get_access<sycl::access::mode::discard_write>(
+                   cgh));
+    });
+  }
+
+  /** For non USM implementations, copy A_, B_ and C_ to the host CPU from the
+   * device. */
+  void copyToHost() {
+    gpuQueue_.submit([&](sycl::handler& cgh) {
+      cgh.copy(A_buffer_.template get_access<sycl::access::mode::read>(cgh),
+               A_);
+    });
+    gpuQueue_.submit([&](sycl::handler& cgh) {
+      cgh.copy(B_buffer_.template get_access<sycl::access::mode::read>(cgh),
+               B_);
+    });
+    gpuQueue_.submit([&](sycl::handler& cgh) {
+      cgh.copy(C_buffer_.template get_access<sycl::access::mode::read>(cgh),
+               C_);
+    });
   }
 
   /** Whether the initialise function has been called before. */

@@ -70,12 +70,12 @@ class gemm {
     srand(SEED);
     for (int y = 0; y < m_; y++) {
       for (int x = 0; x < k_; x++) {
-        A_[y * k_ + x] = (T)(rand() % 100);
+        A_[y * k_ + x] = (T)((rand() % 100) / 7);
       }
     }
     for (int y = 0; y < k_; y++) {
       for (int x = 0; x < n_; x++) {
-        B_[y * n_ + x] = (T)(rand() % 100);
+        B_[y * n_ + x] = (T)((rand() % 100) / 3);
       }
     }
   }

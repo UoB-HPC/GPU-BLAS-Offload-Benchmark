@@ -78,7 +78,9 @@ class doGemm {
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
     csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
                           "_rectangular_16MxK.csv");
-    int K = startDimention_, M = 16 * K, N = 16 * K;
+    int K = startDimention_;
+    int M = 16 * K;
+    int N = 16 * K;
     while (M <= upperLimit_) {
       callKernels(csvFile, M, N, K);
       M += 16;
@@ -119,8 +121,10 @@ class doGemm {
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
     csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
                           "_rectangular_Mx16K.csv");
-    M = startDimention_, N = startDimention_, K = 16 * M;
-    while (M <= upperLimit_) {
+    M = startDimention_;
+    N = startDimention_;
+    K = 16 * M;
+    while (K <= upperLimit_) {
       callKernels(csvFile, M, N, K);
       M++;
       N++;

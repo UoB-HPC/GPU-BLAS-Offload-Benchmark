@@ -40,6 +40,8 @@ for i in range(0, len(gemmFilenames)):
     openFile = open(fName, 'r')
     lines = openFile.readlines()
     lines.pop(0)
+    if len(lines) == 0 :
+        continue
 
     # Get number of iterations performed and kernel name
     line1 = lines[0].split(',')
@@ -111,7 +113,7 @@ for i in range(0, len(gemmFilenames)):
     ax1.plot(xVals, gpuA_Gflops, color="#CC6677", marker="+", label="GPU (Offload Always)")
     ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
 
-    # TODO: Fix x and y tick counts and ranges
+    # Set X ticks
     NUM_TICK = 8
     numXVals = len(xVals)
     if numXVals < NUM_TICK:
@@ -125,10 +127,10 @@ for i in range(0, len(gemmFilenames)):
             tickLocs.append(1 + (locInterval * q))
         tickLocs.append(numXVals - 1)
 
-        labelInterval = int(int(xVals[-1]) / (NUM_TICK-1))
-        tickLabs = [0]
+        labelInterval = int((int(xVals[-1]) - int(xVals[0])) / (NUM_TICK-1))
+        tickLabs = [xVals[0]]
         for q in range(1, (NUM_TICK-1)):
-            tickLabs.append(labelInterval * q)
+            tickLabs.append(int(xVals[0]) + (labelInterval * q))
         tickLabs.append(int(xVals[-1]))
 
         plt.xticks(ticks=tickLocs, labels=tickLabs)

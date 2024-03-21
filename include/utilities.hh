@@ -12,6 +12,11 @@
 #else
 #define CPU_DEFAULT
 #define CPU_LIB_NAME "None"
+#define CPU_ENABLED false
+#endif
+
+#ifndef CPU_ENABLED
+#define CPU_ENABLED true
 #endif
 
 // Define GPU related macros
@@ -45,7 +50,7 @@
 
 // Define seed for random number generation - use seeded srand() to ensure
 // inputs across libraries are consistent & comparable
-const unsigned int SEED = 19123105;
+const unsigned int SEED = 19123005;
 
 // Define enum class for GPU offload type
 enum class gpuOffloadType : uint8_t {

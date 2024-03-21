@@ -54,8 +54,7 @@ HEADER_FILES = $(wildcard include/*.hh)
 # -------
 
 ifndef CPU_LIB
-$(warning CPU_LIB not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
-HEADER_FILES += $(wildcard DefaultCPU/*.hh)
+$(warning CPU_LIB not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). No CPU kernels will be run.)
 
 else ifeq ($(CPU_LIB), ARMPL)
 # Add ARM compiler options
@@ -109,15 +108,13 @@ else ifeq ($(CPU_LIB), OPENBLAS)
 $(error The CPU_LIB $(CPU_LIB) is currently not supported.)
 
 else
-$(warning Provided CPU_LIB not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
-HEADER_FILES += $(wildcard DefaultCPU/*.hh)
+$(warning Provided CPU_LIB not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). No CPU kernels will be run.)
 endif
 
 # -------
 
 ifndef GPU_LIB
 $(warning GPU_LIB not set (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
-HEADER_FILES += $(wildcard DefaultGPU/*.hh)
 
 else ifeq ($(GPU_LIB), CUBLAS)
 # Do cuBLAS stuff
@@ -153,7 +150,6 @@ $(error The GPU_LIB $(GPU_LIB) is currently not supported.)
 
 else
 $(warning Provided GPU_LIB not valid (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
-HEADER_FILES += $(wildcard DefaultGPU/*.hh)
 endif
 
 # -------

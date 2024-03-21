@@ -34,6 +34,7 @@ int main(int argc, char** argv) {
 
 void printBenchmarkConfig(const int iters, const int upperLimit) {
   std::string gpuEnabledStr = (GPU_ENABLED) ? "True" : "False";
+  std::string cpuEnabledStr = (CPU_ENABLED) ? "True" : "False";
   unsigned int ompThreads =
       (getenv("OMP_NUM_THREADS") != NULL) ? atoi(getenv("OMP_NUM_THREADS")) : 1;
   const char* ompProcBind =
@@ -43,7 +44,7 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
   std::cout << "GPU BLAS Offload Benchmark:" << std::endl;
   std::cout << "\tIterations per Kernel: " << iters << std::endl;
   std::cout << "\tMax Problem Dimension: " << upperLimit << std::endl;
-  std::cout << "\tCPU Kernels Enabled: True" << std::endl;
+  std::cout << "\tCPU Kernels Enabled: " << cpuEnabledStr << std::endl;
   std::cout << "\tCPU Library: " << CPU_LIB_NAME << std::endl;
   std::cout << "\tGPU Kernels Enabled: " << gpuEnabledStr << std::endl;
   std::cout << "\tGPU Library: " << GPU_LIB_NAME << std::endl;
@@ -52,16 +53,14 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
   std::cout << "\tOMP_PLACES: " << ompPlaces << std::endl;
   std::cout << std::endl;
 #ifdef CPU_DEFAULT
-  std::cout
-      << "WARNING - No CPU BLAS library selected. Results will be collected "
-         "from a single threaded naive implementation."
-      << std::endl;
+  std::cout << "WARNING - No CPU BLAS library selected. No CPU BLAS Kernels "
+               "will be run."
+            << std::endl;
 #endif
 #ifdef GPU_DEFAULT
-  std::cout
-      << "WARNING - No GPU BLAS Library selected. All results will be based "
-         "off of a time of infinity."
-      << std::endl;
+  std::cout << "WARNING - No GPU BLAS Library selected. No GPU BLAS kernels "
+               "will be run."
+            << std::endl;
 #endif
   std::cout << std::endl;
 }

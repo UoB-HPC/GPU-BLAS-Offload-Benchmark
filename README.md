@@ -34,11 +34,9 @@ make COMPILER=GNU CPU_LIB=ARMPL
 The supported Libraries are as follows:
  - Arm Performance Libraries : `ARMPL`
  - Intel OneMKL : `ONEMKL`
-   - Requires the use of an additional `MKLROOT` make option specifying the root directory of the oneMKL Library.
- <!-- - AMD Optimizing CPU libraries : `AOCL` -->
- <!-- - OpenBLAS : `OPENBLAS` -->
+   - May require the use of an additional `MKLROOT` make option specifying the root directory of the oneMKL Library.
 
-If no library is selected then a naive solution to each kernel will be performed.
+If no library is selected then no CPU BLAS kernels will be executed.
 
 
 ### <u>GPU BLAS Library</u>
@@ -49,8 +47,8 @@ make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS
 The supported Libraries are as follows:
  - NVIDIA cuBLAS : `CUBLAS`
    <!-- - Implies the usage of the cuSPARCE Library (also packaged with NVIDIA's HPC SDK) -->
- <!-- - Intel OneMKL : `ONEMKL` -->
- <!-- - AMD rocBLAS : `ROCBLAS` -->
+ - Intel OneMKL : `ONEMKL`
+   - May require the use of an additional `MKLROOT` make option specifying the root directory of the oneMKL Library.
 
 If no library is selected then no GPU BLAS kernels will be executed.
 
@@ -90,7 +88,7 @@ When using oneMKL as the CPU BLAS Library, setting the following environment var
  - `OMP_PROC_BIND`
  - `OMP_PLACES`
 
-<!-- When using oneMKL as the GPU BLAS Librar, you may need to set the following environment variables:
+<!-- When using oneMKL as the GPU BLAS Library, you may need to set the following environment variables:
  - `export ONEAPI_DEVICE_SELECTOR="opencl:gpu"` -- to correct device indexes -->
 
 
@@ -128,7 +126,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - [x] GEMM 
    - [ ] GEMV 
  - [ ] Add support for oneMKL (CPU & GPU)
-   - [ ] GEMM
+   - [x] GEMM
    - [ ] GEMV
  - [ ] Add support for rocBLAS
    - [ ] GEMM
@@ -142,7 +140,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [ ] Add support for AOCL (AMD Optimizing CPU libraries)(?)
    - [ ] GEMM
    - [ ] GEMV
- - [ ] Add support for NVPL CPU Library(?)
+ - [ ] Add support for NVPL CPU Library
    - [ ] GEMM
    - [ ] GEMV
 
@@ -150,11 +148,6 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [x] Outline what kernels are included in the benchmark, along with how they will be run.
  - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
  - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
- - [ ] Add naive implementations of kernels for Default CPU + Default GPU
-   - [x] GEMM 
-   - [ ] GEMV 
-   - [ ] SpMM 
-   - [ ] SpMV 
  - [ ] Add support for ArmPL Sparce
    - [ ] SpMM 
    - [ ] SpMV 

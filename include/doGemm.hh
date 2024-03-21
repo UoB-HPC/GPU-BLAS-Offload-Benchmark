@@ -33,13 +33,17 @@ template <typename T>
 class doGemm {
  public:
   doGemm(const int iters, const int upperLimit)
-      : iterations_(iters), upperLimit_(upperLimit) {
+      : iterations_(iters),
+        upperLimit_(upperLimit)
 #if CPU_ENABLED
-    gemmCpu_ = cpu::gemm_cpu<T>(iterations_);
+        ,
+        gemmCpu_(iterations_)
 #endif
 #if GPU_ENABLED
-    gemmGpu_ = cpu::gemm_gpu<T>(iterations_);
+        ,
+        gemmGpu_(iterations_)
 #endif
+  {
     static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
                   "ERROR - doGemm can only be constructed using one of the "
                   "following types: [float, double].");

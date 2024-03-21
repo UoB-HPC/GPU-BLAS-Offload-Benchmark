@@ -177,7 +177,7 @@ $(info $(TAB)$(TAB)Add `CXXFLAGS=-L<NVHPC_DIR>/.../math_libs/lib64 -L<NVHPC_DIR>
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<NVHPC_DIR>/.../math_libs/include -I<NVHPC_DIR>/.../cuda/include` to make command)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-Wl,-rpath,<NVHPC_DIR>/.../math_libs/lib64 -Wl,-rpath,<NVHPC_DIR>/.../cuda/lib64` to make command)
 $(info )
-override CXXFLAGS += -lcublas -lcudart
+override CXXFLAGS += -lcublas -lcudart -lcusparse
 endif
 HEADER_FILES += $(wildcard cuBLAS/*.hh)
 

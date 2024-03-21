@@ -22,7 +22,7 @@ class sp_gemm_gpu : public sp_gemm<T> {
   }
 
   /** Initialise the required data structures. */
-  void initialise(gpuOffloadType offload, int m, int n, int k) override {
+  void initialise(gpuOffloadType offload, int n, float sparsity) override {
     // Default GPU implementation - do nothing.
   }
 

@@ -2,24 +2,27 @@
 
 #ifdef GPU_CUBLAS
 #include "cusparse.h"
+#include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <type_traits>
+#include <random>
+#include <iostream>
 
-#include "../include/kernels/GPU/gemm.hh"
+#include "../include/kernels/GPU/sp_gemm.hh"
 #include "../include/utilities.hh"
 #include "common.hh"
 
 namespace gpu {
 /** A class for GEMM GPU BLAS kernels. */
 template <typename T>
-class sp_gemm_gpu : public gemm<T> {
+class sp_gemm_gpu : public sp_gemm<T> {
  public:
-  using gemm<T>::gemm;
-  using gemm<T>::n_;
-  using gemm<T>::A_;
-  using gemm<T>::B_;
-  using gemm<T>::C_;
-  using gemm<T>::offload_;
+  using sp_gemm<T>::sp_gemm;
+  using sp_gemm<T>::n_;
+  using sp_gemm<T>::A_;
+  using sp_gemm<T>::B_;
+  using sp_gemm<T>::C_;
+  using sp_gemm<T>::offload_;
 
 	// ToDo -- just unified implemented so far.  Fill in Always and Once later
 
@@ -31,63 +34,50 @@ class sp_gemm_gpu : public gemm<T> {
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
   void initialise(gpuOffloadType offload, int n, float sparsity) override {
+    std::cout << "Initialising" << std::endl;
     offload_ = offload;
 
 		// Create a handle for cuSPARSE
     cusparseCreate(&handle_);
+    std::cout << "Handle created" << std::endl;
 
-		cudaDataType_ = (std::is_same_v<T, float>) ? CUDA_R_32F :
-						CUDA_R_64F;
 
+		if (std::is_same_v<T, float>) cudaDataType_ = CUDA_R_32F;
+    else if (std::is_same_v<T, double>) cudaDataType_ = CUDA_R_64F;
+    else {
+      std::cout << "INVALID DATA TYPE PASSED TO cuSPARSE" << std::endl;
+      exit(1);
+    }
     n_ = n;
-
-		cusparseCreateMatDescr(&descrA);
-		cusparseCreateMatDescr(&descrB);
-		cusparseCreateMatDescr(&descrC);
-
-		cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
-		cusparseSetMatType(descrB, CUSPARSE_MATRIX_TYPE_GENERAL);
-		cusparseSetMatType(descrC, CUSPARSE_MATRIX_TYPE_GENERAL);
-
-		cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
-		cusparseSetMatIndexBase(descrB, CUSPARSE_INDEX_BASE_ZERO);
-		cusparseSetMatIndexBase(descrC, CUSPARSE_INDEX_BASE_ZERO);
 
     // Get device identifier
     cudaCheckError(cudaGetDevice(&gpuDevice_));
+    std::cout << "GPU device got" << std::endl;
 
     // Initialise 3 streams to asynchronously move data between host and device
     cudaCheckError(cudaStreamCreate(&s1_));
     cudaCheckError(cudaStreamCreate(&s2_));
     cudaCheckError(cudaStreamCreate(&s3_));
+    std::cout << "Streams created" << std::endl;
 
 
 		// Work out number of edges needed to achieve target sparsity
 		int edges = 1 + (int) (n_ * n_ * (1 - sparsity));
-		A_nnz_ = B_nnz_ = edges
+		(*A_nnz_) = (*B_nnz_) = edges;
 
 		// ToDo -- for all of this mallocing, bear in mind that row will probably
 		//  have fewer than 'edges' values (thats the whole point).  May need to
 		//  reorganise
 
-    cudaCheckError(cudaMallocManaged(A_num_rows_, sizeof(int)));
-		cudaCheckError(cudaMallocManaged(A_num_cols_, sizeof(int)));
-		cudaCheckError(cudaMallocManaged(A_nnz_, sizeof(int)));
 		cudaCheckError(cudaMallocManaged(&A_val_, sizeof(T) * edges));
 		cudaCheckError(cudaMallocManaged(&A_col_, sizeof(int) * edges));
 		cudaCheckError(cudaMallocManaged(&A_row_, sizeof(int) * (n_ + 1)));
+    std::cout << "A CSR vectors malloced" << std::endl;
 
-		cudaCheckError(cudaMallocManaged(B_num_rows_, sizeof(int)));
-		cudaCheckError(cudaMallocManaged(B_num_cols_, sizeof(int)));
-		cudaCheckError(cudaMallocManaged(B_nnz_, sizeof(int)));
 		cudaCheckError(cudaMallocManaged(&B_val_, sizeof(T) * edges));
 		cudaCheckError(cudaMallocManaged(&B_col_, sizeof(int) * edges));
 		cudaCheckError(cudaMallocManaged(&B_row_, sizeof(int) * (n_ + 1)));
-
-		C_val_ = NULL;
-		C_col_ = NULL;
-		C_row_ = NULL;
-
+    std::cout << "B CSR vectors malloced" << std::endl;
 
 		// Initialise the host matricies
 		// cusparseSpGEMM() works on CSR format only.  This helpfully makes our
@@ -99,6 +89,13 @@ class sp_gemm_gpu : public gemm<T> {
 			A_[i] = 0.0;
 			B_[i] = 0.0;
 		}
+
+    // Random number generator objects for use in descent
+    std::default_random_engine gen;
+    gen.seed(std::chrono::system_clock::now()
+                     .time_since_epoch().count());
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+
 		// Using a=0.45 and b=c=0.22 as default probabilities
 		for (int i = 0; i < edges; i++) {
 			while (!rMat(A_, n, 0, n - 1, 0, n - 1,
@@ -117,34 +114,20 @@ class sp_gemm_gpu : public gemm<T> {
 
 
  private:
-
-
   /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
   void preLoopRequirements() override {
     // Prefetch memory to device
-		cudaCheckError(cudaMemPrefetchAsync(A_num_rows_, sizeof(int), gpuDevice_,
-																				s1_));
-		cudaCheckError(cudaMemPrefetchAsync(A_num_cols_, sizeof(int), gpuDevice_,
-																				s1_));
-		cudaCheckError(cudaMemPrefetchAsync(A_nnz_, sizeof(int), gpuDevice_,
-																				s1_));
-		cudaCheckError(cudaMemPrefetchAsync(&A_val_, sizeof(T) * edges, gpuDevice_,
-																				s1_));
-		cudaCheckError(cudaMemPrefetchAsync(&A_col_, sizeof(int) * edges,
+		cudaCheckError(cudaMemPrefetchAsync(&A_val_, sizeof(T) * (*A_nnz_),
+                                        gpuDevice_, s1_));
+		cudaCheckError(cudaMemPrefetchAsync(&A_col_, sizeof(int) * (*A_nnz_),
 																				gpuDevice_, s1_));
 		cudaCheckError(cudaMemPrefetchAsync(&A_row_, sizeof(int) * (n_ + 1),
 																				gpuDevice_, s1_));
 
-		cudaCheckError(cudaMemPrefetchAsync(B_num_rows_, sizeof(int), gpuDevice_,
-																				s2_));
-		cudaCheckError(cudaMemPrefetchAsync(B_num_cols_, sizeof(int), gpuDevice_,
-																				s2_));
-		cudaCheckError(cudaMemPrefetchAsync(B_nnz_, sizeof(int), gpuDevice_,
-																				s2_));
-		cudaCheckError(cudaMemPrefetchAsync(&B_val_, sizeof(T) * edges, gpuDevice_,
-																				s2_));
-		cudaCheckError(cudaMemPrefetchAsync(&B_col_, sizeof(int) * edges,
+		cudaCheckError(cudaMemPrefetchAsync(&B_val_, sizeof(T) * (*B_nnz_),
+                                        gpuDevice_, s2_));
+		cudaCheckError(cudaMemPrefetchAsync(&B_col_, sizeof(int) * (*B_nnz_),
 																				gpuDevice_, s2_));
 		cudaCheckError(cudaMemPrefetchAsync(&B_row_, sizeof(int) * (n_ + 1),
 																				gpuDevice_, s2_));
@@ -163,13 +146,13 @@ class sp_gemm_gpu : public gemm<T> {
 //																				gpuDevice_, s3_));
 
 		// Create the CSR matrices on the device
-		cusparseCreateCsr(descrA_, n_, n_, A_nnz_, A_row_, A_col_, A_val_,
+		cusparseCreateCsr(&descrA_, n_, n_, (*A_nnz_), A_row_, A_col_, A_val_,
 											CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
-											CUSPARSE_INDEX_BASE_ZERO, cudaDateType_);
-		cusparseCreateCsr(descrB_, n_, n_, B_nnz_, B_row_, B_col_, B_val_,
+											CUSPARSE_INDEX_BASE_ZERO, cudaDataType_);
+		cusparseCreateCsr(&descrB_, n_, n_, (*B_nnz_), B_row_, B_col_, B_val_,
 											CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
-											CUSPARSE_INDEX_BASE_ZERO, cudaDateType_);
-		cusparseCreateCsr(descrC_, n_, n_, 0, NULL, NULL, NULL,
+											CUSPARSE_INDEX_BASE_ZERO, cudaDataType_);
+		cusparseCreateCsr(&descrC_, n_, n_, 0, NULL, NULL, NULL,
 											CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
 											CUSPARSE_INDEX_BASE_ZERO, cudaDataType_);
 
@@ -181,38 +164,40 @@ class sp_gemm_gpu : public gemm<T> {
     cusparseSpGEMM_workEstimation(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
 																	 CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
 																	 descrA_, descrB_, &beta, descrC_,
-																	 CUSPARSE_SPGEMM_DEFAULT, cudaDataType_,
-																	 spgemmDesc_, buffer_size1_, NULL);
+																	 cudaDataType_, CUSPARSE_SPGEMM_DEFAULT,
+																	 spgemmDesc_, &buffer_size1_, NULL);
 		cudaCheckError(cudaMallocManaged(&buffer1_, buffer_size1_));
     cusparseSpGEMM_workEstimation(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
 																	 CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
 																	 descrA_, descrB_, &beta, descrC_,
-																	 CUSPARSE_SPGEMM_DEFAULT, cudaDataType_,
-																	 spgemmDesc_, buffer_size1_, buffer1_);
-		cusparseSpGEMM_cmopute(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
+																	 cudaDataType_, CUSPARSE_SPGEMM_DEFAULT,
+																	 spgemmDesc_, &buffer_size1_, buffer1_);
+		cusparseSpGEMM_compute(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
 													 CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, descrA_,
-													 descrB_, &beta, descrC_, CUSPARSE_SPGEMM_DEFAULT,
-													 cudaDataType_, spgemmDesc_, buffer_size2_, NULL);
-		cudaCheckError(cudaMallocManaged(&buffer2_, buffer_size2));
+													 descrB_, &beta, descrC_, cudaDataType_,
+													 CUSPARSE_SPGEMM_DEFAULT, spgemmDesc_,
+                           &buffer_size2_, NULL);
+		cudaCheckError(cudaMallocManaged(&buffer2_, buffer_size2_));
 
-		if (cusparseSpGEMM_cmopute(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
+		if (cusparseSpGEMM_compute(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
 													 CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, descrA_,
-													 descrB_, &beta, descrC_, CUSPARSE_SPGEMM_DEFAULT,
-													 cudaDataType_, spgemmDesc_, buffer_size2_, buffer2_)
-						== CUSPARSE_SATUS_INSUFFICIENT_RESOURCES) {
+													 descrB_, &beta, descrC_, cudaDataType_,
+                           CUSPARSE_SPGEMM_DEFAULT, spgemmDesc_,
+                           &buffer_size2_, buffer2_)
+						== CUSPARSE_STATUS_INSUFFICIENT_RESOURCES) {
 			std::cout << "Insufficient resources" << std::endl;
 			exit(1);
 		}
 
-		int rows, cols, nnz;
+		int64_t rows, cols, nnz;
 
-		cusparseSpMatGetSize(descrC_, &rows, &cols, &nnz_);
-		C_nnz_ = nnz;
-		cudaCheckError(cudaMallocManaged(C_val_), sizeof(T) * nnz);
-		cudaCheckError(cudaMallocManaged(C_col_), sizeof(int) * nnz);
-		cudaCheckError(cudaMallocManaged(C_row_), sizeof(int) * (n_ + 1));
+		cusparseSpMatGetSize(descrC_, &rows, &cols, &nnz);
+		(*C_nnz_) = nnz;
+		cudaCheckError(cudaMallocManaged(&C_val_, sizeof(T) * nnz));
+		cudaCheckError(cudaMallocManaged(&C_col_, sizeof(int) * nnz));
+		cudaCheckError(cudaMallocManaged(&C_row_, sizeof(int) * (n_ + 1)));
 
-		cusparseCstSetPointers(descrC_, *C_row, *C_colind, *C_val);
+		cusparseCsrSetPointers(descrC_, C_row_, C_col_, C_val_);
 		cusparseSpGEMM_copy(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
 												CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, descrA_,
 												descrB_, &beta, descrC_, CUDA_R_32F,
@@ -223,44 +208,26 @@ class sp_gemm_gpu : public gemm<T> {
    * be timed. */
   void postLoopRequirements() override {
     // Ensure all data resides on host once work has completed
-		cudaCheckError(cudaMemPrefetchAsync(A_num_rows_, sizeof(int),
-																				cudaCpuDeviceId_, s1_));
-		cudaCheckError(cudaMemPrefetchAsync(A_num_cols_, sizeof(int),
-																				cudaCpuDeviceId_, s1_));
-		cudaCheckError(cudaMemPrefetchAsync(A_nnz_, sizeof(int),
-																				cudaCpuDeviceId_, s1_));
-		cudaCheckError(cudaMemPrefetchAsync(&A_val_, sizeof(T) * edges,
-																				cudaCpuDeviceId_, s1_));
-		cudaCheckError(cudaMemPrefetchAsync(&A_col_, sizeof(int) * edges,
-																				cudaCpuDeviceId_, s1_));
+		cudaCheckError(cudaMemPrefetchAsync(&A_val_, sizeof(T) * (*A_nnz_),
+																				cudaCpuDeviceId, s1_));
+		cudaCheckError(cudaMemPrefetchAsync(&A_col_, sizeof(int) * (*A_nnz_),
+																				cudaCpuDeviceId, s1_));
 		cudaCheckError(cudaMemPrefetchAsync(&A_row_, sizeof(int) * (n_ + 1),
-																				cudaCpuDeviceId_, s1_));
+																				cudaCpuDeviceId, s1_));
 
-		cudaCheckError(cudaMemPrefetchAsync(B_num_rows_, sizeof(int),
-																				cudaCpuDeviceId_, s2_));
-		cudaCheckError(cudaMemPrefetchAsync(B_num_cols_, sizeof(int),
-																				cudaCpuDeviceId_, s2_));
-		cudaCheckError(cudaMemPrefetchAsync(B_nnz_, sizeof(int),
-																				cudaCpuDeviceId_, s2_));
-		cudaCheckError(cudaMemPrefetchAsync(&B_val_, sizeof(T) * edges,
-																				cudaCpuDeviceId_, s2_));
-		cudaCheckError(cudaMemPrefetchAsync(&B_col_, sizeof(int) * edges,
-																				cudaCpuDeviceId_, s2_));
+		cudaCheckError(cudaMemPrefetchAsync(&B_val_, sizeof(T) * (*B_nnz_),
+																				cudaCpuDeviceId, s2_));
+		cudaCheckError(cudaMemPrefetchAsync(&B_col_, sizeof(int) * (*B_nnz_),
+																				cudaCpuDeviceId, s2_));
 		cudaCheckError(cudaMemPrefetchAsync(&B_row_, sizeof(int) * (n_ + 1),
-																				cudaCpuDeviceId_, s2_));
+																				cudaCpuDeviceId, s2_));
 
-		cudaCheckError(cudaMemPrefetchAsync(C_num_rows_, sizeof(int),
-																				cudaCpuDeviceId_, s3_));
-		cudaCheckError(cudaMemPrefetchAsync(C_num_cols_, sizeof(int),
-																				cudaCpuDeviceId_, s3_));
-		cudaCheckError(cudaMemPrefetchAsync(C_nnz_, sizeof(int),
-																				cudaCpuDeviceId_, s3_));
-		cudaCheckError(cudaMemPrefetchAsync(&C_val_, sizeof(T) * C_nnz_,
-																				cudaCpuDeviceId_, s3_));
-		cudaCheckError(cudaMemPrefetchAsync(&C_col_, sizeof(int) * C_nnz_,
-																				cudaCpuDeviceId_, s3_));
+		cudaCheckError(cudaMemPrefetchAsync(&C_val_, sizeof(T) * (*C_nnz_),
+																				cudaCpuDeviceId, s3_));
+		cudaCheckError(cudaMemPrefetchAsync(&C_col_, sizeof(int) * (*C_nnz_),
+																				cudaCpuDeviceId, s3_));
 		cudaCheckError(cudaMemPrefetchAsync(&C_row_, sizeof(int) * (n_ + 1),
-																				cudaCpuDeviceId_, s3_));
+																				cudaCpuDeviceId, s3_));
     // Ensure device has finished all work.
     cudaCheckError(cudaDeviceSynchronize());
   }
@@ -348,7 +315,7 @@ class sp_gemm_gpu : public gemm<T> {
 	}
 
   /** Handle used when calling cuBLAS. */
-  cublasHandle_t handle_;
+  cusparseHandle_t handle_;
 
   /** CUDA Stream 1 - used to asynchronously move data between host and device.
    */
@@ -366,12 +333,29 @@ class sp_gemm_gpu : public gemm<T> {
   int gpuDevice_;
 
 	/** CSR format vectors for matrices A, B and C on the host */
-	int A_nnz_, B_nnz_, C_nnz_;
-	T* A_val_, B_val_, C_val_;
-	int* A_col_, A_row_, B_col_, B_row_, C_col_, C_row_;
+	T* A_val_;
+	int* A_col_;
+  int* A_row_;
+  int* A_num_rows_;
+  int* A_num_cols_;
+  int* A_nnz_;
+
+  T* B_val_;
+  int* B_col_;
+  int* B_row_;
+  int* B_num_rows_;
+  int* B_num_cols_;
+  int* B_nnz_;
+
+  T* C_val_;
+  int* C_col_;
+  int* C_row_;
+  int* C_num_rows_;
+  int* C_num_cols_;
+  int*C_nnz_;
 
   /** CSR format vectors for matrices A, B and C on the device. */
-	int A_num_rows_dev_, A_num_cols_dev_, A_nnz_dev_, B_num_rows_dev_,
+	int* A_num_rows_dev_, A_num_cols_dev_, A_nnz_dev_, B_num_rows_dev_,
 	B_num_cols_dev_, B_nnz_dev_, C_num_rows_dev_, C_num_cols_dev_, C_nnz_dev_;
 	T* A_val_dev_, B_val_dev_, C_val_dev_;
 	int* A_col_dev_, A_row_dev_, B_col_dev_, B_row_dev_, C_col_dev_, C_row_dev_;
@@ -384,12 +368,12 @@ class sp_gemm_gpu : public gemm<T> {
 
 
 	// Create descriptors for matrices A->C
-	cusparseMatDescr_t descrA_, descrB_, descrC_;
+	cusparseSpMatDescr_t descrA_, descrB_, descrC_;
 
-	// index type depends on kernel being run
-	cusparseIndexType_t cudaDataType_;
+	// Data type depends on kernel being run
+	cudaDataType_t cudaDataType_;
 
-	cusparceSpGEMMDescr_t spgemmDesc_;
+	cusparseSpGEMMDescr_t spgemmDesc_;
 
 	size_t buffer_size1_ = 0;
 	size_t buffer_size2_ = 0;

@@ -62,13 +62,13 @@ make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS CXXFLAGS="-I/path/to/include -L/p
 # Running
 The benchmark takes the following runtime arguments:
 ```bash
-./gpu-blob --iterations I --dimension_limit D
+./gpu-blob --iterations I --start_dimension S --dimension_limit D
         OR
-./gpu-blob -i I -d D
+./gpu-blob -i I -s S -d D
 ```
-Where `I` (default of `10`) specifies how many iterations each kernel will run, and `D` (default of `128`) specifies the the upper limit for the largest dimention in a problem size.\
-__Example:__ For a square GEMM, the problem size will iterate up to `M=N=K=D`.\
-__Example:__ For a rectangular GEMM where `M=N` and `K=M/4`, the probelm size will iterate up to`M=N=D` and `K=D/4`.
+Where `I` (default of `10`) specifies how many iterations each kernel will run, `S` (default of `1`) is the first problem dimension tested, and `D` (default of `128`) specifies the the upper limit for the largest dimention in a problem size.\
+__Example:__ For a square GEMM, the problem size will iterate from `M=N=K=S`, up to `M=N=K=D`.\
+__Example:__ For a rectangular GEMM where `M=N` and `K=4*M`, the probelm size will iterate from `M=N=S` and `K=S*4`  up to`M=N=D` and `K=D*4`.
 
 
 # Environment Variables

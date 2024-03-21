@@ -1,6 +1,7 @@
 #include "../include/main.hh"
 
 int iters = 10;
+int startDim = 1;
 int upperLimit = 128;
 
 int main(int argc, char** argv) {
@@ -20,13 +21,13 @@ int main(int argc, char** argv) {
 
   // SGEMM Comparison
   std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
-  doGemm<float> sgemm(iters, upperLimit);
+  doGemm<float> sgemm(iters, startDim, upperLimit);
   sgemm.collectData();
   std::cout << "Finished!" << std::endl;
 
   // DGEMM Comparison
   std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
-  doGemm<double> dgemm(iters, upperLimit);
+  doGemm<double> dgemm(iters, startDim, upperLimit);
   dgemm.collectData();
   std::cout << "Finished!" << std::endl;
   return 0;
@@ -43,7 +44,8 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
       (getenv("OMP_PLACES") != NULL) ? getenv("OMP_PLACES") : "Not Set";
   std::cout << "GPU BLAS Offload Benchmark:" << std::endl;
   std::cout << "\tIterations per Kernel: " << iters << std::endl;
-  std::cout << "\tMax Problem Dimension: " << upperLimit << std::endl;
+  std::cout << "\tStarting Problem Dimension: " << startDim << std::endl;
+  std::cout << "\tMaximum Problem Dimension: " << upperLimit << std::endl;
   std::cout << "\tCPU Kernels Enabled: " << cpuEnabledStr << std::endl;
   std::cout << "\tCPU Library: " << CPU_LIB_NAME << std::endl;
   std::cout << "\tGPU Kernels Enabled: " << gpuEnabledStr << std::endl;
@@ -78,10 +80,22 @@ void getParameters(int argc, char* argv[]) {
         std::cout << "ERROR - Invalid number of iterations" << std::endl;
         exit(1);
       }
+    } else if (!strcmp(argv[i], "--start_dimension") ||
+               !strcmp(argv[i], "-s")) {
+      if (++i >= argc || (startDim = parseInt(argv[i])) < 0) {
+        std::cout << "ERROR - Invalid start dimension" << std::endl;
+        exit(1);
+      }
     } else if (!strcmp(argv[i], "--dimension_limit") ||
                !strcmp(argv[i], "-d")) {
       if (++i >= argc || (upperLimit = parseInt(argv[i])) < 0) {
         std::cout << "ERROR - Invalid dimension limit" << std::endl;
+        exit(1);
+      }
+      if (startDim > upperLimit) {
+        std::cout
+            << "ERROR - Start dimension cannot be greater than dimension limit"
+            << std::endl;
         exit(1);
       }
     } else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
@@ -93,6 +107,9 @@ void getParameters(int argc, char* argv[]) {
       std::cout << "  -i  --iterations I           Repeat each kernel I times "
                    "(default: "
                 << iters << ")" << std::endl;
+      std::cout << "  -s  --start_dimension S      First value of M, N, K is S "
+                   "(default: "
+                << startDim << ")" << std::endl;
       std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
                    "(default: "
                 << upperLimit << ")" << std::endl;

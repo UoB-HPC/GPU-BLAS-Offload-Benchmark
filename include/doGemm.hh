@@ -32,8 +32,9 @@ struct cpuGpu_offloadThreshold {
 template <typename T>
 class doGemm {
  public:
-  doGemm(const int iters, const int upperLimit)
+  doGemm(const int iters, const int startDim, const int upperLimit)
       : iterations_(iters),
+        startDimention_(startDim),
         upperLimit_(upperLimit)
 #if CPU_ENABLED
         ,
@@ -58,9 +59,9 @@ class doGemm {
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
     std::ofstream csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
                                         getKernelName() + "_square.csv");
-    for (int dim = 1; dim <= upperLimit_; dim++) {
-      const int M = dim, N = dim, K = dim;
-      callKernels(csvFile, M, N, K);
+    for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+      // M = dim, N = dim, K = dim;
+      callKernels(csvFile, dim, dim, dim);
     }
     // Close file
     csvFile.close();
@@ -77,9 +78,12 @@ class doGemm {
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
     csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
                           "_rectangular_16MxK.csv");
-    for (int dim = 16; dim <= upperLimit_; dim += 16) {
-      const int M = dim, N = dim, K = (dim / 16);
+    int K = startDimention_, M = 16 * K, N = 16 * K;
+    while (M <= upperLimit_) {
       callKernels(csvFile, M, N, K);
+      M += 16;
+      N += 16;
+      K++;
     }
     // Close file
     csvFile.close();
@@ -96,9 +100,9 @@ class doGemm {
     csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
                           "_rectangular_Mx32.csv");
     if (upperLimit_ >= 32) {
-      for (int dim = 1; dim <= upperLimit_; dim++) {
-        const int M = dim, N = dim, K = 32;
-        callKernels(csvFile, M, N, K);
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        // M = dim, N = dim, K = 32;
+        callKernels(csvFile, dim, dim, 32);
       }
     }
     // Close file
@@ -115,9 +119,12 @@ class doGemm {
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
     csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
                           "_rectangular_Mx16K.csv");
-    for (int dim = 16; dim <= upperLimit_; dim += 16) {
-      const int M = (dim / 16), N = (dim / 16), K = dim;
+    M = startDimention_, N = startDimention_, K = 16 * M;
+    while (M <= upperLimit_) {
       callKernels(csvFile, M, N, K);
+      M++;
+      N++;
+      K += 16;
     }
     // Close file
     csvFile.close();
@@ -134,9 +141,9 @@ class doGemm {
     csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
                           "_rectangular_32xK.csv");
     if (upperLimit_ >= 32) {
-      for (int dim = 1; dim <= upperLimit_; dim++) {
-        const int M = 32, N = 32, K = dim;
-        callKernels(csvFile, M, N, K);
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        // M = 32, N = 32, K = dim;
+        callKernels(csvFile, 32, 32, dim);
       }
     }
     // Close file
@@ -427,6 +434,9 @@ class doGemm {
 
   /** The number of iterations to perform per problem size. */
   const int iterations_;
+
+  /** The value of the first probelm size dimention run. */
+  const int startDimention_;
 
   /** The maximum value of the largest problem size dimention. */
   const int upperLimit_;

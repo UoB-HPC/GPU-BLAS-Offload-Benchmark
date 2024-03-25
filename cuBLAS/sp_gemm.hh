@@ -37,12 +37,12 @@ class sp_gemm_gpu : public sp_gemm<T> {
     std::cout << "Initialising" << std::endl;
     offload_ = offload;
 
-		// Create a handle for cuSPARSE
+    // Create a handle for cuSPARSE
     cusparseCreate(&handle_);
     std::cout << "Handle created" << std::endl;
 
 
-		if (std::is_same_v<T, float>) cudaDataType_ = CUDA_R_32F;
+    if (std::is_same_v<T, float>) cudaDataType_ = CUDA_R_32F;
     else if (std::is_same_v<T, double>) cudaDataType_ = CUDA_R_64F;
     else {
       std::cout << "INVALID DATA TYPE PASSED TO cuSPARSE" << std::endl;
@@ -60,24 +60,38 @@ class sp_gemm_gpu : public sp_gemm<T> {
     cudaCheckError(cudaStreamCreate(&s3_));
     std::cout << "Streams created" << std::endl;
 
+    if (offload_ == gpuOffloadType::unified) {
+      std::cout << "Into unified if statement" << std::endl;
+      A_num_rows_ = (int*)malloc(sizeof(int));
+      A_num_cols_ = (int*)malloc(sizeof(int));
+      A_nnz_ = (int*)malloc(sizeof(int));
+      B_num_rows_ = (int*)malloc(sizeof(int));
+      B_num_cols_ = (int*)malloc(sizeof(int));
+      B_nnz_ = (int*)malloc(sizeof(int));
+      C_num_rows_ = (int*)malloc(sizeof(int));
+      C_num_cols_ = (int*)malloc(sizeof(int));
+      C_nnz_ = (int*)malloc(sizeof(int));
+    }
 
-		// Work out number of edges needed to achieve target sparsity
-		int edges = 1 + (int) (n_ * n_ * (1 - sparsity));
-		(*A_nnz_) = (*B_nnz_) = edges;
 
-		// ToDo -- for all of this mallocing, bear in mind that row will probably
-		//  have fewer than 'edges' values (thats the whole point).  May need to
-		//  reorganise
+   // Work out number of edges needed to achieve target sparsity
+    int edges = 1 + (int) (n_ * n_ * (1 - sparsity));
+    (*A_nnz_) = (*B_nnz_) = edges;
 
-		cudaCheckError(cudaMallocManaged(&A_val_, sizeof(T) * edges));
-		cudaCheckError(cudaMallocManaged(&A_col_, sizeof(int) * edges));
-		cudaCheckError(cudaMallocManaged(&A_row_, sizeof(int) * (n_ + 1)));
-    std::cout << "A CSR vectors malloced" << std::endl;
+    if (offload_ == gpuOffloadType::unified) {
+      std::cout << "beginning mallocs" << std::endl;
+      cudaCheckError(cudaMallocManaged(&A_val_, sizeof(T) * (*A_nnz_)));
+      std::cout << "A vals vectors malloced" << std::endl;
+      cudaCheckError(cudaMallocManaged(&A_col_, sizeof(int) * (*A_nnz_)));
+      std::cout << "A cols vectors malloced" << std::endl;
+      cudaCheckError(cudaMallocManaged(&A_row_, sizeof(int) * (n_ + 1)));
+      std::cout << "A CSR vectors malloced" << std::endl;
 
-		cudaCheckError(cudaMallocManaged(&B_val_, sizeof(T) * edges));
-		cudaCheckError(cudaMallocManaged(&B_col_, sizeof(int) * edges));
-		cudaCheckError(cudaMallocManaged(&B_row_, sizeof(int) * (n_ + 1)));
-    std::cout << "B CSR vectors malloced" << std::endl;
+      cudaCheckError(cudaMallocManaged(&B_val_, sizeof(T) * (*B_nnz_)));
+      cudaCheckError(cudaMallocManaged(&B_col_, sizeof(int) * (*B_nnz_)));
+      cudaCheckError(cudaMallocManaged(&B_row_, sizeof(int) * (n_ + 1)));
+      std::cout << "B CSR vectors malloced" << std::endl;
+    }
 
 		// Initialise the host matricies
 		// cusparseSpGEMM() works on CSR format only.  This helpfully makes our
@@ -85,10 +99,12 @@ class sp_gemm_gpu : public sp_gemm<T> {
 
 		// Initialise the matrices
 		// Set initial values to 0
-		for (int i = 0; i < (n_ * n_); i++) {
-			A_[i] = 0.0;
-			B_[i] = 0.0;
-		}
+    A_ = (T*)malloc(sizeof(T) * n_ * n_);
+    B_ = (T*)malloc(sizeof(T) * n_ * n_);
+    for (int i = 0; i < (n_ * n_); i++) {
+      A_[i] = 0.0;
+      B_[i] = 0.0;
+    }
 
     // Random number generator objects for use in descent
     std::default_random_engine gen;
@@ -96,19 +112,20 @@ class sp_gemm_gpu : public sp_gemm<T> {
                      .time_since_epoch().count());
     std::uniform_real_distribution<double> dist(0.0, 1.0);
 
-		// Using a=0.45 and b=c=0.22 as default probabilities
-		for (int i = 0; i < edges; i++) {
-			while (!rMat(A_, n, 0, n - 1, 0, n - 1,
-			             0.45, 0.22, 0.22,
-			             &gen, dist, false)) {}
-			while (!rMat(B_, n, 0, n - 1, 0, n - 1,
-			             0.45, 0.22, 0.22,
-			             &gen, dist, false)) {}
-		}
+    // Using a=0.45 and b=c=0.22 as default probabilities
+    for (int i = 0; i < (*A_nnz_); i++) {
+      while (!rMat(A_, n, 0, n - 1, 0, n - 1,
+                   0.45, 0.22, 0.22,
+                   &gen, dist, false)) {}
+    }
+    for (int i = 0; i < (*B_nnz_); i++) {
+      while (!rMat(B_, n, 0, n - 1, 0, n - 1,
+                   0.45, 0.22, 0.22,
+                   &gen, dist, false)) {}
+    }
 
-		toCSR(A_, n, n, edges, A_val_, A_col_, A_row_);
-		toCSR(B_, n, n, edges, B_val_, B_col_, B_row_);
-
+    toCSR(A_, n, n, (*A_nnz_), A_val_, A_col_, A_row_);
+    toCSR(B_, n, n, (*B_nnz_), B_val_, B_col_, B_row_);
   }
 
 
@@ -117,135 +134,178 @@ class sp_gemm_gpu : public sp_gemm<T> {
   /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
   void preLoopRequirements() override {
-    // Prefetch memory to device
-		cudaCheckError(cudaMemPrefetchAsync(&A_val_, sizeof(T) * (*A_nnz_),
-                                        gpuDevice_, s1_));
-		cudaCheckError(cudaMemPrefetchAsync(&A_col_, sizeof(int) * (*A_nnz_),
-																				gpuDevice_, s1_));
-		cudaCheckError(cudaMemPrefetchAsync(&A_row_, sizeof(int) * (n_ + 1),
-																				gpuDevice_, s1_));
+    switch(offload_) {
+      case gpuOffloadType::always: {
+        break;
+      }
+      case gpuOffloadType::once: {
+        break;
+      }
+      case gpuOffloadType::unified: {
+        // Prefetch memory to device
+        cudaCheckError(cudaMemPrefetchAsync(A_val_, sizeof(T) * (*A_nnz_),
+                                            gpuDevice_, s1_));
+        cudaCheckError(cudaMemPrefetchAsync(A_col_, sizeof(int) * (*A_nnz_),
+                                            gpuDevice_, s1_));
+        cudaCheckError(cudaMemPrefetchAsync(A_row_, sizeof(int) * (n_ + 1),
+                                            gpuDevice_, s1_));
 
-		cudaCheckError(cudaMemPrefetchAsync(&B_val_, sizeof(T) * (*B_nnz_),
-                                        gpuDevice_, s2_));
-		cudaCheckError(cudaMemPrefetchAsync(&B_col_, sizeof(int) * (*B_nnz_),
-																				gpuDevice_, s2_));
-		cudaCheckError(cudaMemPrefetchAsync(&B_row_, sizeof(int) * (n_ + 1),
-																				gpuDevice_, s2_));
-//
-//		cudaCheckError(cudaMemPrefetchAsync(C_num_rows_, sizeof(int), gpuDevice_,
-//																				s3_));
-//		cudaCheckError(cudaMemPrefetchAsync(C_num_cols_, sizeof(int), gpuDevice_,
-//																				s3_));
-//		cudaCheckError(cudaMemPrefetchAsync(C_nnz_, sizeof(int), gpuDevice_,
-//																				s3_));
-//		cudaCheckError(cudaMemPrefetchAsync(&C_val_, sizeof(T) * edges, gpuDevice_,
-//																				s3_));
-//		cudaCheckError(cudaMemPrefetchAsync(&C_col_, sizeof(int) * edges,
-//																				gpuDevice_, s3_));
-//		cudaCheckError(cudaMemPrefetchAsync(&C_row_, sizeof(int) * edges,
-//																				gpuDevice_, s3_));
+        cudaCheckError(cudaMemPrefetchAsync(B_val_, sizeof(T) * (*B_nnz_),
+                                            gpuDevice_, s2_));
+        cudaCheckError(cudaMemPrefetchAsync(B_col_, sizeof(int) * (*B_nnz_),
+                                            gpuDevice_, s2_));
+        cudaCheckError(cudaMemPrefetchAsync(B_row_, sizeof(int) * (n_ + 1),
+                                            gpuDevice_, s2_));
+    //
+    //		cudaCheckError(cudaMemPrefetchAsync(C_num_rows_, sizeof(int), gpuDevice_,
+    //																				s3_));
+    //		cudaCheckError(cudaMemPrefetchAsync(C_num_cols_, sizeof(int), gpuDevice_,
+    //																				s3_));
+    //		cudaCheckError(cudaMemPrefetchAsync(C_nnz_, sizeof(int), gpuDevice_,
+    //																				s3_));
+    //		cudaCheckError(cudaMemPrefetchAsync(&C_val_, sizeof(T) * edges, gpuDevice_,
+    //																				s3_));
+    //		cudaCheckError(cudaMemPrefetchAsync(&C_col_, sizeof(int) * edges,
+    //																				gpuDevice_, s3_));
+    //		cudaCheckError(cudaMemPrefetchAsync(&C_row_, sizeof(int) * edges,
+    //																				gpuDevice_, s3_));
 
-		// Create the CSR matrices on the device
-		cusparseCreateCsr(&descrA_, n_, n_, (*A_nnz_), A_row_, A_col_, A_val_,
-											CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
-											CUSPARSE_INDEX_BASE_ZERO, cudaDataType_);
-		cusparseCreateCsr(&descrB_, n_, n_, (*B_nnz_), B_row_, B_col_, B_val_,
-											CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
-											CUSPARSE_INDEX_BASE_ZERO, cudaDataType_);
-		cusparseCreateCsr(&descrC_, n_, n_, 0, NULL, NULL, NULL,
-											CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
-											CUSPARSE_INDEX_BASE_ZERO, cudaDataType_);
+        // Create the CSR matrices on the device
+        cusparseCreateCsr(&descrA_, n_, n_, (*A_nnz_), A_row_, A_col_, A_val_,
+                          CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+                          CUSPARSE_INDEX_BASE_ZERO, cudaDataType_);
+        cusparseCreateCsr(&descrB_, n_, n_, (*B_nnz_), B_row_, B_col_, B_val_,
+                          CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+                          CUSPARSE_INDEX_BASE_ZERO, cudaDataType_);
+        cusparseCreateCsr(&descrC_, n_, n_, 0, NULL, NULL, NULL,
+                          CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+                          CUSPARSE_INDEX_BASE_ZERO, cudaDataType_);
 
-		cusparseSpGEMM_createDescr(&spgemmDesc_);
+        cusparseSpGEMM_createDescr(&spgemmDesc_);
+        break;
+      }
+    }
   }
 
   /** Make a call to the BLAS Library Kernel. */
   void callGemm() override {
-    cusparseSpGEMM_workEstimation(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
-																	 CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
-																	 descrA_, descrB_, &beta, descrC_,
-																	 cudaDataType_, CUSPARSE_SPGEMM_DEFAULT,
-																	 spgemmDesc_, &buffer_size1_, NULL);
-		cudaCheckError(cudaMallocManaged(&buffer1_, buffer_size1_));
-    cusparseSpGEMM_workEstimation(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
-																	 CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
-																	 descrA_, descrB_, &beta, descrC_,
-																	 cudaDataType_, CUSPARSE_SPGEMM_DEFAULT,
-																	 spgemmDesc_, &buffer_size1_, buffer1_);
-		cusparseSpGEMM_compute(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
-													 CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, descrA_,
-													 descrB_, &beta, descrC_, cudaDataType_,
-													 CUSPARSE_SPGEMM_DEFAULT, spgemmDesc_,
-                           &buffer_size2_, NULL);
-		cudaCheckError(cudaMallocManaged(&buffer2_, buffer_size2_));
+    switch(offload_) {
+      case gpuOffloadType::always: {
+        break;
+      }
+      case gpuOffloadType::once: {
+        break;
+      }
+      case gpuOffloadType::unified: {
+        cusparseSpGEMM_workEstimation(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                       CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
+                                       descrA_, descrB_, &beta, descrC_,
+                                       cudaDataType_, CUSPARSE_SPGEMM_DEFAULT,
+                                       spgemmDesc_, &buffer_size1_, NULL);
+        cudaCheckError(cudaMallocManaged(&buffer1_, buffer_size1_));
+        cusparseSpGEMM_workEstimation(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                       CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
+                                       descrA_, descrB_, &beta, descrC_,
+                                       cudaDataType_, CUSPARSE_SPGEMM_DEFAULT,
+                                       spgemmDesc_, &buffer_size1_, buffer1_);
+        cusparseSpGEMM_compute(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, descrA_,
+                               descrB_, &beta, descrC_, cudaDataType_,
+                               CUSPARSE_SPGEMM_DEFAULT, spgemmDesc_,
+                               &buffer_size2_, NULL);
+        cudaCheckError(cudaMallocManaged(&buffer2_, buffer_size2_));
 
-		if (cusparseSpGEMM_compute(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
-													 CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, descrA_,
-													 descrB_, &beta, descrC_, cudaDataType_,
-                           CUSPARSE_SPGEMM_DEFAULT, spgemmDesc_,
-                           &buffer_size2_, buffer2_)
-						== CUSPARSE_STATUS_INSUFFICIENT_RESOURCES) {
-			std::cout << "Insufficient resources" << std::endl;
-			exit(1);
-		}
+        if (cusparseSpGEMM_compute(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, descrA_,
+                               descrB_, &beta, descrC_, cudaDataType_,
+                               CUSPARSE_SPGEMM_DEFAULT, spgemmDesc_,
+                               &buffer_size2_, buffer2_)
+                == CUSPARSE_STATUS_INSUFFICIENT_RESOURCES) {
+          std::cout << "Insufficient resources" << std::endl;
+          exit(1);
+        }
 
-		int64_t rows, cols, nnz;
+        int64_t rows, cols, nnz;
 
-		cusparseSpMatGetSize(descrC_, &rows, &cols, &nnz);
-		(*C_nnz_) = nnz;
-		cudaCheckError(cudaMallocManaged(&C_val_, sizeof(T) * nnz));
-		cudaCheckError(cudaMallocManaged(&C_col_, sizeof(int) * nnz));
-		cudaCheckError(cudaMallocManaged(&C_row_, sizeof(int) * (n_ + 1)));
+        cusparseSpMatGetSize(descrC_, &rows, &cols, &nnz);
+        (*C_nnz_) = nnz;
+        cudaCheckError(cudaMallocManaged(&C_val_, sizeof(T) * nnz));
+        cudaCheckError(cudaMallocManaged(&C_col_, sizeof(int) * nnz));
+        cudaCheckError(cudaMallocManaged(&C_row_, sizeof(int) * (n_ + 1)));
 
-		cusparseCsrSetPointers(descrC_, C_row_, C_col_, C_val_);
-		cusparseSpGEMM_copy(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
-												CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, descrA_,
-												descrB_, &beta, descrC_, CUDA_R_32F,
-												CUSPARSE_SPGEMM_DEFAULT, spgemmDesc_);
+        cusparseCsrSetPointers(descrC_, C_row_, C_col_, C_val_);
+        cusparseSpGEMM_copy(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                            CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, descrA_,
+                            descrB_, &beta, descrC_, CUDA_R_32F,
+                            CUSPARSE_SPGEMM_DEFAULT, spgemmDesc_);
+        break;
+      }
+    }
 	}
 
   /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {
-    // Ensure all data resides on host once work has completed
-		cudaCheckError(cudaMemPrefetchAsync(&A_val_, sizeof(T) * (*A_nnz_),
-																				cudaCpuDeviceId, s1_));
-		cudaCheckError(cudaMemPrefetchAsync(&A_col_, sizeof(int) * (*A_nnz_),
-																				cudaCpuDeviceId, s1_));
-		cudaCheckError(cudaMemPrefetchAsync(&A_row_, sizeof(int) * (n_ + 1),
-																				cudaCpuDeviceId, s1_));
+    switch(offload_) {
+      case gpuOffloadType::always: {
+        break;
+      }
+      case gpuOffloadType::once: {
+        break;
+      }
+      case gpuOffloadType::unified: {
+        // Ensure all data resides on host once work has completed
+        cudaCheckError(cudaMemPrefetchAsync(A_val_, sizeof(T) * (*A_nnz_),
+                                            cudaCpuDeviceId, s1_));
+        cudaCheckError(cudaMemPrefetchAsync(A_col_, sizeof(int) * (*A_nnz_),
+                                            cudaCpuDeviceId, s1_));
+        cudaCheckError(cudaMemPrefetchAsync(A_row_, sizeof(int) * (n_ + 1),
+                                            cudaCpuDeviceId, s1_));
 
-		cudaCheckError(cudaMemPrefetchAsync(&B_val_, sizeof(T) * (*B_nnz_),
-																				cudaCpuDeviceId, s2_));
-		cudaCheckError(cudaMemPrefetchAsync(&B_col_, sizeof(int) * (*B_nnz_),
-																				cudaCpuDeviceId, s2_));
-		cudaCheckError(cudaMemPrefetchAsync(&B_row_, sizeof(int) * (n_ + 1),
-																				cudaCpuDeviceId, s2_));
+        cudaCheckError(cudaMemPrefetchAsync(B_val_, sizeof(T) * (*B_nnz_),
+                                            cudaCpuDeviceId, s2_));
+        cudaCheckError(cudaMemPrefetchAsync(B_col_, sizeof(int) * (*B_nnz_),
+                                            cudaCpuDeviceId, s2_));
+        cudaCheckError(cudaMemPrefetchAsync(B_row_, sizeof(int) * (n_ + 1),
+                                            cudaCpuDeviceId, s2_));
 
-		cudaCheckError(cudaMemPrefetchAsync(&C_val_, sizeof(T) * (*C_nnz_),
-																				cudaCpuDeviceId, s3_));
-		cudaCheckError(cudaMemPrefetchAsync(&C_col_, sizeof(int) * (*C_nnz_),
-																				cudaCpuDeviceId, s3_));
-		cudaCheckError(cudaMemPrefetchAsync(&C_row_, sizeof(int) * (n_ + 1),
-																				cudaCpuDeviceId, s3_));
-    // Ensure device has finished all work.
-    cudaCheckError(cudaDeviceSynchronize());
+        cudaCheckError(cudaMemPrefetchAsync(C_val_, sizeof(T) * (*C_nnz_),
+                                            cudaCpuDeviceId, s3_));
+        cudaCheckError(cudaMemPrefetchAsync(C_col_, sizeof(int) * (*C_nnz_),
+                                            cudaCpuDeviceId, s3_));
+        cudaCheckError(cudaMemPrefetchAsync(C_row_, sizeof(int) * (n_ + 1),
+                                            cudaCpuDeviceId, s3_));
+        // Ensure device has finished all work.
+        cudaCheckError(cudaDeviceSynchronize());
+        break;
+      }
+    }
   }
 
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
-    // Destroy the handle
-    cusparseDestroy(handle_);
+    if (offload_ == gpuOffloadType::unified) {
+      // Destroy the handle
+      cusparseDestroy(handle_);
 
-    // Destroy streams after use
-    cudaCheckError(cudaStreamDestroy(s1_));
-    cudaCheckError(cudaStreamDestroy(s2_));
-    cudaCheckError(cudaStreamDestroy(s3_));
+      // Destroy streams after use
+      cudaCheckError(cudaStreamDestroy(s1_));
+      cudaCheckError(cudaStreamDestroy(s2_));
+      cudaCheckError(cudaStreamDestroy(s3_));
+    }
 
-    cudaFree(A_);
-    cudaFree(B_);
-    cudaFree(C_);
+    if (offload_ == gpuOffloadType::unified) {
+      cudaFree(A_val_);
+      cudaFree(A_col_);
+      cudaFree(A_row_);
+      cudaFree(B_val_);
+      cudaFree(B_col_);
+      cudaFree(B_row_);
+      cudaFree(C_val_);
+      cudaFree(C_col_);
+      cudaFree(C_row_);
+    }
   }
 
 	bool rMat(T* M, int n, int x1, int x2, int y1, int y2,

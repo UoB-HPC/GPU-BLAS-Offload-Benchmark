@@ -325,10 +325,12 @@ class sp_gemm_gpu : public sp_gemm<T> {
         cudaCheckError(cudaDeviceSynchronize());
 
         // Freeing memory
-        cudaCheckError(cudaFree(buffer1_));
-        cudaCheckError(cudaFree(buffer2_));
         cudaCheckError(cudaFree(C_val_dev_));
         cudaCheckError(cudaFree(C_col_dev_));
+        cudaCheckError(cudaFree(buffer1_));
+        cudaCheckError(cudaFree(buffer2_));
+        buffer_size1_ = 0;
+        buffer_size2_ = 0;
         free(C_val_);
         free(C_col_);
         break;
@@ -380,8 +382,12 @@ class sp_gemm_gpu : public sp_gemm<T> {
                                     cudaDataType_, alg_, spgemmDesc_));
 
         // Freeing memory
+        cudaCheckError(cudaFree(C_val_dev_));
+        cudaCheckError(cudaFree(C_col_dev_));
         cudaCheckError(cudaFree(buffer1_));
         cudaCheckError(cudaFree(buffer2_));
+        buffer_size1_ = 0;
+        buffer_size2_ = 0;
         break;
       }
       case gpuOffloadType::unified: {
@@ -414,6 +420,8 @@ class sp_gemm_gpu : public sp_gemm<T> {
                 cusparseSpMatGetSize(descrC_, &C_num_rows_, &C_num_cols_,
                                      &C_nnz_));
 
+        if (C_val_ != NULL) cudaCheckError(cudaFree(C_val_));
+        if (C_val_ != NULL) cudaCheckError(cudaFree(C_col_));
         cudaCheckError(cudaMallocManaged(&C_val_, sizeof(T) * C_nnz_));
         cudaCheckError(cudaMallocManaged(&C_col_, sizeof(int) * C_nnz_));
 
@@ -425,16 +433,11 @@ class sp_gemm_gpu : public sp_gemm<T> {
                                     alg_, spgemmDesc_));
 
 
-        cudaCheckError(cudaMemPrefetchAsync(C_val_, sizeof(T) * C_nnz_,
-                                            cudaCpuDeviceId, s3_));
-        cudaCheckError(cudaMemPrefetchAsync(C_col_, sizeof(int) * C_nnz_,
-                                            cudaCpuDeviceId, s3_));
-
         // Freeing memory
         cudaCheckError(cudaFree(buffer1_));
         cudaCheckError(cudaFree(buffer2_));
-        cudaCheckError(cudaFree(C_val_));
-        cudaCheckError(cudaFree(C_col_));
+        buffer_size1_ = 0;
+        buffer_size2_ = 0;
         break;
       }
     }
@@ -468,20 +471,9 @@ class sp_gemm_gpu : public sp_gemm<T> {
         cudaCheckError(cudaMemcpyAsync(B_row_, B_row_dev_, sizeof(int) *
         (n_ + 1), cudaMemcpyDeviceToHost, s2_));
 
-        C_val_ = (T*)malloc(sizeof(T) * C_nnz_);
-        C_col_ = (int*)malloc(sizeof(int) * C_nnz_);
-        cudaCheckError(cudaMemcpyAsync(C_val_, C_val_dev_, sizeof(T) *
-        C_nnz_, cudaMemcpyDeviceToHost, s3_));
-        cudaCheckError(cudaMemcpyAsync(C_col_, C_col_dev_, sizeof(int) *
-        C_nnz_, cudaMemcpyDeviceToHost, s3_));
         cudaCheckError(cudaMemcpyAsync(C_row_, C_row_dev_, sizeof(int) *
         (n_ + 1), cudaMemcpyDeviceToHost, s3_));
         cudaCheckError(cudaDeviceSynchronize());
-
-        cudaCheckError(cudaFree(C_val_dev_));
-        cudaCheckError(cudaFree(C_col_dev_));
-        free(C_val_);
-        free(C_col_);
         break;
       }
       case gpuOffloadType::unified: {
@@ -675,8 +667,8 @@ class sp_gemm_gpu : public sp_gemm<T> {
   int64_t B_num_cols_;
   int64_t B_nnz_;
 
-  T* C_val_;
-  int* C_col_;
+  T* C_val_ = NULL;
+  int* C_col_ = NULL;
   int* C_row_;
   int64_t C_num_rows_;
   int64_t C_num_cols_;

@@ -34,10 +34,7 @@ class sp_gemm_gpu : public sp_gemm<T> {
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
   void initialise(gpuOffloadType offload, int n, float sparsity) override {
-    std::cout << "_/_/_/_/ Initialising for problem size: " << n << std::endl;
-
     offload_ = offload;
-
 
     if (std::is_same_v<T, float>) cudaDataType_ = CUDA_R_32F;
     else if (std::is_same_v<T, double>) cudaDataType_ = CUDA_R_64F;
@@ -151,7 +148,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
   /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
   void preLoopRequirements() override {
-    std::cout << "\t\tPreLoop" << std::endl;
     cusparseCheckError(cusparseSpGEMM_createDescr(&spgemmDesc_));
     switch(offload_) {
       case gpuOffloadType::always: {
@@ -233,7 +229,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
 
   /** Make a call to the BLAS Library Kernel. */
   void callGemm() override {
-    std::cout << "\t\tcallGemm" << std::endl;
     switch(offload_) {
       case gpuOffloadType::always: {
         cudaCheckError(cudaMemcpyAsync(A_val_dev_, A_val_, sizeof(T) *
@@ -446,7 +441,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
   /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {
-    std::cout << "\t\tPostLoop" << std::endl;
     cusparseCheckError(cusparseSpGEMM_destroyDescr(spgemmDesc_));
     // Destroying descriptors
     cusparseCheckError(cusparseDestroySpMat(descrA_));
@@ -504,7 +498,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
-    std::cout << "\t\tPostCall" << std::endl << std::endl;
     // Destroy the handle
     cusparseCheckError(cusparseDestroy(handle_));
 

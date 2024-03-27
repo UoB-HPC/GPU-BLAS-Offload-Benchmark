@@ -43,11 +43,6 @@
 // Define output directory for csv files.
 #define CSV_DIR "CSV_Results"
 
-// Define the checksum difference threshold - this is high due to floating point
-// variablity between library implementations coupled with adding multiple
-// values together.
-#define CHECK_ERROR 0.5
-
 // Define seed for random number generation - use seeded srand() to ensure
 // inputs across libraries are consistent & comparable
 const unsigned int SEED = 19123005;

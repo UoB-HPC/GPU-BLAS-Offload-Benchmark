@@ -14,6 +14,7 @@ template <typename T>
 class gemm_cpu : public gemm<T> {
  public:
   using gemm<T>::gemm;
+  using gemm<T>::initInputMatrices;
   using gemm<T>::callConsume;
   using gemm<T>::m_;
   using gemm<T>::n_;
@@ -21,6 +22,20 @@ class gemm_cpu : public gemm<T> {
   using gemm<T>::A_;
   using gemm<T>::B_;
   using gemm<T>::C_;
+
+  /** Initialise the required data structures. */
+  void initialise(int m, int n, int k) {
+    m_ = m;
+    n_ = n;
+    k_ = k;
+
+    A_ = (T*)mkl_malloc(sizeof(T) * m_ * k_, 64);
+    B_ = (T*)mkl_malloc(sizeof(T) * k_ * n_, 64);
+    C_ = (T*)mkl_malloc(sizeof(T) * m_ * n_, 64);
+
+    // Initialise the matricies
+    initInputMatrices();
+  }
 
  private:
   /** Make call to the GEMM kernel. */
@@ -50,6 +65,15 @@ class gemm_cpu : public gemm<T> {
   /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {}
+
+  /** Do any necessary cleanup (free pointers, close library handles, etc.)
+   * after Kernel has been called. */
+  void postCallKernelCleanup() override {
+    mkl_free_buffers();
+    mkl_free(A_);
+    mkl_free(B_);
+    mkl_free(C_);
+  }
 };
 }  // namespace cpu
 #endif

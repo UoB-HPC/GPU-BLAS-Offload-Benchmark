@@ -72,8 +72,10 @@ class doGemm {
     // Close file
     csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    // Print offload results to stdout
-    printOffloadThreshold("Square x Square (M=N=K)");
+    if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Square x Square (M=N=K)");
+    }
 #endif
 
     // Rectangular Problem Sizes:
@@ -96,8 +98,10 @@ class doGemm {
     // Close file
     csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    // Print offload results to stdout
-    printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, M=16K)");
+    if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, M=16K)");
+    }
 #endif
 
     // Tall and thin x Short and wide
@@ -116,8 +120,10 @@ class doGemm {
     // Close file
     csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    // Print offload results to stdout
-    printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, K=32)");
+    if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, K=32)");
+    }
 #endif
 
     // Short and wide x Tall and thin
@@ -139,8 +145,10 @@ class doGemm {
     // Close file
     csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    // Print offload results to stdout
-    printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N, K=16M)");
+    if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N, K=16M)");
+    }
 #endif
 
     // Short and wide x Tall and thin
@@ -159,8 +167,10 @@ class doGemm {
     // Close file
     csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    // Print offload results to stdout
-    printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N=32, K)");
+    if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N=32, K)");
+    }
 #endif
 
     // Tall and Thin x Square
@@ -182,8 +192,10 @@ class doGemm {
     // Close file
     csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    // Print offload results to stdout
-    printOffloadThreshold("Tall-and-Thin x Square (K=N, M=16K)");
+    if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Tall-and-Thin x Square (K=N, M=16K)");
+    }
 #endif
 
     // Tall and Thin x Square
@@ -202,8 +214,10 @@ class doGemm {
     // Close file
     csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    // Print offload results to stdout
-    printOffloadThreshold("Tall-and-Thin x Square (M, K=N=32)");
+    if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Tall-and-Thin x Square (M, K=N=32)");
+    }
 #endif
 
     // Square x Short and Wide
@@ -225,8 +239,10 @@ class doGemm {
     // Close file
     csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    // Print offload results to stdout
-    printOffloadThreshold("Square x Short-and-Wide (M=K, N=16K)");
+    if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Square x Short-and-Wide (M=K, N=16K)");
+    }
 #endif
 
     // Square x Short and Wide
@@ -245,8 +261,10 @@ class doGemm {
     // Close file
     csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    // Print offload results to stdout
-    printOffloadThreshold("Square x Short-and-Wide (M=K=32, N)");
+    if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Square x Short-and-Wide (M=K=32, N)");
+    }
 #endif
   }
 
@@ -312,21 +330,24 @@ class doGemm {
 #endif
 
 #if CPU_ENABLED && GPU_ENABLED
-    // Make sure all checksums match if CPU and GPU kernels are run.
-    //  - The majority of BLAS Libraries guarentee the same result if a function
-    //    is called multiple times. Given all input matrices are identical for
-    //    each GPU offload type, we need only to compare the CPU and GPU
-    //    checksums.
-    checkChecksums(cpuResult, gpuResult_once, gpuResult_always,
-                   gpuResult_unified, M, N, K);
+    if (doCPU_ && doGPU_) {
+      // Make sure all checksums match if CPU and GPU kernels are run.
+      //  - The majority of BLAS Libraries guarentee the same result if a
+      //  function
+      //    is called multiple times. Given all input matrices are identical for
+      //    each GPU offload type, we need only to compare the CPU and GPU
+      //    checksums.
+      checkChecksums(cpuResult, gpuResult_once, gpuResult_always,
+                     gpuResult_unified, M, N, K);
 
-    // Check if offload structs should be reset
-    checkOffloadStructReset(cpuResult, gpuResult_once, gpuResult_always,
-                            gpuResult_unified);
+      // Check if offload structs should be reset
+      checkOffloadStructReset(cpuResult, gpuResult_once, gpuResult_always,
+                              gpuResult_unified);
 
-    // Check if offload threshold has been achieved for each GPU offload type.
-    updateOffloadStructs(cpuResult, gpuResult_once, gpuResult_always,
-                         gpuResult_unified, M, N, K, probSize);
+      // Check if offload threshold has been achieved for each GPU offload type.
+      updateOffloadStructs(cpuResult, gpuResult_once, gpuResult_always,
+                           gpuResult_unified, M, N, K, probSize);
+    }
 #endif
   }
 

@@ -4,8 +4,8 @@ int iters = 10;
 int startDim = 1;
 int upperLimit = 128;
 
-bool doCpu = true;
-bool doGpu = true;
+bool doCpu = CPU_ENABLED;
+bool doGpu = GPU_ENABLED;
 
 int main(int argc, char** argv) {
   getParameters(argc, argv);
@@ -37,8 +37,8 @@ int main(int argc, char** argv) {
 }
 
 void printBenchmarkConfig(const int iters, const int upperLimit) {
-  std::string gpuEnabledStr = (GPU_ENABLED && doGpu) ? "True" : "False";
-  std::string cpuEnabledStr = (CPU_ENABLED && doCpu) ? "True" : "False";
+  std::string cpuEnabledStr = (doCpu) ? "True" : "False";
+  std::string gpuEnabledStr = (doGpu) ? "True" : "False";
   unsigned int ompThreads =
       (getenv("OMP_NUM_THREADS") != NULL) ? atoi(getenv("OMP_NUM_THREADS")) : 1;
   const char* ompProcBind =

@@ -176,6 +176,9 @@ class doGemm {
     gemmCpu_.initialise(M, N, K);
     cpuResult = gemmCpu_.compute();
     cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
+    // Write result to CSV file
+    writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize, iterations_,
+                   cpuResult.runtime, cpuResult.gflops);
 #endif
 
 // Perform the GPU kernels
@@ -199,6 +202,16 @@ class doGemm {
     gpuResult_unified = gemmGpu_.compute();
     gpuResult_unified.gflops =
         calcGflops(flops, iterations_, gpuResult_unified.runtime);
+
+    // Write results to CSV file
+    writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,
+                   iterations_, gpuResult_once.runtime, gpuResult_once.gflops);
+    writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K, probSize,
+                   iterations_, gpuResult_always.runtime,
+                   gpuResult_always.gflops);
+    writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, K, probSize,
+                   iterations_, gpuResult_unified.runtime,
+                   gpuResult_unified.gflops);
 #endif
 
 #if CPU_ENABLED && GPU_ENABLED
@@ -218,18 +231,6 @@ class doGemm {
     updateOffloadStructs(cpuResult, gpuResult_once, gpuResult_always,
                          gpuResult_unified, M, N, K, probSize);
 #endif
-
-    // Write lines to CSV file
-    writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize, iterations_,
-                   cpuResult.runtime, cpuResult.gflops);
-    writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,
-                   iterations_, gpuResult_once.runtime, gpuResult_once.gflops);
-    writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K, probSize,
-                   iterations_, gpuResult_always.runtime,
-                   gpuResult_always.gflops);
-    writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, K, probSize,
-                   iterations_, gpuResult_unified.runtime,
-                   gpuResult_unified.gflops);
   }
 
   /** Ensure all CPU and GPU checksums are within the permitted limit of

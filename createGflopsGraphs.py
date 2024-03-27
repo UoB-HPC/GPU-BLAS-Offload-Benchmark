@@ -108,10 +108,14 @@ for i in range(0, len(gemmFilenames)):
     fig1 = plt.figure(figsize=(25,14))
     ax1 = fig1.add_subplot()
 
-    ax1.plot(xVals, cpu_Gflops, color="#332288", marker=".", label="CPU")
-    ax1.plot(xVals, gpuO_Gflops, color="#44AA99", marker="x", label="GPU (Offload Once)")
-    ax1.plot(xVals, gpuA_Gflops, color="#CC6677", marker="+", label="GPU (Offload Always)")
-    ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
+    if len(cpu_Gflops) > 0:
+        ax1.plot(xVals, cpu_Gflops, color="#332288", marker=".", label="CPU")
+    if len(gpuO_Gflops) > 0:
+        ax1.plot(xVals, gpuO_Gflops, color="#44AA99", marker="x", label="GPU (Offload Once)")
+    if len(gpuA_Gflops) > 0:
+        ax1.plot(xVals, gpuA_Gflops, color="#CC6677", marker="+", label="GPU (Offload Always)")
+    if len(gpuU_Gflops) > 0:
+        ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
 
     # Set X ticks
     NUM_TICK = 8

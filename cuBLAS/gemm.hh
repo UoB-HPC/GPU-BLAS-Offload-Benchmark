@@ -24,13 +24,15 @@ class gemm_gpu : public gemm<T> {
   using gemm<T>::offload_;
 
   ~gemm_gpu() {
-    // Destroy the handle
-    cublasDestroy(handle_);
+    if (alreadyInitialised_) {
+      // Destroy the handle
+      cublasDestroy(handle_);
 
-    // Destroy streams after use
-    cudaCheckError(cudaStreamDestroy(s1_));
-    cudaCheckError(cudaStreamDestroy(s2_));
-    cudaCheckError(cudaStreamDestroy(s3_));
+      // Destroy streams after use
+      cudaCheckError(cudaStreamDestroy(s1_));
+      cudaCheckError(cudaStreamDestroy(s2_));
+      cudaCheckError(cudaStreamDestroy(s3_));
+    }
   }
 
   /** Initialise the required data structures.

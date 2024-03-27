@@ -39,7 +39,7 @@ for i in range(0, len(gemmFilenames)):
     fName = os.path.join(os.getcwd(), 'CSV_Results', gemmFilenames[i])
     openFile = open(fName, 'r')
     lines = openFile.readlines()
-    lines.pop(0)
+    lines.pop(0) # Remove headers
     if len(lines) == 0 :
         continue
 
@@ -51,10 +51,13 @@ for i in range(0, len(gemmFilenames)):
     # Get gflops (y-axis) and MNK values (x-axis) for CPU and all GPU types
     for line in lines:
         line = line.split(',')
+        # Get MNK
+        if (len(mnk) == 0) or (mnk[-1] != [line[2], line[3], line[4]]):
+            mnk.append([line[2], line[3], line[4]])
+        # Get Gflops
         gflops = float(line[-1].rstrip())
         if line[0] == "cpu":
             cpu_Gflops.append(gflops)
-            mnk.append([line[2], line[3], line[4]])
         elif line[0] == "gpu_offloadOnce":
             gpuO_Gflops.append(gflops)
         elif line[0] == "gpu_offloadAlways":

@@ -29,13 +29,18 @@ struct cpuGpu_offloadThreshold {
   int K = 0;
 };
 
+/** `T` represents the type of kernel that will be run - i.e. T=float is for
+ *      SGEMM. */
 template <typename T>
 class doGemm {
  public:
-  doGemm(const int iters, const int startDim, const int upperLimit)
+  doGemm(const int iters, const int startDim, const int upperLimit,
+         const bool cpuEnabled = true, const bool gpuEnabled = true)
       : iterations_(iters),
         startDimention_(startDim),
-        upperLimit_(upperLimit)
+        upperLimit_(upperLimit),
+        doCPU_(cpuEnabled),
+        doGPU_(gpuEnabled)
 #if CPU_ENABLED
         ,
         gemmCpu_(iterations_)
@@ -260,45 +265,50 @@ class doGemm {
 
 // Perform CPU kernel
 #if CPU_ENABLED
-    gemmCpu_.initialise(M, N, K);
-    cpuResult = gemmCpu_.compute();
-    cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
-    // Write result to CSV file
-    writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize, iterations_,
-                   cpuResult.runtime, cpuResult.gflops);
+    if (doCPU_) {
+      gemmCpu_.initialise(M, N, K);
+      cpuResult = gemmCpu_.compute();
+      cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
+      // Write result to CSV file
+      writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize, iterations_,
+                     cpuResult.runtime, cpuResult.gflops);
+    }
 #endif
 
 // Perform the GPU kernels
 #if GPU_ENABLED
-    // - ONCE : Offload to/from GPU once before all iterations and once
-    // after
-    gemmGpu_.initialise(gpuOffloadType::once, M, N, K);
-    gpuResult_once = gemmGpu_.compute();
-    gpuResult_once.gflops =
-        calcGflops(flops, iterations_, gpuResult_once.runtime);
+    if (doGPU_) {
+      // - ONCE : Offload to/from GPU once before all iterations and once
+      // after
+      gemmGpu_.initialise(gpuOffloadType::once, M, N, K);
+      gpuResult_once = gemmGpu_.compute();
+      gpuResult_once.gflops =
+          calcGflops(flops, iterations_, gpuResult_once.runtime);
 
-    // - ALWAYS: Offload to/from GPU every iteration
-    gemmGpu_.initialise(gpuOffloadType::always, M, N, K);
-    gpuResult_always = gemmGpu_.compute();
-    gpuResult_always.gflops =
-        calcGflops(flops, iterations_, gpuResult_always.runtime);
+      // - ALWAYS: Offload to/from GPU every iteration
+      gemmGpu_.initialise(gpuOffloadType::always, M, N, K);
+      gpuResult_always = gemmGpu_.compute();
+      gpuResult_always.gflops =
+          calcGflops(flops, iterations_, gpuResult_always.runtime);
 
-    // - UNIFIED : data passed from host to device (and device to host) as
-    //             needed
-    gemmGpu_.initialise(gpuOffloadType::unified, M, N, K);
-    gpuResult_unified = gemmGpu_.compute();
-    gpuResult_unified.gflops =
-        calcGflops(flops, iterations_, gpuResult_unified.runtime);
+      // - UNIFIED : data passed from host to device (and device to host) as
+      //             needed
+      gemmGpu_.initialise(gpuOffloadType::unified, M, N, K);
+      gpuResult_unified = gemmGpu_.compute();
+      gpuResult_unified.gflops =
+          calcGflops(flops, iterations_, gpuResult_unified.runtime);
 
-    // Write results to CSV file
-    writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,
-                   iterations_, gpuResult_once.runtime, gpuResult_once.gflops);
-    writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K, probSize,
-                   iterations_, gpuResult_always.runtime,
-                   gpuResult_always.gflops);
-    writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, K, probSize,
-                   iterations_, gpuResult_unified.runtime,
-                   gpuResult_unified.gflops);
+      // Write results to CSV file
+      writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,
+                     iterations_, gpuResult_once.runtime,
+                     gpuResult_once.gflops);
+      writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K,
+                     probSize, iterations_, gpuResult_always.runtime,
+                     gpuResult_always.gflops);
+      writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, K, probSize,
+                     iterations_, gpuResult_unified.runtime,
+                     gpuResult_unified.gflops);
+    }
 #endif
 
 #if CPU_ENABLED && GPU_ENABLED
@@ -534,6 +544,12 @@ class doGemm {
 
   /** The maximum value of the largest problem size dimention. */
   const int upperLimit_;
+
+  /** Whether the CPU kernels should be run. */
+  const bool doCPU_ = true;
+
+  /** Whether the GPU kernels should be run. */
+  const bool doGPU_ = true;
 
 #if CPU_ENABLED
   /** The GEMM CPU kernel. */

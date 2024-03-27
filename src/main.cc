@@ -4,6 +4,9 @@ int iters = 10;
 int startDim = 1;
 int upperLimit = 128;
 
+bool doCpu = true;
+bool doGpu = true;
+
 int main(int argc, char** argv) {
   getParameters(argc, argv);
   printBenchmarkConfig(iters, upperLimit);
@@ -21,21 +24,21 @@ int main(int argc, char** argv) {
 
   // SGEMM Comparison
   std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
-  doGemm<float> sgemm(iters, startDim, upperLimit);
+  doGemm<float> sgemm(iters, startDim, upperLimit, doCpu, doGpu);
   sgemm.collectData();
   std::cout << "Finished!" << std::endl;
 
   // DGEMM Comparison
   std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
-  doGemm<double> dgemm(iters, startDim, upperLimit);
+  doGemm<double> dgemm(iters, startDim, upperLimit, doCpu, doGpu);
   dgemm.collectData();
   std::cout << "Finished!" << std::endl;
   return 0;
 }
 
 void printBenchmarkConfig(const int iters, const int upperLimit) {
-  std::string gpuEnabledStr = (GPU_ENABLED) ? "True" : "False";
-  std::string cpuEnabledStr = (CPU_ENABLED) ? "True" : "False";
+  std::string gpuEnabledStr = (GPU_ENABLED && doGpu) ? "True" : "False";
+  std::string cpuEnabledStr = (CPU_ENABLED && doCpu) ? "True" : "False";
   unsigned int ompThreads =
       (getenv("OMP_NUM_THREADS") != NULL) ? atoi(getenv("OMP_NUM_THREADS")) : 1;
   const char* ompProcBind =
@@ -98,11 +101,19 @@ void getParameters(int argc, char* argv[]) {
             << std::endl;
         exit(1);
       }
+    } else if (!strcmp(argv[i], "--no_cpu")) {
+      doCpu = false;
+    } else if (!strcmp(argv[i], "--no_gpu")) {
+      doGpu = false;
     } else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       std::cout << std::endl;
       std::cout << "Usage: ./gpu-blob [OPTIONS]" << std::endl << std::endl;
       std::cout << "Options:" << std::endl;
       std::cout << "  -h  --help                   Print this message"
+                << std::endl;
+      std::cout << "  --no_cpu                     Disable all CPU kernel Runs"
+                << std::endl;
+      std::cout << "  --no_gpu                     Disable all GPU kernel Runs"
                 << std::endl;
       std::cout << "  -i  --iterations I           Repeat each kernel I times "
                    "(default: "

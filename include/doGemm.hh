@@ -242,11 +242,11 @@ class doGemm {
     // Ensure that each checksum difference is less than 0.1%
     T hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
     if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) *
-          hundredOverChecksum)) < 0.1 &&
+          hundredOverChecksum)) > 0.1 &&
         ((std::fabs(cpuResult.checksum - gpuResult_always.checksum) *
-          hundredOverChecksum)) < 0.1 &&
+          hundredOverChecksum)) > 0.1 &&
         ((std::fabs(cpuResult.checksum - gpuResult_unified.checksum) *
-          hundredOverChecksum)) < 0.1) {
+          hundredOverChecksum)) > 0.1) {
       std::cerr << "ERROR - " << getKernelName()
                 << " kernel checksums do not match:\n\tInput "
                    "dimensions: M="

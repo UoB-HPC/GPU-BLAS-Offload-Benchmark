@@ -63,35 +63,57 @@ for i in range(0, len(gemmFilenames)):
             gpuU_Gflops.append(gflops)
 
 
-    splitFileName = gemmFilenames[i].split('_')
     # Create x-axis label and tick values
     inputTypeStr = ""
     x_name = ""
     xVals = []
-    if splitFileName[1] == "square.csv":
+    if "_square_square_M=N=K" in gemmFilenames[i]:
         x_name = "Value of M, N, K"
-        inputTypeStr = "Square (M=N=K)"
+        inputTypeStr = "Square x Square (M=N=K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    else :
-        inputTypeStr = splitFileName[1][0].upper() + splitFileName[1][1:] + " " + splitFileName[2][:-4]
-        probTypeStr = splitFileName[2][:-4]
-        if probTypeStr == "16MxK":
-            x_name = "Value of K, where M=16K and N=16K"
-            for j in range(0, len(mnk)):
-                xVals.append(mnk[j][2])
-        elif probTypeStr == "32xK":
-            x_name = "Value of K, where M=N=32"
-            for j in range(0, len(mnk)):
-                xVals.append(mnk[j][2])
-        elif probTypeStr == "Mx16K":
-            x_name = "Value of M and N, where K=16M"
-            for j in range(0, len(mnk)):
-                xVals.append(mnk[j][0])
-        elif probTypeStr == "Mx32":
-            x_name = "Value of M and N, where K=32"
-            for j in range(0, len(mnk)):
-                xVals.append(mnk[j][0])
+    elif "_tall-thin_short-wide_M=N_M=16K" in gemmFilenames[i]:
+        x_name = "Value of K where M=16K and N=16K"
+        inputTypeStr = "Tall-Thin x Short-Wide (M=N=16K)"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][2])
+    elif "_tall-thin_short-wide_M=N_K=32" in gemmFilenames[i]:
+        x_name = "Value of M and N, where K=32"
+        inputTypeStr = "Tall-Thin x Short-Wide (M=N, K=32)"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][0])
+    elif "_short-wide_tall-thin_M=N_K=16M" in gemmFilenames[i]:
+        x_name = "Value of M and N, where K=16M"
+        inputTypeStr = "Short-Wide x Tall-Thin (M=N, K=16M)"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][0])
+    elif "_short-wide_tall-thin_M=N=32_K" in gemmFilenames[i]:
+        x_name = "Value of K, where M=32 and N=32"
+        inputTypeStr = "Short-Wide x Tall-Thin (M=N=32, K)"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][2])
+    elif "_tall-thin_square_K=N_M=16K" in gemmFilenames[i]:
+        x_name = "Value of N and K, where M=16K"
+        inputTypeStr = "Tall-Thin x Square (N=K, M=16K)"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][2])
+    elif "_tall-thin_square_K=N=32_M" in gemmFilenames[i]:
+        x_name = "Value of M, where N=32 and K=32"
+        inputTypeStr = "Tall-Thin x Square (M, N=K=32)"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][0])
+    elif "_square_short-wide_M=K_N=16K" in gemmFilenames[i]:
+        x_name = "Value of M and K, where N=16K"
+        inputTypeStr = "Square x Short-Wide (M=K, N=16K)"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][0])
+    elif "_square_short-wide_M=K=32_N" in gemmFilenames[i]:
+        x_name = "Value of N, where M=32 and K=32"
+        inputTypeStr = "Square x Short-Wide (M=K=32, N)"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][1])
+
+
 
     # Create y-axis label & graph title
     y_name = ""
@@ -102,7 +124,7 @@ for i in range(0, len(gemmFilenames)):
     elif kernel == "dgemm":
         fp = "FP64"
     y_name = "{} GFLOP/s".format(fp)        
-    title = "{}GEMM Performance for {} Style Inputs - {} iterations per problem size".format(kernel[0].upper(), inputTypeStr, iters)
+    title = "{}GEMM Performance for {} Problems - {} iterations per problem size".format(kernel[0].upper(), inputTypeStr, iters)
 
     # Make Graph
     fig1 = plt.figure(figsize=(25,14))

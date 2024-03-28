@@ -122,7 +122,9 @@ for i in range(0, len(gemmFilenames)):
     y_name = ""
     title = ""
     fp = ""
-    if kernel == "sgemm" :
+    if kernel == "hgemm" :
+        fp = "hgemm"
+    elif kernel == "sgemm" :
         fp = "FP32"
     elif kernel == "dgemm":
         fp = "FP64"

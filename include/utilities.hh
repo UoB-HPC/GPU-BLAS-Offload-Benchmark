@@ -3,6 +3,7 @@
 // Define CPU related macros
 #if defined CPU_ARMPL
 #define CPU_LIB_NAME "Arm Performance Libraries"
+#define CPU_FP16 __fp16
 #elif defined CPU_ONEMKL
 #define CPU_LIB_NAME "Intel OneMKL"
 #elif defined CPU_OPENBLAS

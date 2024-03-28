@@ -26,13 +26,17 @@ class gemm_cpu : public gemm<T> {
  private:
   /** Make call to the GEMM kernel. */
   void callGemm() override {
-    if constexpr (std::is_same_v<T, float>) {
-      cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, ALPHA,
-                  A_, std::max(1, m_), B_, std::max(1, k_), BETA, C_,
+    if constexpr (std::is_same_v<T, CPU_FP16>) {
+      cblas_hgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, alpha,
+                  A_, std::max(1, m_), B_, std::max(1, k_), beta, C_,
+                  std::max(1, m_));
+    } else if constexpr (std::is_same_v<T, float>) {
+      cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, alpha,
+                  A_, std::max(1, m_), B_, std::max(1, k_), beta, C_,
                   std::max(1, m_));
     } else if constexpr (std::is_same_v<T, double>) {
-      cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, ALPHA,
-                  A_, std::max(1, m_), B_, std::max(1, k_), BETA, C_,
+      cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, alpha,
+                  A_, std::max(1, m_), B_, std::max(1, k_), beta, C_,
                   std::max(1, m_));
     } else {
       // Un-specialised class will not do any work - print error and exit.
@@ -51,6 +55,12 @@ class gemm_cpu : public gemm<T> {
   /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {}
+
+  /** The constant value Alpha. */
+  const T alpha = ALPHA;
+
+  /** The constant value Beta. */
+  const T beta = BETA;
 };
 }  // namespace cpu
 #endif

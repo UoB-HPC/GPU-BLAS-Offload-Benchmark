@@ -49,6 +49,9 @@ class gemm_gpu : public gemm<T> {
       // Create a handle for CUBLAS
       cublasCreate(&handle_);
 
+      // Enable Tensor Cores
+      // cudaCheckError(cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH));
+
       // Get device identifier
       cudaCheckError(cudaGetDevice(&gpuDevice_));
 
@@ -70,9 +73,9 @@ class gemm_gpu : public gemm<T> {
       cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * m_ * n_));
     } else {
       // Allocate matrices on host
-      A_ = (T*)malloc(sizeof(T) * m_ * k_);
-      B_ = (T*)malloc(sizeof(T) * k_ * n_);
-      C_ = (T*)malloc(sizeof(T) * m_ * n_);
+      cudaCheckError(cudaMallocHost((void**)&A_, sizeof(T) * m_ * k_));
+      cudaCheckError(cudaMallocHost((void**)&B_, sizeof(T) * k_ * n_));
+      cudaCheckError(cudaMallocHost((void**)&C_, sizeof(T) * m_ * n_));
       // Allocate matrices on device
       cudaCheckError(cudaMalloc((void**)&A_device_, sizeof(T) * m_ * k_));
       cudaCheckError(cudaMalloc((void**)&B_device_, sizeof(T) * k_ * n_));
@@ -274,9 +277,9 @@ class gemm_gpu : public gemm<T> {
       cudaFree(C_);
     } else {
       // Free the memory held on host and device
-      free(A_);
-      free(B_);
-      free(C_);
+      cudaFreeHost((void*)A_);
+      cudaFreeHost((void*)B_);
+      cudaFreeHost((void*)C_);
       cudaFree(A_device_);
       cudaFree(B_device_);
       cudaFree(C_device_);

@@ -97,7 +97,9 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 
 ### <u>Level 3 BLAS</u>
  - GEMM
-   - FP32, FP64
+   - FP16 / BF16, FP32, FP64
+     - FP16 for ArmPL
+     - BF16 for cuBLAS, OneMKL
    - Square, short-&-wide, tall-&-thin input sizes
 
  - SpMM
@@ -118,7 +120,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 # ToDo:
  - [ ] Add command line option to not run any CPU kernel (i.e. GPU only)
  - [ ] Add minimum start dimension command line option
- - [ ] Add FP16 support for kernels
+ - [x] Add FP16 support for kernels
  - [ ] Add support for ArmPL.
    - [x] GEMM 
    - [ ] GEMV 
@@ -131,16 +133,16 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [ ] Add support for rocBLAS
    - [ ] GEMM
    - [ ] GEMV
- - [ ] Add support for OpenBLAS
-   - [ ] GEMM
-   - [ ] GEMV
- - [ ] Add support for BLIS
-   - [ ] GEMM
-   - [ ] GEMV
  - [ ] Add support for AOCL (AMD Optimizing CPU libraries)(?)
    - [ ] GEMM
    - [ ] GEMV
  - [ ] Add support for NVPL CPU Library
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for OpenBLAS
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for BLIS
    - [ ] GEMM
    - [ ] GEMV
 

@@ -2,6 +2,7 @@
 
 // Define CPU related macros
 #if defined CPU_ARMPL
+#include <armpl.h>
 #define CPU_LIB_NAME "Arm Performance Libraries"
 #define CPU_FP16 __fp16
 #elif defined CPU_ONEMKL
@@ -22,7 +23,9 @@
 
 // Define GPU related macros
 #if defined GPU_CUBLAS
+#include <cublas_v2.h>
 #define GPU_LIB_NAME "NVIDIA cuBLAS"
+#define GPU_FP16 __half
 #elif defined GPU_ONEMKL
 #define GPU_LIB_NAME "Intel OneMKL"
 #elif defined GPU_ROCBLAS

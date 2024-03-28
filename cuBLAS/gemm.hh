@@ -127,7 +127,16 @@ class gemm_gpu : public gemm<T> {
         cudaCheckError(cudaMemcpyAsync(C_device_, C_, sizeof(T) * m_ * n_,
                                        cudaMemcpyHostToDevice, s3_));
         // Call cuBLAS GEMM kernel
-        if constexpr (std::is_same_v<T, float>) {
+        if constexpr (std::is_same_v<T, GPU_FP16>) {
+          cublasStatus_t stat =
+              cublasHgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
+                          A_device_, std::max(1, m_), B_device_,
+                          std::max(1, k_), &beta, C_device_, std::max(1, m_));
+          if (stat != CUBLAS_STATUS_SUCCESS) {
+            std::cout << "cuBLAS error:" << stat << std::endl;
+            exit(1);
+          }
+        } else if constexpr (std::is_same_v<T, float>) {
           cublasStatus_t stat =
               cublasSgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
                           A_device_, std::max(1, m_), B_device_,
@@ -159,7 +168,16 @@ class gemm_gpu : public gemm<T> {
       }
       case gpuOffloadType::once: {
         // Call cuBLAS GEMM kernel
-        if constexpr (std::is_same_v<T, float>) {
+        if constexpr (std::is_same_v<T, GPU_FP16>) {
+          cublasStatus_t stat =
+              cublasHgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
+                          A_device_, std::max(1, m_), B_device_,
+                          std::max(1, k_), &beta, C_device_, std::max(1, m_));
+          if (stat != CUBLAS_STATUS_SUCCESS) {
+            std::cout << "cuBLAS error:" << stat << std::endl;
+            exit(1);
+          }
+        } else if constexpr (std::is_same_v<T, float>) {
           cublasStatus_t stat =
               cublasSgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
                           A_device_, std::max(1, m_), B_device_,
@@ -182,7 +200,15 @@ class gemm_gpu : public gemm<T> {
       }
       case gpuOffloadType::unified: {
         // Call cuBLAS GEMM kernel
-        if constexpr (std::is_same_v<T, float>) {
+        if constexpr (std::is_same_v<T, GPU_FP16>) {
+          cublasStatus_t stat = cublasHgemm(
+              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_,
+              std::max(1, m_), B_, std::max(1, k_), &beta, C_, std::max(1, m_));
+          if (stat != CUBLAS_STATUS_SUCCESS) {
+            std::cout << "cuBLAS error:" << stat << std::endl;
+            exit(1);
+          }
+        } else if constexpr (std::is_same_v<T, float>) {
           cublasStatus_t stat = cublasSgemm(
               handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_,
               std::max(1, m_), B_, std::max(1, k_), &beta, C_, std::max(1, m_));

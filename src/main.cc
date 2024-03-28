@@ -11,6 +11,10 @@ int main(int argc, char** argv) {
   getParameters(argc, argv);
   printBenchmarkConfig(iters, upperLimit);
 
+  if (!doCpu && !doGpu) {
+    exit(0);
+  }
+
   // Ensure CSV file directory exists.
   struct stat st = {0};
   if (stat(CSV_DIR, &st) == -1) {
@@ -21,6 +25,12 @@ int main(int argc, char** argv) {
   std::cout << "All results will be saved in CSV files at '" << absPath << "'"
             << std::endl
             << std::endl;
+
+  // HGEMM Comparison
+  std::cout << std::endl << "Comparing HGEMM Kernels:" << std::endl;
+  doGemm<CPU_FP16, GPU_FP16> hgemm(iters, startDim, upperLimit, doCpu, doGpu);
+  hgemm.collectData();
+  std::cout << "Finished!" << std::endl;
 
   // SGEMM Comparison
   std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;

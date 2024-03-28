@@ -31,7 +31,7 @@ struct cpuGpu_offloadThreshold {
 
 /** `T` represents the type of kernel that will be run - i.e. T=float is for
  *      SGEMM. */
-template <typename T>
+template <typename T_CPU, typename T_GPU = T_CPU>
 class doGemm {
  public:
   doGemm(const int iters, const int startDim, const int upperLimit,
@@ -50,9 +50,23 @@ class doGemm {
         gemmGpu_(iterations_)
 #endif
   {
-    static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
-                  "ERROR - doGemm can only be constructed using one of the "
-                  "following types: [float, double].");
+#if CPU_ENABLED && GPU_ENABLED
+    static_assert((sizeof(T_CPU) == sizeof(T_GPU)) &&
+                  "ERROR - The data size of T_CPU and T_GPU must be the same.");
+#endif
+
+#if CPU_ENABLED
+    static_assert((
+        std::is_same_v<T_CPU, float> || std::is_same_v<T_CPU, double>
+        || std::is_same_v<T_CPU, CPU_FP16>) && "ERROR - doGemm can only be constructed using one of the "
+          "following types: [half, float, double].");
+#endif
+#if GPU_ENABLED
+    static_assert((
+        std::is_same_v<T_GPU, float> || std::is_same_v<T_GPU, double>
+        || std::is_same_v<T_GPU, GPU_FP16> ) && "ERROR - doGemm can only be constructed using one of the "
+           "following types: [half, float, double].");
+#endif
   }
 
   /** Run all problem types and write data to CSV files. */
@@ -359,7 +373,7 @@ class doGemm {
                       time_checksum_gflop gpuResult_unified, const int M,
                       const int N, const int K) {
     // Ensure that each checksum difference is less than 0.1%
-    T hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
+    const double hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
     if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) *
           hundredOverChecksum)) > 0.1 &&
         ((std::fabs(cpuResult.checksum - gpuResult_always.checksum) *
@@ -465,12 +479,14 @@ class doGemm {
   constexpr double calcKib(const int M, const int N, const int K) const {
     uint64_t M_ = (uint64_t)M, N_ = (uint64_t)N, K_ = (uint64_t)K;
     uint64_t probSize = (M_ * K_) + (K_ * N_) + (M_ * N_);
-    return ((double)(probSize * (sizeof(T))) / 1024);
+    return ((double)(probSize * (sizeof(T_CPU))) / 1024);
   }
 
   /** Get the name of the kernel being run. */
   std::string getKernelName() const {
-    switch (sizeof(T)) {
+    switch (sizeof(T_CPU)) {
+      case 2:
+        return "hgemm";
       case 4:
         return "sgemm";
       case 8:
@@ -574,12 +590,12 @@ class doGemm {
 
 #if CPU_ENABLED
   /** The GEMM CPU kernel. */
-  cpu::gemm_cpu<T> gemmCpu_;
+  cpu::gemm_cpu<T_CPU> gemmCpu_;
 #endif
 
 #if GPU_ENABLED
   /** The GEMM GPU kernel. */
-  gpu::gemm_gpu<T> gemmGpu_;
+  gpu::gemm_gpu<T_GPU> gemmGpu_;
 #endif
 
   /** The point at which offloading to GPU (offload once) becomes worthwhile. */

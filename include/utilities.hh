@@ -36,6 +36,14 @@
 #define GPU_ENABLED true
 #endif
 
+// Ensure CPU and GPU FP16 types are defined in some capacity
+#ifndef CPU_FP16
+#define CPU_FP16 char
+#endif
+#ifndef GPU_FP16
+#define GPU_FP16 char
+#endif
+
 // Define macros for alpha and beta
 #define ALPHA 1
 #define BETA 0

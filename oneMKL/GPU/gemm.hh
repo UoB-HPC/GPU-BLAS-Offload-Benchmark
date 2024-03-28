@@ -1,6 +1,6 @@
 #pragma once
 
-// #ifdef GPU_ONEMKL
+#ifdef GPU_ONEMKL
 
 #include "../../include/kernels/GPU/gemm.hh"
 #include "../../include/utilities.hh"
@@ -255,4 +255,4 @@ class gemm_gpu : public gemm<T> {
 };
 }  // namespace gpu
 
-// #endif
+#endif

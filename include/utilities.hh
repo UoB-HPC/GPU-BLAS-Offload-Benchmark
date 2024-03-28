@@ -6,7 +6,9 @@
 #define CPU_LIB_NAME "Arm Performance Libraries"
 #define CPU_FP16 __fp16
 #elif defined CPU_ONEMKL
+#include <mkl.h>
 #define CPU_LIB_NAME "Intel OneMKL"
+#define CPU_FP16 MKL_F16
 #elif defined CPU_OPENBLAS
 #define CPU_LIB_NAME "OpenBLAS"
 #elif defined CPU_AOCL
@@ -27,7 +29,9 @@
 #define GPU_LIB_NAME "NVIDIA cuBLAS"
 #define GPU_FP16 __half
 #elif defined GPU_ONEMKL
+#include <sycl/sycl.hpp>
 #define GPU_LIB_NAME "Intel OneMKL"
+#define GPU_FP16 sycl::half
 #elif defined GPU_ROCBLAS
 #define GPU_LIB_NAME "AMD rocBLAS"
 #else

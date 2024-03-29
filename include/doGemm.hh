@@ -516,25 +516,27 @@ class doGemm {
 		time_checksum_gflop cpuResult = spGemmCpu_.compute();
 		cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
 
-//		// Perform the GPU kernels
+		// Perform the GPU kernels
+
+    // - UNIFIED : data passed from host to device (and device to host) as
+    //             needed
+    spGemmGpu_.initialise(gpuOffloadType::unified, N, sparsity);
+    time_checksum_gflop gpuResult_unified = spGemmGpu_.compute();
+    gpuResult_unified.gflops =
+    calcGflops(flops, iterations_, gpuResult_unified.runtime);
+
     // - ALWAYS: Offload to/from GPU every iteration
     spGemmGpu_.initialise(gpuOffloadType::always, N, sparsity);
     time_checksum_gflop gpuResult_always = spGemmGpu_.compute();
     gpuResult_always.gflops =
             calcGflops(flops, iterations_, gpuResult_always.runtime);
-//		// - ONCE : Offload to/from GPU once before all iterations and once
-//		// after
+		// - ONCE : Offload to/from GPU once before all iterations and once
+		// after
 		spGemmGpu_.initialise(gpuOffloadType::once, N, sparsity);
 		time_checksum_gflop gpuResult_once = spGemmGpu_.compute();
 		gpuResult_once.gflops =
 						calcGflops(flops, iterations_, gpuResult_once.runtime);
 
-		// - UNIFIED : data passed from host to device (and device to host) as
-		//             needed
-		spGemmGpu_.initialise(gpuOffloadType::unified, N, sparsity);
-		time_checksum_gflop gpuResult_unified = spGemmGpu_.compute();
-		gpuResult_unified.gflops =
-						calcGflops(flops, iterations_, gpuResult_unified.runtime);
 
 		// ToDo -- non-default GPU operations
 

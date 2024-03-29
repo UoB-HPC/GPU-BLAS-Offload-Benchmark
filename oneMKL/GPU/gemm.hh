@@ -56,9 +56,9 @@ class gemm_gpu : public gemm<T> {
       B_ = (T*)sycl::malloc_host(sizeof(T) * k_ * n_, gpuQueue_);
       C_ = (T*)sycl::malloc_host(sizeof(T) * m_ * n_, gpuQueue_);
       // Allocate matrices on device
-      A_device_ = sycl::malloc_device(sizeof(T) * m_ * k_, gpuQueue_);
-      B_device_ = sycl::malloc_device(sizeof(T) * k_ * n_, gpuQueue_);
-      C_device_ = sycl::malloc_device(sizeof(T) * m_ * n_, gpuQueue_);
+      A_device_ = (T*)sycl::malloc_device(sizeof(T) * m_ * k_, gpuQueue_);
+      B_device_ = (T*)sycl::malloc_device(sizeof(T) * k_ * n_, gpuQueue_);
+      C_device_ = (T*)sycl::malloc_device(sizeof(T) * m_ * n_, gpuQueue_);
     }
 
     // Initialise the host input matricies (A_ and B_)

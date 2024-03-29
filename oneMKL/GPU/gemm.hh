@@ -52,9 +52,9 @@ class gemm_gpu : public gemm<T> {
       C_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * n_, gpuQueue_);
     } else {
       // Allocate matrices on host (64-byte aligned)
-      A_ = (T*)sycl::aligned_alloc_host(64, sizeof(T) * m_ * k_, gpuQueue_);
-      B_ = (T*)sycl::aligned_alloc_host(64, sizeof(T) * k_ * n_, gpuQueue_);
-      C_ = (T*)sycl::aligned_alloc_host(64, sizeof(T) * m_ * n_, gpuQueue_);
+      A_ = (T*)sycl::malloc_host(sizeof(T) * m_ * k_, gpuQueue_);
+      B_ = (T*)sycl::malloc_host(sizeof(T) * k_ * n_, gpuQueue_);
+      C_ = (T*)sycl::malloc_host(sizeof(T) * m_ * n_, gpuQueue_);
       // Allocate matrices on device
       A_device_ = sycl::malloc_device(sizeof(T) * m_ * k_, gpuQueue_);
       B_device_ = sycl::malloc_device(sizeof(T) * k_ * n_, gpuQueue_);

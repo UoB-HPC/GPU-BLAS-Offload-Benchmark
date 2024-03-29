@@ -331,10 +331,10 @@ class gemm_gpu : public gemm<T> {
   T* C_device_;
 
   /** The constant value Alpha. */
-  const T alpha = __int2half_rz(ALPHA);
+  const T alpha = (double)ALPHA;
 
   /** The constant value Beta. */
-  const T beta = __int2half_rz(BETA);
+  const T beta = (double)BETA;
 };
 }  // namespace gpu
 #endif

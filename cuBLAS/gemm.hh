@@ -49,14 +49,14 @@ class gemm_gpu : public gemm<T> {
       // Create a handle for CUBLAS
       cublasStatus_t status = cublasCreate(&handle_);
       if (status != CUBLAS_STATUS_SUCCESS) {
-        std::cout << "Failed to make cublas handle: " << stat << std::endl;
+        std::cout << "Failed to make cublas handle: " << status << std::endl;
         exit(1);
       }
 
       // Enable Tensor Cores
       status = cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH);
       if (status != CUBLAS_STATUS_SUCCESS) {
-        std::cout << "Failed to set cublas math mode: " << stat << std::endl;
+        std::cout << "Failed to set cublas math mode: " << status << std::endl;
         exit(1);
       }
 
@@ -331,10 +331,10 @@ class gemm_gpu : public gemm<T> {
   T* C_device_;
 
   /** The constant value Alpha. */
-  const T alpha = ALPHA;
+  const T alpha = __int2half_rz(ALPHA);
 
   /** The constant value Beta. */
-  const T beta = BETA;
+  const T beta = __int2half_rz(BETA);
 };
 }  // namespace gpu
 #endif

@@ -70,6 +70,10 @@ Where `I` (default of `10`) specifies how many iterations each kernel will run, 
 __Example:__ For a square GEMM, the problem size will iterate from `M=N=K=S`, up to `M=N=K=D`.\
 __Example:__ For a rectangular GEMM where `M=N` and `K=4*M`, the probelm size will iterate from `M=N=S` and `K=S*4`  up to`M=N=D` and `K=D*4`.
 
+Additional arguments are as follows:
+ - `--no_cpu` : disables the CPU kernels from executing at runtime
+ - `--no_gpu` : disables the GPU kernels from executing at runtime
+
 
 # Environment Variables
 It is recommended to set the relevant environment variables to ensure the best performance on host and device. 

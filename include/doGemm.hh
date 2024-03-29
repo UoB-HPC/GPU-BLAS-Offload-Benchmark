@@ -484,7 +484,12 @@ class doGemm {
 
   /** Get the name of the kernel being run. */
   std::string getKernelName() const {
-    switch (sizeof(T_CPU)) {
+#if !CPU_ENABLED
+    switch (sizeof(T_GPU))
+#else
+    switch (sizeof(T_CPU))
+#endif
+    {
       case 2:
         return "hgemm";
       case 4:

@@ -97,9 +97,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 
 ### <u>Level 3 BLAS</u>
  - GEMM
-   - FP16 / BF16, FP32, FP64
-     - FP16 for ArmPL
-     - BF16 for cuBLAS, OneMKL
+   - FP16, FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes
 
  - SpMM
@@ -150,6 +148,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [x] Outline what kernels are included in the benchmark, along with how they will be run.
  - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
  - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
+ - [ ] Add BFloat16 support
  - [ ] Add support for ArmPL Sparce
    - [ ] SpMM 
    - [ ] SpMV 

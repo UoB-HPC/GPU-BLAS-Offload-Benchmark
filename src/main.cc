@@ -1,7 +1,11 @@
 #include "../include/main.hh"
 
 int iters = 10;
+int startDim = 1;
 int upperLimit = 128;
+
+bool doCpu = CPU_ENABLED;
+bool doGpu = GPU_ENABLED;
 
 int main(int argc, char** argv) {
   getParameters(argc, argv);
@@ -20,20 +24,21 @@ int main(int argc, char** argv) {
 
   // SGEMM Comparison
   std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
-  doGemm<float> sgemm(iters, upperLimit);
+  doGemm<float> sgemm(iters, startDim, upperLimit, doCpu, doGpu);
   sgemm.collectData();
   std::cout << "Finished!" << std::endl;
 
   // DGEMM Comparison
   std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
-  doGemm<double> dgemm(iters, upperLimit);
+  doGemm<double> dgemm(iters, startDim, upperLimit, doCpu, doGpu);
   dgemm.collectData();
   std::cout << "Finished!" << std::endl;
   return 0;
 }
 
 void printBenchmarkConfig(const int iters, const int upperLimit) {
-  std::string gpuEnabledStr = (GPU_ENABLED) ? "True" : "False";
+  std::string cpuEnabledStr = (doCpu) ? "True" : "False";
+  std::string gpuEnabledStr = (doGpu) ? "True" : "False";
   unsigned int ompThreads =
       (getenv("OMP_NUM_THREADS") != NULL) ? atoi(getenv("OMP_NUM_THREADS")) : 1;
   const char* ompProcBind =
@@ -42,8 +47,9 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
       (getenv("OMP_PLACES") != NULL) ? getenv("OMP_PLACES") : "Not Set";
   std::cout << "GPU BLAS Offload Benchmark:" << std::endl;
   std::cout << "\tIterations per Kernel: " << iters << std::endl;
-  std::cout << "\tMax Problem Dimension: " << upperLimit << std::endl;
-  std::cout << "\tCPU Kernels Enabled: True" << std::endl;
+  std::cout << "\tStarting Problem Dimension: " << startDim << std::endl;
+  std::cout << "\tMaximum Problem Dimension: " << upperLimit << std::endl;
+  std::cout << "\tCPU Kernels Enabled: " << cpuEnabledStr << std::endl;
   std::cout << "\tCPU Library: " << CPU_LIB_NAME << std::endl;
   std::cout << "\tGPU Kernels Enabled: " << gpuEnabledStr << std::endl;
   std::cout << "\tGPU Library: " << GPU_LIB_NAME << std::endl;
@@ -52,16 +58,14 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
   std::cout << "\tOMP_PLACES: " << ompPlaces << std::endl;
   std::cout << std::endl;
 #ifdef CPU_DEFAULT
-  std::cout
-      << "WARNING - No CPU BLAS library selected. Results will be collected "
-         "from a single threaded naive implementation."
-      << std::endl;
+  std::cout << "WARNING - No CPU BLAS library selected. No CPU BLAS Kernels "
+               "will be run."
+            << std::endl;
 #endif
 #ifdef GPU_DEFAULT
-  std::cout
-      << "WARNING - No GPU BLAS Library selected. All results will be based "
-         "off of a time of infinity."
-      << std::endl;
+  std::cout << "WARNING - No GPU BLAS Library selected. No GPU BLAS kernels "
+               "will be run."
+            << std::endl;
 #endif
   std::cout << std::endl;
 }
@@ -79,21 +83,44 @@ void getParameters(int argc, char* argv[]) {
         std::cout << "ERROR - Invalid number of iterations" << std::endl;
         exit(1);
       }
+    } else if (!strcmp(argv[i], "--start_dimension") ||
+               !strcmp(argv[i], "-s")) {
+      if (++i >= argc || (startDim = parseInt(argv[i])) < 0) {
+        std::cout << "ERROR - Invalid start dimension" << std::endl;
+        exit(1);
+      }
     } else if (!strcmp(argv[i], "--dimension_limit") ||
                !strcmp(argv[i], "-d")) {
       if (++i >= argc || (upperLimit = parseInt(argv[i])) < 0) {
         std::cout << "ERROR - Invalid dimension limit" << std::endl;
         exit(1);
       }
+      if (startDim > upperLimit) {
+        std::cout
+            << "ERROR - Start dimension cannot be greater than dimension limit"
+            << std::endl;
+        exit(1);
+      }
+    } else if (!strcmp(argv[i], "--no_cpu")) {
+      doCpu = false;
+    } else if (!strcmp(argv[i], "--no_gpu")) {
+      doGpu = false;
     } else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       std::cout << std::endl;
       std::cout << "Usage: ./gpu-blob [OPTIONS]" << std::endl << std::endl;
       std::cout << "Options:" << std::endl;
       std::cout << "  -h  --help                   Print this message"
                 << std::endl;
+      std::cout << "  --no_cpu                     Disable all CPU kernel Runs"
+                << std::endl;
+      std::cout << "  --no_gpu                     Disable all GPU kernel Runs"
+                << std::endl;
       std::cout << "  -i  --iterations I           Repeat each kernel I times "
                    "(default: "
                 << iters << ")" << std::endl;
+      std::cout << "  -s  --start_dimension S      First value of M, N, K is S "
+                   "(default: "
+                << startDim << ")" << std::endl;
       std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
                    "(default: "
                 << upperLimit << ")" << std::endl;

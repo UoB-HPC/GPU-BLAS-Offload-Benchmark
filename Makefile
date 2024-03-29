@@ -30,14 +30,14 @@ endif
 CXX_ARM     = armclang++
 CXX_CLANG   = clang++
 CXX_GNU     = g++
-CXX_INTEL   = icc
+CXX_INTEL   = icpx
 CXX_NVIDIA  = nvc++
 CXX = $(CXX_$(COMPILER))
 
 CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_GNU     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native -Wno-tautological-constant-compare
 CXXFLAGS_NVIDIA  = -std=c++17 -Wall -O3 -fast -$(ARCHFLAG)=native
 
 ifndef CXXFLAGS
@@ -54,8 +54,7 @@ HEADER_FILES = $(wildcard include/*.hh)
 # -------
 
 ifndef CPU_LIB
-$(warning CPU_LIB not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
-HEADER_FILES += $(wildcard DefaultCPU/*.hh)
+$(warning CPU_LIB not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). No CPU kernels will be run.)
 
 else ifeq ($(CPU_LIB), ARMPL)
 # Add ARM compiler options
@@ -75,8 +74,30 @@ endif
 HEADER_FILES += $(wildcard ArmPL/*.hh)
 
 else ifeq ($(CPU_LIB), ONEMKL)
-# Do OneMKL stuff
-$(error The CPU_LIB $(CPU_LIB) is currently not supported.)
+# Ensure MKLROOT is defined
+ifndef MKLROOT
+$(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Library)
+endif
+# Add INTEL compiler options
+ifeq ($(COMPILER), INTEL)
+override CXXFLAGS += -L$(MKLROOT)/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qmkl=parallel -DMKL_INT=int
+# Add GNU compiler options
+else ifeq ($(COMPILER), GNU)
+override CXXFLAGS += -m64 -L$(MKLROOT)/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -I"${MKLROOT}/include" -DMKL_INT=int
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+$(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
+$(info )
+# Add CLANG compiler options
+else ifeq ($(COMPILER), CLANG)
+override CXXFLAGS += -L$(MKLROOT)/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -m64 -I"${MKLROOT}/include" -DMKL_INT=int
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+$(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
+$(info )
+# Other compilers not compatible with ONEMKL
+else
+$(error Selected compiler $(COMPILER) is not currently compatible with oneMKL CPU Library)
+endif
+HEADER_FILES+= $(wildcard oneMKL/CPU/*.hh)
 
 else ifeq ($(CPU_LIB), AOCL)
 # Do AOCL stuff
@@ -87,15 +108,13 @@ else ifeq ($(CPU_LIB), OPENBLAS)
 $(error The CPU_LIB $(CPU_LIB) is currently not supported.)
 
 else
-$(warning Provided CPU_LIB not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). Naive, single threaded solutions being used.)
-HEADER_FILES += $(wildcard DefaultCPU/*.hh)
+$(warning Provided CPU_LIB not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). No CPU kernels will be run.)
 endif
 
 # -------
 
 ifndef GPU_LIB
 $(warning GPU_LIB not set (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
-HEADER_FILES += $(wildcard DefaultGPU/*.hh)
 
 else ifeq ($(GPU_LIB), CUBLAS)
 # Do cuBLAS stuff
@@ -108,11 +127,22 @@ $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<NVHPC_DIR>/.../math_libs/include -I<NVHPC_DI
 $(info $(TAB)$(TAB)Add both aforementioned `lib64` directories to `$$LD_LIBRARY_PATH`)
 $(info )
 override CXXFLAGS += -lcublas -lcudart
+endif
 HEADER_FILES += $(wildcard cuBLAS/*.hh)
 
 else ifeq ($(GPU_LIB), ONEMKL)
-# Do OneMKL stuff
-$(error The GPU_LIB $(GPU_LIB) is currently not supported.)
+ifeq ($(COMPILER), INTEL)
+# Ensure MKLROOT is defined
+ifndef MKLROOT
+$(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Library)
+endif
+# Add compiler and link options
+override CXXFLAGS += -fsycl -L$(MKLROOT)/lib -lmkl_sycl_blas -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -lsycl -lpthread -lm -ldl  -fsycl -DMKL_ILP64  -I"$(MKLROOT)/include"
+# `lmkl_tbb_thread` can replace `lmkl_sequential`
+else
+# Only Intel DPC++ compiler is supported for OneMKL GPU implementation.
+$(error Selected compiler $(COMPILER) is not currently compatible with oneMKL GPU Library)
+endif
 
 else ifeq ($(GPU_LIB), ROCBLAS)
 # Do rocBLAS stuff
@@ -120,7 +150,6 @@ $(error The GPU_LIB $(GPU_LIB) is currently not supported.)
 
 else
 $(warning Provided GPU_LIB not valid (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
-HEADER_FILES += $(wildcard DefaultGPU/*.hh)
 endif
 
 # -------

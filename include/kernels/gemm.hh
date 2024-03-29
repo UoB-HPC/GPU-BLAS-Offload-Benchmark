@@ -57,12 +57,29 @@ class gemm {
    * after Kernel has been called. */
   virtual void postCallKernelCleanup() = 0;
 
+  /** Calculate a checksum from the result matrix C. */
   constexpr double calcChecksum() {
     // Checksum for GEMM calculated by summing all four corners of C together
     return (C_[0] + C_[m_ - 1] + C_[(m_ * (n_ - 1))] + C_[m_ * n_ - 1]);
   }
 
  protected:
+  /** Initialise the input matrices. */
+  void initInputMatrices() {
+    // Seed the random number generator
+    srand(SEED);
+    for (int y = 0; y < m_; y++) {
+      for (int x = 0; x < k_; x++) {
+        A_[y * k_ + x] = (T)((rand() % 100) / 7);
+      }
+    }
+    for (int y = 0; y < k_; y++) {
+      for (int x = 0; x < n_; x++) {
+        B_[y * n_ + x] = (T)((rand() % 100) / 3);
+      }
+    }
+  }
+
   /** Call the extern consume() function. */
   void callConsume() { consume((void*)A_, (void*)B_, (void*)C_); }
 

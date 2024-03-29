@@ -14,6 +14,7 @@ template <typename T>
 class gemm_gpu : public gemm<T> {
  public:
   using gemm<T>::gemm;
+  using gemm<T>::initInputMatrices;
   using gemm<T>::m_;
   using gemm<T>::n_;
   using gemm<T>::k_;
@@ -21,6 +22,18 @@ class gemm_gpu : public gemm<T> {
   using gemm<T>::B_;
   using gemm<T>::C_;
   using gemm<T>::offload_;
+
+  ~gemm_gpu() {
+    if (alreadyInitialised_) {
+      // Destroy the handle
+      cublasDestroy(handle_);
+
+      // Destroy streams after use
+      cudaCheckError(cudaStreamDestroy(s1_));
+      cudaCheckError(cudaStreamDestroy(s2_));
+      cudaCheckError(cudaStreamDestroy(s3_));
+    }
+  }
 
   /** Initialise the required data structures.
    * `offload` refers to the data offload type:
@@ -30,22 +43,26 @@ class gemm_gpu : public gemm<T> {
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
   void initialise(gpuOffloadType offload, int m, int n, int k) override {
-    offload_ = offload;
+    if (!alreadyInitialised_) {
+      alreadyInitialised_ = true;
+      // Perform set-up which doesn't need to happen every problem size change.
+      // Create a handle for CUBLAS
+      cublasCreate(&handle_);
 
+      // Get device identifier
+      cudaCheckError(cudaGetDevice(&gpuDevice_));
+
+      // Initialise 3 streams to asynchronously move data between host and
+      // device
+      cudaCheckError(cudaStreamCreate(&s1_));
+      cudaCheckError(cudaStreamCreate(&s2_));
+      cudaCheckError(cudaStreamCreate(&s3_));
+    }
+
+    offload_ = offload;
     m_ = m;
     n_ = n;
     k_ = k;
-
-    // Create a handle for CUBLAS
-    cublasCreate(&handle_);
-
-    // Get device identifier
-    cudaCheckError(cudaGetDevice(&gpuDevice_));
-
-    // Initialise 3 streams to asynchronously move data between host and device
-    cudaCheckError(cudaStreamCreate(&s1_));
-    cudaCheckError(cudaStreamCreate(&s2_));
-    cudaCheckError(cudaStreamCreate(&s3_));
 
     if (offload_ == gpuOffloadType::unified) {
       cudaCheckError(cudaMallocManaged(&A_, sizeof(T) * m_ * k_));
@@ -62,18 +79,8 @@ class gemm_gpu : public gemm<T> {
       cudaCheckError(cudaMalloc((void**)&C_device_, sizeof(T) * m_ * n_));
     }
 
-    // Initialise the host matricies
-    srand(SEED);
-    for (int y = 0; y < m_; y++) {
-      for (int x = 0; x < k_; x++) {
-        A_[y * k_ + x] = (((T)(rand() % 10000) / 100.0) - 30.0);
-      }
-    }
-    for (int y = 0; y < k_; y++) {
-      for (int x = 0; x < n_; x++) {
-        B_[y * n_ + x] = (((T)(rand() % 10000) / 100.0) - 30.0);
-      }
-    }
+    // Initialise the host input matricies (A_ and B_)
+    initInputMatrices();
   }
 
  private:
@@ -235,14 +242,6 @@ class gemm_gpu : public gemm<T> {
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
-    // Destroy the handle
-    cublasDestroy(handle_);
-
-    // Destroy streams after use
-    cudaCheckError(cudaStreamDestroy(s1_));
-    cudaCheckError(cudaStreamDestroy(s2_));
-    cudaCheckError(cudaStreamDestroy(s3_));
-
     if (offload_ == gpuOffloadType::unified) {
       cudaFree(A_);
       cudaFree(B_);
@@ -257,6 +256,9 @@ class gemm_gpu : public gemm<T> {
       cudaFree(C_device_);
     }
   }
+
+  /** Whether the initialise function has been called before. */
+  bool alreadyInitialised_ = false;
 
   /** Handle used when calling cuBLAS. */
   cublasHandle_t handle_;

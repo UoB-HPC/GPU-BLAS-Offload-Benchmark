@@ -4,9 +4,9 @@ Not only can this aid to help programmers understand the characteristics of the 
 
 For each supported BLAS kernel (listed below) GPU-BLOB will run `n` iterations of each kernel on CPU and GPU, gradually increasing the problem size up to a user-defined maximum limit. The resulting large amount of performance data collected is output in multiple `csv` files in the `CSV_Results` directory; one for each BLAS kernel and probelm-type pair.
 
-Each BLAS kernel is tested with a range of different problem size designs in an attempt to capture the performance differences that can occur between different problem sets when utilising the same underlying kernel. For each BLAS kernel and problem type pair, a table will be displayed which outlines the problem size at which offloading to the GPU became worthwhile. If for the number of iterations and maximum problem dimension this offload threshold cannot be found, the table will show `0` for each problem dimension and `N/A` for the attained GFLOP/s.
+Each BLAS kernel is tested with a range of different problem size designs in an attempt to capture the performance differences that can occur between different problem sets when utilising the same underlying kernel. For each BLAS kernel and problem type pair, a table will be displayed which outlines the minimum problem size at which offloading to the GPU became worthwhile for **all** larger problem sizes. If for the number of iterations and maximum problem dimension this offload threshold cannot be found, the table will show `0` for each problem dimension and `N/A` for the GPU and CPU GFLOP/s.
 
-All computations performed by each BLAS library are assumed to be functionally correct. However, a simple checksum is calculated after each CPU and GPU run for each problem size to ensure all utilised libraries are computing the same result.\
+All computations performed by each BLAS library are done in column-major and are assumed to be functionally correct. However, a simple checksum is calculated after each CPU and GPU run for each problem size to ensure all utilised libraries are computing the same result.\
 Only when an error occurs will any checksum be displayed to the user.
 
 GFLOP/s are calculated using the following Total FLOPs formulas. The compute time excludes any initialisation, but does include any data movement / prefetching to/from the GPU device:
@@ -22,7 +22,7 @@ These compiler choices correspond to:
  - `ARM` --> armclang++
  - `CLANG` --> clang++
  - `GNU` --> g++
- - `INTEL` --> icc
+ - `INTEL` --> icx (Intel's oneAPI DPC++/C++ Compiler)
  - `NVIDIA` --> nvc++
 
 
@@ -33,11 +33,10 @@ make COMPILER=GNU CPU_LIB=ARMPL
 ```
 The supported Libraries are as follows:
  - Arm Performance Libraries : `ARMPL`
- <!-- - Intel OneMKL : `ONEMKL` -->
- <!-- - AMD Optimizing CPU libraries : `AOCL` -->
- <!-- - OpenBLAS : `OPENBLAS` -->
+ - Intel OneMKL : `ONEMKL`
+   - May require the use of an additional `MKLROOT` make option specifying the root directory of the oneMKL Library.
 
-If no library is selected then a naive solution to each kernel will be performed.
+If no library is selected then no CPU BLAS kernels will be executed.
 
 
 ### <u>GPU BLAS Library</u>
@@ -47,8 +46,9 @@ make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS
 ```
 The supported Libraries are as follows:
  - NVIDIA cuBLAS : `CUBLAS`
- <!-- - Intel OneMKL : `ONEMKL` -->
- <!-- - AMD rocBLAS : `ROCBLAS` -->
+   <!-- - Implies the usage of the cuSPARCE Library (also packaged with NVIDIA's HPC SDK) -->
+ - Intel OneMKL : `ONEMKL`
+   - May require the use of an additional `MKLROOT` make option specifying the root directory of the oneMKL Library.
 
 If no library is selected then no GPU BLAS kernels will be executed.
 
@@ -62,13 +62,13 @@ make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS CXXFLAGS="-I/path/to/include -L/p
 # Running
 The benchmark takes the following runtime arguments:
 ```bash
-./gpu-blob --iterations I --dimension_limit D
+./gpu-blob --iterations I --start_dimension S --dimension_limit D
         OR
-./gpu-blob -i I -d D
+./gpu-blob -i I -s S -d D
 ```
-Where `I` (default of `10`) specifies how many iterations each kernel will run, and `D` (default of `128`) specifies the the upper limit for the largest dimention in a problem size.\
-__Example:__ For a square GEMM, the problem size will iterate up to `M=N=K=D`.\
-__Example:__ For a rectangular GEMM where `M=N` and `K=M/4`, the probelm size will iterate up to`M=N=D` and `K=D/4`.
+Where `I` (default of `10`) specifies how many iterations each kernel will run, `S` (default of `1`) is the first problem dimension tested, and `D` (default of `128`) specifies the the upper limit for the largest dimention in a problem size.\
+__Example:__ For a square GEMM, the problem size will iterate from `M=N=K=S`, up to `M=N=K=D`.\
+__Example:__ For a rectangular GEMM where `M=N` and `K=4*M`, the probelm size will iterate from `M=N=S` and `K=S*4`  up to`M=N=D` and `K=D*4`.
 
 
 # Environment Variables
@@ -79,14 +79,17 @@ Many libraries will require updating `$LD_LIBRARY_PATH` if any `lib` directories
 ### <u>Arm Performance Libraries</u>
 When using ArmPL, setting the following environment variables is beneficial:
  - `OMP_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
- - `OMP_PROC_BIND` -- `close` is often found to perform best
- - `OMP_PLACES` -- `cores` is often found to perform best
+ - `OMP_PROC_BIND`
+ - `OMP_PLACES`
 
-### <u>cuBLAS</u>
-When using cuBLAS, it is important to pin the initialised data on the host to the correct NUMA domain (if applicable) to ensure data-offload is done optimally:
- 1. Use `nvidia-smi topo -m` to find out what the device's NUMA affinaty is.
- 2. Prefix the run command with `numactl -Na -ma` where `a` is the NUMA node the device is connected to.
- 3. If a device cannot be found, ensure `CUDA_VISIBLE_DEVICES` is set correctly.
+### <u>Intel OnMKL</u>
+When using oneMKL as the CPU BLAS Library, setting the following environment variables is beneficial:
+ - `OMP_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
+ - `OMP_PROC_BIND`
+ - `OMP_PLACES`
+
+<!-- When using oneMKL as the GPU BLAS Library, you may need to set the following environment variables:
+ - `export ONEAPI_DEVICE_SELECTOR="opencl:gpu"` -- to correct device indexes -->
 
 
 # BLAS Kernels Supported
@@ -113,32 +116,49 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 
 
 # ToDo:
- - [x] Outline what kernels are included in the benchmark, along with how they will be run.
-   - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
-   - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
- - [ ] Add naive implementations of kernels for Default CPU + Default GPU
-   - [x] GEMM 
-   - [ ] GEMV 
-   - [ ] SpMM 
-   - [ ] SpMV 
+ - [ ] Add command line option to not run any CPU kernel (i.e. GPU only)
+ - [ ] Add minimum start dimension command line option
+ - [ ] Add FP16 support for kernels
  - [ ] Add support for ArmPL.
    - [x] GEMM 
    - [ ] GEMV 
-   - [ ] SpMM 
-   - [ ] SpMV 
  - [ ] Add support for cuBLAS.
    - [x] GEMM 
    - [ ] GEMV 
- - [ ] Add support for cuSPARSE
- - [ ] Add support for BLIS
- - [ ] Add support for oneMKL
+ - [ ] Add support for oneMKL (CPU & GPU)
+   - [x] GEMM
+   - [ ] GEMV
  - [ ] Add support for rocBLAS
+   - [ ] GEMM
+   - [ ] GEMV
  - [ ] Add support for OpenBLAS
- - [ ] Add support for AOCL (AMD Optimizing CPU libraries)
- - [ ] Add support for NVIDIA NVPL(?) CPU Library
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for BLIS
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for AOCL (AMD Optimizing CPU libraries)(?)
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for NVPL CPU Library
+   - [ ] GEMM
+   - [ ] GEMV
+
+ - [x] Create python script to auto generate a png graph for each csv file (x-axis = matrix size, y-axis=GFLOP/s)
+ - [x] Outline what kernels are included in the benchmark, along with how they will be run.
+ - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
+ - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
+ - [ ] Add support for ArmPL Sparce
+   - [ ] SpMM 
+   - [ ] SpMV 
+ - [ ] Add support for cuSPARSE
+   - [ ] SpMM
+   - [ ] SpMV
+ - [ ] Add support for oneMKL Sparce
+   - [ ] SpMM
+   - [ ] SpMV
  - [ ] Add support for Apple Accelerate(?)
  - [ ] Add support for Apple Metal Performance Shaders(?)
- - [ ] Add batched versions of appropriate BLAS kernels
 
 # Future Work
  - [ ] Add support for Intel AMX.

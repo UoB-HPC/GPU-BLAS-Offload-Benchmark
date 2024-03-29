@@ -96,7 +96,7 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::once: {
-        // Offload data from host to the device.
+        // Offload input data from host to the device.
         cudaCheckError(cudaMemcpyAsync(A_device_, A_, sizeof(T) * m_ * k_,
                                        cudaMemcpyHostToDevice, s1_));
         cudaCheckError(cudaMemcpyAsync(B_device_, B_, sizeof(T) * k_ * n_,
@@ -106,7 +106,7 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::unified: {
-        // Prefetch memory to device
+        // Prefetch input memory to device
         cudaCheckError(
             cudaMemPrefetchAsync(A_, sizeof(T) * m_ * k_, gpuDevice_, s1_));
         cudaCheckError(
@@ -122,7 +122,7 @@ class gemm_gpu : public gemm<T> {
   void callGemm() override {
     switch (offload_) {
       case gpuOffloadType::always: {
-        // Offload data from host to the device.
+        // Offload input data from host to the device.
         cudaCheckError(cudaMemcpyAsync(A_device_, A_, sizeof(T) * m_ * k_,
                                        cudaMemcpyHostToDevice, s1_));
         cudaCheckError(cudaMemcpyAsync(B_device_, B_, sizeof(T) * k_ * n_,
@@ -158,11 +158,7 @@ class gemm_gpu : public gemm<T> {
             exit(1);
           }
         }
-        // Offload data from device to host
-        cudaCheckError(cudaMemcpyAsync(A_, A_device_, sizeof(T) * m_ * k_,
-                                       cudaMemcpyDeviceToHost, s1_));
-        cudaCheckError(cudaMemcpyAsync(B_, B_device_, sizeof(T) * k_ * n_,
-                                       cudaMemcpyDeviceToHost, s2_));
+        // Offload output data from device to host
         cudaCheckError(cudaMemcpyAsync(C_, C_device_, sizeof(T) * m_ * n_,
                                        cudaMemcpyDeviceToHost, s3_));
         // Ensure device has finished all work.
@@ -242,11 +238,7 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::once: {
-        // Offload data from device to host
-        cudaCheckError(cudaMemcpyAsync(A_, A_device_, sizeof(T) * m_ * k_,
-                                       cudaMemcpyDeviceToHost, s1_));
-        cudaCheckError(cudaMemcpyAsync(B_, B_device_, sizeof(T) * k_ * n_,
-                                       cudaMemcpyDeviceToHost, s2_));
+        // Offload output data from device to host
         cudaCheckError(cudaMemcpyAsync(C_, C_device_, sizeof(T) * m_ * n_,
                                        cudaMemcpyDeviceToHost, s3_));
         // Ensure device has finished all work.
@@ -254,11 +246,7 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::unified: {
-        // Ensure all data resides on host once work has completed
-        cudaCheckError(cudaMemPrefetchAsync(A_, sizeof(T) * m_ * k_,
-                                            cudaCpuDeviceId, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(B_, sizeof(T) * k_ * n_,
-                                            cudaCpuDeviceId, s2_));
+        // Ensure output data resides on host once work has completed
         cudaCheckError(cudaMemPrefetchAsync(C_, sizeof(T) * m_ * n_,
                                             cudaCpuDeviceId, s3_));
         // Ensure device has finished all work.
@@ -296,11 +284,11 @@ class gemm_gpu : public gemm<T> {
    */
   cudaStream_t s1_;
 
-  /** CUDA Stream 1 - used to asynchronously move data between host and device.
+  /** CUDA Stream 2 - used to asynchronously move data between host and device.
    */
   cudaStream_t s2_;
 
-  /** CUDA Stream 1 - used to asynchronously move data between host and device.
+  /** CUDA Stream 3 - used to asynchronously move data between host and device.
    */
   cudaStream_t s3_;
 

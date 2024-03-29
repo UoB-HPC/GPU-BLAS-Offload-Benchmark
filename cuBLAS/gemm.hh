@@ -47,10 +47,18 @@ class gemm_gpu : public gemm<T> {
       alreadyInitialised_ = true;
       // Perform set-up which doesn't need to happen every problem size change.
       // Create a handle for CUBLAS
-      cublasCreate(&handle_);
+      cublasStatus_t status = cublasCreate(&handle_);
+      if (status != CUBLAS_STATUS_SUCCESS) {
+        std::cout << "Failed to make cublas handle: " << stat << std::endl;
+        exit(1);
+      }
 
       // Enable Tensor Cores
-      cudaCheckError(cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH));
+      status = cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH);
+      if (status != CUBLAS_STATUS_SUCCESS) {
+        std::cout << "Failed to set cublas math mode: " << stat << std::endl;
+        exit(1);
+      }
 
       // Get device identifier
       cudaCheckError(cudaGetDevice(&gpuDevice_));

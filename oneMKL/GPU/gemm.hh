@@ -79,6 +79,7 @@ class gemm_gpu : public gemm<T> {
         gpuQueue_.memcpy(A_device_, A_, sizeof(T) * m_ * k_);
         gpuQueue_.memcpy(B_device_, B_, sizeof(T) * k_ * n_);
         gpuQueue_.memcpy(C_device_, C_, sizeof(T) * m_ * n_);
+        gpuQueue_.wait_and_throw();
         break;
       }
       case gpuOffloadType::unified: {
@@ -100,13 +101,15 @@ class gemm_gpu : public gemm<T> {
         gpuQueue_.memcpy(A_device_, A_, sizeof(T) * m_ * k_);
         gpuQueue_.memcpy(B_device_, B_, sizeof(T) * k_ * n_);
         gpuQueue_.memcpy(C_device_, C_, sizeof(T) * m_ * n_);
+        gpuQueue_.wait_and_throw();
         // Call oneMKL GEMM kernel
         try {
           oneapi::mkl::blas::column_major::gemm(
               gpuQueue_, transA_, transB_, (int64_t)m_, (int64_t)n_,
               (int64_t)k_, alpha, A_device_, (int64_t)std::max(1, m_),
               B_device_, (int64_t)std::max(1, k_), beta, C_device_,
-              (int64_t)std::max(1, m_));
+              (int64_t)std::max(1, m_))
+              .wait_and_throw();
         } catch (sycl::exception const& e) {
           std::cout << "ERROR - Caught synchronous SYCL exception during GEMM "
                        "(Always):\n"
@@ -125,7 +128,8 @@ class gemm_gpu : public gemm<T> {
               gpuQueue_, transA_, transB_, (int64_t)m_, (int64_t)n_,
               (int64_t)k_, alpha, A_device_, (int64_t)std::max(1, m_),
               B_device_, (int64_t)std::max(1, k_), beta, C_device_,
-              (int64_t)std::max(1, m_));
+              (int64_t)std::max(1, m_))
+              .wait_and_throw();
         } catch (sycl::exception const& e) {
           std::cout << "ERROR - Caught synchronous SYCL exception during GEMM "
                        "(Once):\n"

@@ -23,7 +23,7 @@ endif
 # -------
 
 ifndef COMPILER
-$(warning COMPILER not set (use ARM, CLANG, GNU, INTEL, or NVIDIA). Using GNU as default)
+$(warning COMPILER not set (use ARM, CLANG, GNU, INTEL, NVIDIA, or HIP). Using GNU as default)
 COMPILER=GNU
 endif
 
@@ -32,6 +32,7 @@ CXX_CLANG   = clang++
 CXX_GNU     = g++
 CXX_INTEL   = icpx
 CXX_NVIDIA  = nvc++
+CXX_HIP     = hipcc
 CXX = $(CXX_$(COMPILER))
 
 CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
@@ -39,6 +40,7 @@ CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_GNU     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native -Wno-tautological-constant-compare
 CXXFLAGS_NVIDIA  = -std=c++17 -Wall -O3 -fast -$(ARCHFLAG)=native
+CXXFLAGS_HIP     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 
 ifndef CXXFLAGS
 CXXFLAGS = $(CXXFLAGS_$(COMPILER))
@@ -146,11 +148,12 @@ endif
 
 else ifeq ($(GPU_LIB), ROCBLAS)
 # Do rocBLAS stuff
-override CXXFLAGS += lrocblas -lm -lpthread -D__HIP_PLATFORM_AMD__
+override CXXFLAGS += -lrocblas -lm -lpthread -D__HIP_PLATFORM_AMD__
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-L<ROCM_PATH>/lib -L<ROCBLAS_PATH>/lib` to make command)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<ROCM_PATH>/include -I<ROCBLAS_PATH>/include` to make command)
 $(info $(TAB)$(TAB)Add both aforementioned `lib` directories to `$$LD_LIBRARY_PATH`)
+HEADER_FILES += $(wildcard rocBLAS/*.hh)
 
 
 else

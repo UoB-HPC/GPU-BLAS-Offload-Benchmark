@@ -146,7 +146,7 @@ endif
 
 else ifeq ($(GPU_LIB), ROCBLAS)
 # Do rocBLAS stuff
-override CXXFLAGS += lrocblas -lm -lpthread
+override CXXFLAGS += lrocblas -lm -lpthread -D__HIP_PLATFORM_AMD__
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-L<ROCM_PATH>/lib -L<ROCBLAS_PATH>/lib` to make command)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<ROCM_PATH>/include -I<ROCBLAS_PATH>/include` to make command)

@@ -141,19 +141,19 @@ class gemm_gpu : public gemm<T> {
                                      hipMemcpyHostToDevice, s3_));
         // Call rocBLAS GEMM kernel
         if constexpr (std::is_same_v<T, float>) {
-          rocblas_status stat = rocblas_sgemm(
-              handle_, transA_, transB_, m_, n_, k_, &alpha, A_device_,
-              std::max(1, m_), B_device_, std::max(1, k_), &beta, C_device_, ,
-              std::max(1, m_));
+          rocblas_status stat =
+              rocblas_sgemm(handle_, transA_, transB_, m_, n_, k_, &alpha,
+                            A_device_, std::max(1, m_), B_device_,
+                            std::max(1, k_), &beta, C_device_, std::max(1, m_));
           if (stat != rocblas_status_success) {
             std::cout << "rocBLAS error:" << stat << std::endl;
             exit(1);
           }
         } else if constexpr (std::is_same_v<T, double>) {
-          rocblas_status stat = rocblas_dgemm(
-              handle_, transA_, transB_, m_, n_, k_, &alpha, A_device_,
-              std::max(1, m_), B_device_, std::max(1, k_), &beta, C_device_, ,
-              std::max(1, m_));
+          rocblas_status stat =
+              rocblas_dgemm(handle_, transA_, transB_, m_, n_, k_, &alpha,
+                            A_device_, std::max(1, m_), B_device_,
+                            std::max(1, k_), &beta, C_device_, std::max(1, m_));
           if (stat != rocblas_status_success) {
             std::cout << "rocBLAS error:" << stat << std::endl;
             exit(1);
@@ -169,19 +169,19 @@ class gemm_gpu : public gemm<T> {
       case gpuOffloadType::once: {
         // Call rocBLAS GEMM kernel
         if constexpr (std::is_same_v<T, float>) {
-          rocblas_status stat = rocblas_sgemm(
-              handle_, transA_, transB_, m_, n_, k_, &alpha, A_device_,
-              std::max(1, m_), B_device_, std::max(1, k_), &beta, C_device_, ,
-              std::max(1, m_));
+          rocblas_status stat =
+              rocblas_sgemm(handle_, transA_, transB_, m_, n_, k_, &alpha,
+                            A_device_, std::max(1, m_), B_device_,
+                            std::max(1, k_), &beta, C_device_, std::max(1, m_));
           if (stat != rocblas_status_success) {
             std::cout << "rocBLAS error:" << stat << std::endl;
             exit(1);
           }
         } else if constexpr (std::is_same_v<T, double>) {
-          rocblas_status stat = rocblas_dgemm(
-              handle_, transA_, transB_, m_, n_, k_, &alpha, A_device_,
-              std::max(1, m_), B_device_, std::max(1, k_), &beta, C_device_, ,
-              std::max(1, m_));
+          rocblas_status stat =
+              rocblas_dgemm(handle_, transA_, transB_, m_, n_, k_, &alpha,
+                            A_device_, std::max(1, m_), B_device_,
+                            std::max(1, k_), &beta, C_device_, std::max(1, m_));
           if (stat != rocblas_status_success) {
             std::cout << "rocBLAS error:" << stat << std::endl;
             exit(1);
@@ -192,19 +192,17 @@ class gemm_gpu : public gemm<T> {
       case gpuOffloadType::unified: {
         // Call rocBLAS GEMM kernel
         if constexpr (std::is_same_v<T, float>) {
-          rocblas_status stat =
-              rocblas_sgemm(handle_, transA_, transB_, m_, n_, k_, &alpha, A_,
-                            std::max(1, m_), B_, std::max(1, k_), &beta, C_, ,
-                            std::max(1, m_));
+          rocblas_status stat = rocblas_sgemm(
+              handle_, transA_, transB_, m_, n_, k_, &alpha, A_,
+              std::max(1, m_), B_, std::max(1, k_), &beta, C_, std::max(1, m_));
           if (stat != rocblas_status_success) {
             std::cout << "rocBLAS error:" << stat << std::endl;
             exit(1);
           }
         } else if constexpr (std::is_same_v<T, double>) {
-          rocblas_status stat =
-              rocblas_dgemm(handle_, transA_, transB_, m_, n_, k_, &alpha, A_,
-                            std::max(1, m_), B_, std::max(1, k_), &beta, C_, ,
-                            std::max(1, m_));
+          rocblas_status stat = rocblas_dgemm(
+              handle_, transA_, transB_, m_, n_, k_, &alpha, A_,
+              std::max(1, m_), B_, std::max(1, k_), &beta, C_, std::max(1, m_));
           if (stat != rocblas_status_success) {
             std::cout << "rocBLAS error:" << stat << std::endl;
             exit(1);

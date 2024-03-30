@@ -70,6 +70,9 @@ Where `I` (default of `10`) specifies how many iterations each kernel will run, 
 __Example:__ For a square GEMM, the problem size will iterate from `M=N=K=S`, up to `M=N=K=D`.\
 __Example:__ For a rectangular GEMM where `M=N` and `K=4*M`, the probelm size will iterate from `M=N=S` and `K=S*4`  up to`M=N=D` and `K=D*4`.
 
+Additional arguments are as follows:
+ - `--no_cpu` : disables the CPU kernels from executing at runtime
+ - `--no_gpu` : disables the GPU kernels from executing at runtime
 
 # Environment Variables
 It is recommended to set the relevant environment variables to ensure the best performance on host and device. 
@@ -118,7 +121,6 @@ The kernels listed below are computed by the benchmark for a wide range of probl
 # ToDo:
  - [ ] Add command line option to not run any CPU kernel (i.e. GPU only)
  - [ ] Add minimum start dimension command line option
- - [ ] Add FP16 support for kernels
  - [ ] Add support for ArmPL.
    - [x] GEMM 
    - [ ] GEMV 
@@ -131,16 +133,16 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [ ] Add support for rocBLAS
    - [ ] GEMM
    - [ ] GEMV
- - [ ] Add support for OpenBLAS
-   - [ ] GEMM
-   - [ ] GEMV
- - [ ] Add support for BLIS
-   - [ ] GEMM
-   - [ ] GEMV
  - [ ] Add support for AOCL (AMD Optimizing CPU libraries)(?)
    - [ ] GEMM
    - [ ] GEMV
  - [ ] Add support for NVPL CPU Library
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for OpenBLAS
+   - [ ] GEMM
+   - [ ] GEMV
+ - [ ] Add support for BLIS
    - [ ] GEMM
    - [ ] GEMV
 
@@ -148,6 +150,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [x] Outline what kernels are included in the benchmark, along with how they will be run.
  - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
  - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
+ - [ ] Add FP16/BF16 support for kernels
  - [ ] Add support for ArmPL Sparce
    - [ ] SpMM 
    - [ ] SpMV 

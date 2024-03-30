@@ -359,7 +359,7 @@ class doGemm {
                       time_checksum_gflop gpuResult_unified, const int M,
                       const int N, const int K) {
     // Ensure that each checksum difference is less than 0.1%
-    T hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
+    double hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
     if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) *
           hundredOverChecksum)) > 0.1 &&
         ((std::fabs(cpuResult.checksum - gpuResult_always.checksum) *

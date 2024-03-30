@@ -115,6 +115,9 @@ for i in range(0, len(gemmFilenames)):
         inputTypeStr = "Square x Short-Wide (M=K=32, N)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][1])
+    else:
+        # File not supported so go to next file
+        continue
 
 
 

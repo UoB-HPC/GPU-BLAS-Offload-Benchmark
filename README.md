@@ -49,6 +49,7 @@ The supported Libraries are as follows:
    <!-- - Implies the usage of the cuSPARCE Library (also packaged with NVIDIA's HPC SDK) -->
  - Intel OneMKL : `ONEMKL`
    - May require the use of an additional `MKLROOT` make option specifying the root directory of the oneMKL Library.
+ - AMD rocBLAS : `ROCBLAS`
 
 If no library is selected then no GPU BLAS kernels will be executed.
 
@@ -131,7 +132,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - [x] GEMM
    - [ ] GEMV
  - [ ] Add support for rocBLAS
-   - [ ] GEMM
+   - [x] GEMM
    - [ ] GEMV
  - [ ] Add support for AOCL (AMD Optimizing CPU libraries)(?)
    - [ ] GEMM

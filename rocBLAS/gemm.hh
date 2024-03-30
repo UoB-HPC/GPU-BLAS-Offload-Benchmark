@@ -244,17 +244,17 @@ class gemm_gpu : public gemm<T> {
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
     if (offload_ == gpuOffloadType::unified) {
-      hipFree(A_);
-      hipFree(B_);
-      hipFree(C_);
+      hipCheckError(hipFree(A_));
+      hipCheckError(hipFree(B_));
+      hipCheckError(hipFree(C_));
     } else {
       // Free the memory held on host and device
-      hipHostFree((void*)A_);
-      hipHostFree((void*)B_);
-      hipHostFree((void*)C_);
-      hipFree(A_device_);
-      hipFree(B_device_);
-      hipFree(C_device_);
+      hipCheckError(hipHostFree((void*)A_));
+      hipCheckError(hipHostFree((void*)B_));
+      hipCheckError(hipHostFree((void*)C_));
+      hipCheckError(hipFree(A_device_));
+      hipCheckError(hipFree(B_device_));
+      hipCheckError(hipFree(C_device_));
     }
   }
 

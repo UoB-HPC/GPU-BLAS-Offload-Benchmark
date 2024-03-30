@@ -47,7 +47,18 @@ class gemm_gpu : public gemm<T> {
       alreadyInitialised_ = true;
       // Perform set-up which doesn't need to happen every problem size change.
       // Create a handle for CUBLAS
-      cublasCreate(&handle_);
+      cublasStatus_t status = cublasCreate(&handle_);
+      if (status != CUBLAS_STATUS_SUCCESS) {
+        std::cout << "Failed to make cublas handle: " << status << std::endl;
+        exit(1);
+      }
+
+      // Enable Tensor Cores
+      status = cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH);
+      if (status != CUBLAS_STATUS_SUCCESS) {
+        std::cout << "Failed to set cublas math mode: " << status << std::endl;
+        exit(1);
+      }
 
       // Get device identifier
       cudaCheckError(cudaGetDevice(&gpuDevice_));
@@ -70,9 +81,9 @@ class gemm_gpu : public gemm<T> {
       cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * m_ * n_));
     } else {
       // Allocate matrices on host
-      A_ = (T*)malloc(sizeof(T) * m_ * k_);
-      B_ = (T*)malloc(sizeof(T) * k_ * n_);
-      C_ = (T*)malloc(sizeof(T) * m_ * n_);
+      cudaCheckError(cudaMallocHost((void**)&A_, sizeof(T) * m_ * k_));
+      cudaCheckError(cudaMallocHost((void**)&B_, sizeof(T) * k_ * n_));
+      cudaCheckError(cudaMallocHost((void**)&C_, sizeof(T) * m_ * n_));
       // Allocate matrices on device
       cudaCheckError(cudaMalloc((void**)&A_device_, sizeof(T) * m_ * k_));
       cudaCheckError(cudaMalloc((void**)&B_device_, sizeof(T) * k_ * n_));
@@ -93,7 +104,7 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::once: {
-        // Offload data from host to the device.
+        // Offload input data from host to the device.
         cudaCheckError(cudaMemcpyAsync(A_device_, A_, sizeof(T) * m_ * k_,
                                        cudaMemcpyHostToDevice, s1_));
         cudaCheckError(cudaMemcpyAsync(B_device_, B_, sizeof(T) * k_ * n_,
@@ -103,7 +114,7 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::unified: {
-        // Prefetch memory to device
+        // Prefetch input data to device
         cudaCheckError(
             cudaMemPrefetchAsync(A_, sizeof(T) * m_ * k_, gpuDevice_, s1_));
         cudaCheckError(
@@ -119,7 +130,7 @@ class gemm_gpu : public gemm<T> {
   void callGemm() override {
     switch (offload_) {
       case gpuOffloadType::always: {
-        // Offload data from host to the device.
+        // Offload input data from host to the device.
         cudaCheckError(cudaMemcpyAsync(A_device_, A_, sizeof(T) * m_ * k_,
                                        cudaMemcpyHostToDevice, s1_));
         cudaCheckError(cudaMemcpyAsync(B_device_, B_, sizeof(T) * k_ * n_,
@@ -128,29 +139,29 @@ class gemm_gpu : public gemm<T> {
                                        cudaMemcpyHostToDevice, s3_));
         // Call cuBLAS GEMM kernel
         if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat =
-              cublasSgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
-                          A_device_, std::max(1, m_), B_device_,
-                          std::max(1, k_), &beta, C_device_, std::max(1, m_));
+          cublasStatus_t stat = cublasGemmEx(
+              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
+              (void*)A_device_, CUDA_R_32F, std::max(1, m_), (void*)B_device_,
+              CUDA_R_32F, std::max(1, k_), (void*)&beta, (void*)C_device_,
+              CUDA_R_32F, std::max(1, m_), CUBLAS_COMPUTE_32F,
+              CUBLAS_GEMM_DEFAULT);
           if (stat != CUBLAS_STATUS_SUCCESS) {
             std::cout << "cuBLAS error:" << stat << std::endl;
             exit(1);
           }
         } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat =
-              cublasDgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
-                          A_device_, std::max(1, m_), B_device_,
-                          std::max(1, k_), &beta, C_device_, std::max(1, m_));
+          cublasStatus_t stat = cublasGemmEx(
+              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
+              (void*)A_device_, CUDA_R_64F, std::max(1, m_), (void*)B_device_,
+              CUDA_R_64F, std::max(1, k_), (void*)&beta, (void*)C_device_,
+              CUDA_R_64F, std::max(1, m_), CUBLAS_COMPUTE_64F,
+              CUBLAS_GEMM_DEFAULT);
           if (stat != CUBLAS_STATUS_SUCCESS) {
             std::cout << "cuBLAS error:" << stat << std::endl;
             exit(1);
           }
         }
-        // Offload data from device to host
-        cudaCheckError(cudaMemcpyAsync(A_, A_device_, sizeof(T) * m_ * k_,
-                                       cudaMemcpyDeviceToHost, s1_));
-        cudaCheckError(cudaMemcpyAsync(B_, B_device_, sizeof(T) * k_ * n_,
-                                       cudaMemcpyDeviceToHost, s2_));
+        // Offload output data from device to host
         cudaCheckError(cudaMemcpyAsync(C_, C_device_, sizeof(T) * m_ * n_,
                                        cudaMemcpyDeviceToHost, s3_));
         // Ensure device has finished all work.
@@ -160,19 +171,23 @@ class gemm_gpu : public gemm<T> {
       case gpuOffloadType::once: {
         // Call cuBLAS GEMM kernel
         if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat =
-              cublasSgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
-                          A_device_, std::max(1, m_), B_device_,
-                          std::max(1, k_), &beta, C_device_, std::max(1, m_));
+          cublasStatus_t stat = cublasGemmEx(
+              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
+              (void*)A_device_, CUDA_R_32F, std::max(1, m_), (void*)B_device_,
+              CUDA_R_32F, std::max(1, k_), (void*)&beta, (void*)C_device_,
+              CUDA_R_32F, std::max(1, m_), CUBLAS_COMPUTE_32F,
+              CUBLAS_GEMM_DEFAULT);
           if (stat != CUBLAS_STATUS_SUCCESS) {
             std::cout << "cuBLAS error:" << stat << std::endl;
             exit(1);
           }
         } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat =
-              cublasDgemm(handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha,
-                          A_device_, std::max(1, m_), B_device_,
-                          std::max(1, k_), &beta, C_device_, std::max(1, m_));
+          cublasStatus_t stat = cublasGemmEx(
+              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
+              (void*)A_device_, CUDA_R_64F, std::max(1, m_), (void*)B_device_,
+              CUDA_R_64F, std::max(1, k_), (void*)&beta, (void*)C_device_,
+              CUDA_R_64F, std::max(1, m_), CUBLAS_COMPUTE_64F,
+              CUBLAS_GEMM_DEFAULT);
           if (stat != CUBLAS_STATUS_SUCCESS) {
             std::cout << "cuBLAS error:" << stat << std::endl;
             exit(1);
@@ -183,17 +198,21 @@ class gemm_gpu : public gemm<T> {
       case gpuOffloadType::unified: {
         // Call cuBLAS GEMM kernel
         if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat = cublasSgemm(
-              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_,
-              std::max(1, m_), B_, std::max(1, k_), &beta, C_, std::max(1, m_));
+          cublasStatus_t stat = cublasGemmEx(
+              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
+              (void*)A_, CUDA_R_32F, std::max(1, m_), (void*)B_, CUDA_R_32F,
+              std::max(1, k_), (void*)&beta, (void*)C_, CUDA_R_32F,
+              std::max(1, m_), CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
           if (stat != CUBLAS_STATUS_SUCCESS) {
             std::cout << "cuBLAS error:" << stat << std::endl;
             exit(1);
           }
         } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat = cublasDgemm(
-              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, &alpha, A_,
-              std::max(1, m_), B_, std::max(1, k_), &beta, C_, std::max(1, m_));
+          cublasStatus_t stat = cublasGemmEx(
+              handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
+              (void*)A_, CUDA_R_64F, std::max(1, m_), (void*)B_, CUDA_R_64F,
+              std::max(1, k_), (void*)&beta, (void*)C_, CUDA_R_64F,
+              std::max(1, m_), CUBLAS_COMPUTE_64F, CUBLAS_GEMM_DEFAULT);
           if (stat != CUBLAS_STATUS_SUCCESS) {
             std::cout << "cuBLAS error:" << stat << std::endl;
             exit(1);
@@ -213,11 +232,7 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::once: {
-        // Offload data from device to host
-        cudaCheckError(cudaMemcpyAsync(A_, A_device_, sizeof(T) * m_ * k_,
-                                       cudaMemcpyDeviceToHost, s1_));
-        cudaCheckError(cudaMemcpyAsync(B_, B_device_, sizeof(T) * k_ * n_,
-                                       cudaMemcpyDeviceToHost, s2_));
+        // Offload output data from device to host
         cudaCheckError(cudaMemcpyAsync(C_, C_device_, sizeof(T) * m_ * n_,
                                        cudaMemcpyDeviceToHost, s3_));
         // Ensure device has finished all work.
@@ -225,11 +240,7 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::unified: {
-        // Ensure all data resides on host once work has completed
-        cudaCheckError(cudaMemPrefetchAsync(A_, sizeof(T) * m_ * k_,
-                                            cudaCpuDeviceId, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(B_, sizeof(T) * k_ * n_,
-                                            cudaCpuDeviceId, s2_));
+        // Ensure all output data resides on host once work has completed
         cudaCheckError(cudaMemPrefetchAsync(C_, sizeof(T) * m_ * n_,
                                             cudaCpuDeviceId, s3_));
         // Ensure device has finished all work.
@@ -248,9 +259,9 @@ class gemm_gpu : public gemm<T> {
       cudaFree(C_);
     } else {
       // Free the memory held on host and device
-      free(A_);
-      free(B_);
-      free(C_);
+      cudaFreeHost((void*)A_);
+      cudaFreeHost((void*)B_);
+      cudaFreeHost((void*)C_);
       cudaFree(A_device_);
       cudaFree(B_device_);
       cudaFree(C_device_);
@@ -267,11 +278,11 @@ class gemm_gpu : public gemm<T> {
    */
   cudaStream_t s1_;
 
-  /** CUDA Stream 1 - used to asynchronously move data between host and device.
+  /** CUDA Stream 2 - used to asynchronously move data between host and device.
    */
   cudaStream_t s2_;
 
-  /** CUDA Stream 1 - used to asynchronously move data between host and device.
+  /** CUDA Stream 3 - used to asynchronously move data between host and device.
    */
   cudaStream_t s3_;
 

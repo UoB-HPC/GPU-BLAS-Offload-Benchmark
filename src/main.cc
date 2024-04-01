@@ -1,7 +1,6 @@
 #include "../include/main.hh"
 
 int iters = 10;
-int startDim = 1;
 int upperLimit = 128;
 
 bool doCpu = CPU_ENABLED;
@@ -105,6 +104,32 @@ void getParameters(int argc, char* argv[]) {
       doCpu = false;
     } else if (!strcmp(argv[i], "--no_gpu")) {
       doGpu = false;
+    } else if (!strcmp(argv[i], "--kernels") || !strcmp(argv[i], "-k")) {
+	    sgemm = dgemm = sp_sgemm = sp_dgemm = false;
+	    std::string kernelList = argv[++i];
+	    if (kernelList.find("sp-sgemm") != std::string::npos) {
+		    sp_sgemm = true;
+		    if (kernelList.find("sgemm") != std::string::npos &&
+						kernelList.find("sgemm") != kernelList.find("sp-sgemm") + 3) {
+			    sgemm = true;
+		    }
+	    } else if (kernelList.find("sgemm") != std::string::npos) {
+			    sgemm = true;
+			}
+	    if (kernelList.find("sp-dgemm") != std::string::npos) {
+		    sp_dgemm = true;
+		    if (kernelList.find("dgemm") != std::string::npos &&
+		        kernelList.find("dgemm") != kernelList.find("sp-dgemm") + 3) {
+			    dgemm = true;
+		    }
+	    } else if (kernelList.find("dgemm") != std::string::npos) {
+		    dgemm = true;
+	    }
+
+	    if (!sgemm && !dgemm && !sp_sgemm && !sp_dgemm) {
+		    std::cout << "ERROR - no implemented kernels in list" << std::endl;
+		    exit(1);
+	    }
     } else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       std::cout << std::endl;
       std::cout << "Usage: ./gpu-blob [OPTIONS]" << std::endl << std::endl;
@@ -126,6 +151,24 @@ void getParameters(int argc, char* argv[]) {
                 << upperLimit << ")" << std::endl;
       std::cout << std::endl;
       exit(0);
+	    std::cout << std::endl;
+	    std::cout << "Usage: ./gpu-blob [OPTIONS]" << std::endl << std::endl;
+	    std::cout << "Options:" << std::endl;
+	    std::cout << "  -h  --help                   Print this message"
+	              << std::endl;
+	    std::cout << "  -i  --iterations I           Repeat each kernel I times "
+	                 "(default: "
+	              << iters << ")" << std::endl;
+	    std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
+	                 "(default: "
+	              << upperLimit << ")" << std::endl;
+	    std::cout << "  -k  --kernels <list>         Run the kernels provided "
+	                 "in the comma-separated list <list> (all implemented "
+	                 "kernels are run by default)" << std::endl <<
+	              "                               implemented kernels are: "
+	              "sgemm, dgemm, sp_sgemm, and sp_dgemm" << std::endl;
+	    std::cout << std::endl;
+	    exit(0);
     } else {
       std::cout << "Unrecognized argument '" << argv[i] << "' (try '--help')"
                 << std::endl;

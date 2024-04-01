@@ -14,6 +14,7 @@
 
 #if defined GPU_CUBLAS
 #include "../cuBLAS/gemm.hh"
+#include "../cuBLAS/sp_gemm.hh"
 #elif defined GPU_ONEMKL
 #include "../oneMKL/GPU/gemm.hh"
 #endif
@@ -34,20 +35,20 @@ struct cpuGpu_offloadThreshold {
 template <typename T>
 class doGemm {
  public:
-  doGemm(const int iters, const int startDim, const int upperLimit,
-         const bool cpuEnabled = true, const bool gpuEnabled = true)
+  doGemm(const int iters, const int upperLimit)
       : iterations_(iters),
-        startDimention_(startDim),
         upperLimit_(upperLimit),
         doCPU_(cpuEnabled),
         doGPU_(gpuEnabled)
 #if CPU_ENABLED
         ,
-        gemmCpu_(iterations_)
+        gemmCpu_(iterations_),
+        spGemmCpu_(iterations_)
 #endif
 #if GPU_ENABLED
         ,
-        gemmGpu_(iterations_)
+        gemmGpu_(iterations_),
+        spGemmGpu_(iterations_)
 #endif
   {
     static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
@@ -68,6 +69,11 @@ class doGemm {
     for (int dim = startDimention_; dim <= upperLimit_; dim++) {
       // M = dim, N = dim, K = dim;
       callKernels(csvFile, dim, dim, dim);
+    std::ofstream csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
+                                        getKernelName() + "_square.csv");
+    for (int dim = 1; dim <= upperLimit_; dim++) {
+      const int M = dim, N = dim, K = dim;
+	    callDenseKernels(csvFile, M, N, K);
     }
     // Close file
     csvFile.close();
@@ -79,12 +85,16 @@ class doGemm {
 #endif
 
     // Rectangular Problem Sizes:
-    // Tall and thin x Short and wide
+    // Tall and thin (16M x K)...
     // Re-initialise offload threshold structures
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
     csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                          "_rectangular_16MxK.csv");
+    for (int dim = 16; dim <= upperLimit_; dim += 16) {
+      const int M = dim, N = dim, K = (dim / 16);
+	    callDenseKernels(csvFile, M, N, K);
                           "_tall-thin_short-wide_M=N_M=16K.csv");
     int K = startDimention_;
     int M = 16 * K;
@@ -110,8 +120,11 @@ class doGemm {
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
     csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_tall-thin_short-wide_M=N_K=32.csv");
+                          "_rectangular_Mx32.csv");
     if (upperLimit_ >= 32) {
+      for (int dim = 1; dim <= upperLimit_; dim++) {
+        const int M = dim, N = dim, K = 32;
+	      callDenseKernels(csvFile, M, N, K);
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = dim, K = 32;
         callKernels(csvFile, dim, dim, 32);
@@ -173,12 +186,16 @@ class doGemm {
     }
 #endif
 
-    // Tall and Thin x Square
+    // Short and wide (M x 16K)...
     // Re-initialise offload threshold structures
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
     csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                          "_rectangular_Mx16K.csv");
+    for (int dim = 16; dim <= upperLimit_; dim += 16) {
+      const int M = (dim / 16), N = (dim / 16), K = dim;
+	    callDenseKernels(csvFile, M, N, K);
                           "_tall-thin_square_K=N_M=16K.csv");
     K = startDimention_;
     N = startDimention_;
@@ -235,9 +252,33 @@ class doGemm {
       M++;
       N += 16;
       K++;
+      for (int dim = 1; dim <= upperLimit_; dim++) {
+        const int M = 32, N = 32, K = dim;
+	      callDenseKernels(csvFile, M, N, K);
+      }
     }
     // Close file
     csvFile.close();
+    // Print offload results to stdout
+    printOffloadThreshold("Short and Wide (32 x K)");
+
+		// Square sparse matrix - sparse matrix multiplication
+	  cpuGpu_always_ = cpuGpu_offloadThreshold();
+	  cpuGpu_once_ = cpuGpu_offloadThreshold();
+	  cpuGpu_unified_ = cpuGpu_offloadThreshold();
+	  csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+	                        "_sparse_square.csv");
+	  if (upperLimit_ >= 32) {
+		  for (int dim = 1; dim <= upperLimit_; dim++) {
+			  const int N = dim;
+			  callSparseKernels(csvFile, N, 0.99);
+		  }
+	  }
+	  // Close file
+	  csvFile.close();
+	  // Print offload results to stdout
+	  printOffloadThreshold("Sparse Square");
+
 #if CPU_ENABLED && GPU_ENABLED
     if (doCPU_ && doGPU_) {
       // Print offload results to stdout
@@ -270,8 +311,8 @@ class doGemm {
 
  private:
   /** Call the appropriate CPU and GPU GEMM kernels. */
-  void callKernels(std::ofstream& csvFile, const int M, const int N,
-                   const int K) {
+  void callDenseKernels(std::ofstream& csvFile, const int M, const int N,
+                        const int K) {
     const double probSize = calcKib(M, N, K);
     const uint64_t flops = calcFlops(M, N, K);
     std::string kernelName = getKernelName();
@@ -454,6 +495,52 @@ class doGemm {
     }
   }
 
+	void callSparseKernels(std::ofstream& csvFile, const int N, const float
+	sparsity) {
+		const double probSize = calcKib(N, N, N);
+		const uint64_t flops = calcFlops(N, N, N);
+		std::string kernelName = getKernelName();
+
+		spGemmCpu_.initialise(N, sparsity);
+		time_checksum_gflop cpuResult = spGemmCpu_.compute();
+		cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
+
+		// Perform the GPU kernels
+		// - ONCE : Offload to/from GPU once before all iterations and once
+		// after
+		spGemmGpu_.initialise(gpuOffloadType::once, N, N, N);
+		time_checksum_gflop gpuResult_once = gemmGpu_.compute();
+		gpuResult_once.gflops =
+						calcGflops(flops, iterations_, gpuResult_once.runtime);
+
+		// - ALWAYS: Offload to/from GPU every iteration
+		spGemmGpu_.initialise(gpuOffloadType::always, N, N, N);
+		time_checksum_gflop gpuResult_always = gemmGpu_.compute();
+		gpuResult_always.gflops =
+						calcGflops(flops, iterations_, gpuResult_always.runtime);
+
+		// - UNIFIED : data passed from host to device (and device to host) as
+		//             needed
+		spGemmGpu_.initialise(gpuOffloadType::unified, N, N, N);
+		time_checksum_gflop gpuResult_unified = gemmGpu_.compute();
+		gpuResult_unified.gflops =
+						calcGflops(flops, iterations_, gpuResult_unified.runtime);
+
+		// ToDo -- non-default GPU operations
+
+		// Write lines to CSV file
+		writeLineToCsv(csvFile, "cpu", kernelName, N, N, N, probSize, iterations_,
+		               cpuResult.runtime, cpuResult.gflops);
+		writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, N, N, probSize,
+		               iterations_, gpuResult_once.runtime, gpuResult_once.gflops);
+		writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, N, N, probSize,
+		               iterations_, gpuResult_always.runtime,
+		               gpuResult_always.gflops);
+		writeLineToCsv(csvFile, "gpu_unified", kernelName, N, N, N, probSize,
+		               iterations_, gpuResult_unified.runtime,
+		               gpuResult_unified.gflops);
+	}
+
   /** A function for calculating FLOPs performed by a GEMM.
    * C = alpha*AB + beta*C */
   constexpr uint64_t calcFlops(const int M, const int N, const int K) const {
@@ -577,10 +664,14 @@ class doGemm {
   cpu::gemm_cpu<T> gemmCpu_;
 #endif
 
+	cpu::sp_gemm_cpu<T> spGemmCpu_;
+
 #if GPU_ENABLED
   /** The GEMM GPU kernel. */
   gpu::gemm_gpu<T> gemmGpu_;
 #endif
+
+	gpu::sp_gemm_gpu<T> spGemmGpu_;
 
   /** The point at which offloading to GPU (offload once) becomes worthwhile. */
   cpuGpu_offloadThreshold cpuGpu_once_;

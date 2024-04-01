@@ -185,15 +185,7 @@ all: $(EXE)
 
 $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
 	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/consume.so
-# Hacky workaround for HIPCC being weird...
-	ifeq ($(COMPILER), HIP)
-	mv src/Consume/consume.so rc/Consume/libconsume.so
-	$(CXX) $(CXXFLAGS) $(SRC_FILES) -Lsrc/Consume -lconsume $(LDFLAGS) -o $@
-	current_dir = $(shell pwd)
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(current_dir)/src/Consume
-	else
 	$(CXX) $(CXXFLAGS) $(SRC_FILES) src/Consume/consume.so $(LDFLAGS) -o $@
-	endif
 
 clean:
 	rm -f $(EXE) src/Consume/consume.so

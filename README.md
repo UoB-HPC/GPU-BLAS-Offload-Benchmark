@@ -17,13 +17,14 @@ Select the compiler you wish to use. Regardless of choice, `gcc` is required in 
 ``` bash
 make COMPILER=GNU
 ```
-The supported compiler names are: `ARM`, `CLANG`, `GNU`, `INTEL`, `NVIDIA`, with the default option being `GNU`.\ 
+The supported compiler names are: `ARM`, `CLANG`, `GNU`, `INTEL`, `NVIDIA`, `HIP` with the default option being `GNU`.\ 
 These compiler choices correspond to:
  - `ARM` --> armclang++
  - `CLANG` --> clang++
  - `GNU` --> g++
- - `INTEL` --> icx (Intel's oneAPI DPC++/C++ Compiler)
+ - `INTEL` --> icpx (Intel's oneAPI DPC++/C++ Compiler)
  - `NVIDIA` --> nvc++
+ - `HIP` --> hipcc
 
 
 ### <u>CPU BLAS Library</u>

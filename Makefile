@@ -147,6 +147,7 @@ $(error Selected compiler $(COMPILER) is not currently compatible with oneMKL GP
 endif
 
 else ifeq ($(GPU_LIB), ROCBLAS)
+ifeq ($(COMPILER), HIP)
 # Do rocBLAS stuff
 override CXXFLAGS += -lrocblas -lm -lpthread -D__HIP_PLATFORM_AMD__
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
@@ -154,6 +155,9 @@ $(info $(TAB)$(TAB)Add `CXXFLAGS=-L<ROCM_PATH>/lib -L<ROCBLAS_PATH>/lib` to make
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<ROCM_PATH>/include -I<ROCBLAS_PATH>/include` to make command)
 $(info $(TAB)$(TAB)Add both aforementioned `lib` directories to `$$LD_LIBRARY_PATH`)
 HEADER_FILES += $(wildcard rocBLAS/*.hh)
+else
+$(error Selected compiler $(COMPILER) is not currently compatible with rocBLAS GPU Library)
+endif
 
 
 else
@@ -181,7 +185,15 @@ all: $(EXE)
 
 $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
 	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/consume.so
+# Hacky workaround for HIPCC being weird...
+	ifeq ($(COMPILER), HIP)
+	mv src/Consume/consume.so rc/Consume/libconsume.so
+	$(CXX) $(CXXFLAGS) $(SRC_FILES) -Lsrc/Consume -lconsume $(LDFLAGS) -o $@
+	current_dir = $(shell pwd)
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(current_dir)/src/Consume
+	else
 	$(CXX) $(CXXFLAGS) $(SRC_FILES) src/Consume/consume.so $(LDFLAGS) -o $@
+	endif
 
 clean:
 	rm -f $(EXE) src/Consume/consume.so

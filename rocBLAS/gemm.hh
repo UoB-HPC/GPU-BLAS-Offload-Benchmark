@@ -145,7 +145,8 @@ class gemm_gpu : public gemm<T> {
               rocblas_sgemm(handle_, transA_, transB_, m_, n_, k_, &alpha,
                             A_device_, std::max(1, m_), B_device_,
                             std::max(1, k_), &beta, C_device_, std::max(1, m_));
-          if (stat != rocblas_status_success) {
+          if (stat != rocblas_status_success ||
+              stat != rocblas_status_size_unchanged) {
             std::cout << "rocBLAS error:" << rocblas_status_to_string(stat)
                       << std::endl;
             exit(1);
@@ -155,7 +156,8 @@ class gemm_gpu : public gemm<T> {
               rocblas_dgemm(handle_, transA_, transB_, m_, n_, k_, &alpha,
                             A_device_, std::max(1, m_), B_device_,
                             std::max(1, k_), &beta, C_device_, std::max(1, m_));
-          if (stat != rocblas_status_success) {
+          if (stat != rocblas_status_success ||
+              stat != rocblas_status_size_unchanged) {
             std::cout << "rocBLAS error:" << rocblas_status_to_string(stat)
                       << std::endl;
             exit(1);
@@ -175,7 +177,8 @@ class gemm_gpu : public gemm<T> {
               rocblas_sgemm(handle_, transA_, transB_, m_, n_, k_, &alpha,
                             A_device_, std::max(1, m_), B_device_,
                             std::max(1, k_), &beta, C_device_, std::max(1, m_));
-          if (stat != rocblas_status_success) {
+          if (stat != rocblas_status_success ||
+              stat != rocblas_status_size_unchanged) {
             std::cout << "rocBLAS error:" << rocblas_status_to_string(stat)
                       << std::endl;
             exit(1);
@@ -185,7 +188,8 @@ class gemm_gpu : public gemm<T> {
               rocblas_dgemm(handle_, transA_, transB_, m_, n_, k_, &alpha,
                             A_device_, std::max(1, m_), B_device_,
                             std::max(1, k_), &beta, C_device_, std::max(1, m_));
-          if (stat != rocblas_status_success) {
+          if (stat != rocblas_status_success ||
+              stat != rocblas_status_size_unchanged) {
             std::cout << "rocBLAS error:" << rocblas_status_to_string(stat)
                       << std::endl;
             exit(1);
@@ -199,7 +203,8 @@ class gemm_gpu : public gemm<T> {
           rocblas_status stat = rocblas_sgemm(
               handle_, transA_, transB_, m_, n_, k_, &alpha, A_,
               std::max(1, m_), B_, std::max(1, k_), &beta, C_, std::max(1, m_));
-          if (stat != rocblas_status_success) {
+          if (stat != rocblas_status_success ||
+              stat != rocblas_status_size_unchanged) {
             std::cout << "rocBLAS error:" << rocblas_status_to_string(stat)
                       << std::endl;
             exit(1);
@@ -208,7 +213,8 @@ class gemm_gpu : public gemm<T> {
           rocblas_status stat = rocblas_dgemm(
               handle_, transA_, transB_, m_, n_, k_, &alpha, A_,
               std::max(1, m_), B_, std::max(1, k_), &beta, C_, std::max(1, m_));
-          if (stat != rocblas_status_success) {
+          if (stat != rocblas_status_success ||
+              stat != rocblas_status_size_unchanged) {
             std::cout << "rocBLAS error:" << rocblas_status_to_string(stat)
                       << std::endl;
             exit(1);

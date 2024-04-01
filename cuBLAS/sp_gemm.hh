@@ -155,6 +155,18 @@ class sp_gemm_gpu : public sp_gemm<T> {
 
     switch(offload_) {
       case gpuOffloadType::always: {
+        // Make matrix descriptors
+        cusparseCheckError(
+                cusparseCreateCsr(&descrA_, n_, n_, A_nnz_, A_row_dev_,
+                                  A_col_dev_, A_val_dev_, rType_, cType_,
+                                  indType_, cudaDataType_));
+        cusparseCheckError(
+                cusparseCreateCsr(&descrB_, n_, n_, B_nnz_, B_row_dev_,
+                                  B_col_dev_, B_val_dev_, rType_, cType_,
+                                  indType_, cudaDataType_));
+        cusparseCheckError(
+                cusparseCreateCsr(&descrC_, n_, n_, 0, C_row_dev_, NULL, NULL,
+                                  rType_, cType_, indType_, cudaDataType_));
         break;
       }
       case gpuOffloadType::once: {

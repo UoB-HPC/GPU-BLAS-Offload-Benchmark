@@ -133,7 +133,7 @@ $(info $(TAB)$(TAB)Add `<AOCL_BLAS>/lib` to `$$LD_LIBRARY_PATH`)
 $(info )
 HEADER_FILES+= $(wildcard AOCL/*.hh)
 
-else ifeq($(CPU_LIB), NVPL)
+else ifeq ($(CPU_LIB), NVPL)
 ifeq ($(COMPILER), INTEL)
 # INTEL compiler not compatible with NVPL
 $(error Selected compiler $(COMPILER) is not currently compatible with NVPL)
@@ -149,6 +149,8 @@ override CXXFLAGS += -lnvomp
 else
 # LLVM based compilers (CLANG, ARMCLANG)
 override CXXFLAGS += -lomp
+endif
+endif
 HEADER_FILES+= $(wildcard NVPL/*.hh)
 
 

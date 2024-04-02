@@ -12,6 +12,8 @@
 #include "../oneMKL/CPU/gemm.hh"
 #elif defined CPU_AOCL
 #include "../AOCL/gemm.hh"
+#elif defined CPU_NVPL
+#include "../NVPL/gemm.hh"
 #endif
 
 #if defined GPU_CUBLAS

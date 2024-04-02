@@ -5,10 +5,12 @@
 #define CPU_LIB_NAME "Arm Performance Libraries"
 #elif defined CPU_ONEMKL
 #define CPU_LIB_NAME "Intel OneMKL"
-#elif defined CPU_OPENBLAS
-#define CPU_LIB_NAME "OpenBLAS"
 #elif defined CPU_AOCL
 #define CPU_LIB_NAME "AMD Optimized CPU Libraries"
+#elif defined CPU_NVPL
+#define CPU_LIB_NAME "NVIDIA Performance Libraries"
+#elif defined CPU_OPENBLAS
+#define CPU_LIB_NAME "OpenBLAS"
 #else
 #define CPU_DEFAULT
 #define CPU_LIB_NAME "None"

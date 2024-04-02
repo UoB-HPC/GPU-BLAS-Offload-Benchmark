@@ -56,22 +56,25 @@ HEADER_FILES = $(wildcard include/*.hh)
 # -------
 
 ifndef CPU_LIB
-$(warning CPU_LIB not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). No CPU kernels will be run.)
+$(warning CPU_LIB not set (use ARMPL, ONEMKL, AOCL, NVPL, OPENBLAS). No CPU kernels will be run.)
 
 else ifeq ($(CPU_LIB), ARMPL)
 # Add ARM compiler options
 ifeq ($(COMPILER), ARM)
 override CXXFLAGS += -armpl=parallel -fopenmp
+else ifeq ($(COMPILER), INTEL)
+# INTEL compiler not compatible with ArmPL
+$(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
+else ifeq ($(COMPILER), HIP)
+# HIP compiler not compatible with ArmPL
+$(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
+else 
 # For all other compilers, require additional input flags for linking
-else ifneq ($(COMPILER), INTEL)
 override CXXFLAGS += -larmpl_lp64_mp -fopenmp
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS="-L<ARMPL_DIR>/lib -I<ARMPL_DIR>/include_lp64_mp"` to make command)
 $(info $(TAB)$(TAB)Add `<ARMPL_DIR>/lib` to `$$LD_LIBRARY_PATH`)
 $(info )
-# INTEL compiler not compatible with ArmPL
-else
-$(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
 endif
 HEADER_FILES += $(wildcard ArmPL/*.hh)
 
@@ -102,7 +105,10 @@ endif
 HEADER_FILES+= $(wildcard oneMKL/CPU/*.hh)
 
 else ifeq ($(CPU_LIB), AOCL)
-ifeq ($(COMPILER), INTEL)
+ifeq ($(COMPILER), HIP)
+# HIP compiler not compatible with AOCL
+$(error Selected compiler $(COMPILER) is not currently compatible with AOCL)
+else ifeq ($(COMPILER), INTEL)
 override CXXFLAGS += -lblis-mt -qopenmp
 else
 override CXXFLAGS += -lblis-mt -fopenmp
@@ -112,6 +118,24 @@ $(info $(TAB)$(TAB)Add `CXXFLAGS="-L<AOCL_BLAS>/lib -I<AOCL_BLAS>/include/blis"`
 $(info $(TAB)$(TAB)Add `<AOCL_BLAS>/lib` to `$$LD_LIBRARY_PATH`)
 $(info )
 HEADER_FILES+= $(wildcard AOCL/*.hh)
+
+else ifeq($(CPU_LIB), NVPL)
+ifeq ($(COMPILER), INTEL)
+# INTEL compiler not compatible with NVPL
+$(error Selected compiler $(COMPILER) is not currently compatible with NVPL)
+else ifeq ($(COMPILER), HIP)
+# HIP compiler not compatible with NVPL
+$(error Selected compiler $(COMPILER) is not currently compatible with NVPL)
+else
+override CXXFLAGS += -lnvpl_blas_lp64_gomp
+ifeq ($(COMPILER), GNU)
+override CXXFLAGS += -lgomp
+else ifeq ($(COMPILER), NVIDIA)
+override CXXFLAGS += -lnvomp
+else
+# LLVM based compilers (CLANG, ARMCLANG)
+override CXXFLAGS += -lomp
+HEADER_FILES+= $(wildcard NVPL/*.hh)
 
 
 else ifeq ($(CPU_LIB), OPENBLAS)

@@ -99,6 +99,12 @@ When using AOCL, setting the following environment variables is beneficial:
  - `OMP_PROC_BIND`
  - `OMP_PLACES`
 
+### <u>NVIDIA Performance Libraries</u>
+When using NVPL as the CPU BLAS Library, setting the following environment variables is beneficial:
+ - `OMP_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
+ - `OMP_PROC_BIND`
+ - `OMP_PLACES`
+
 
 # BLAS Kernels Supported
 The kernels listed below are computed by the benchmark for a wide range of problem sizes and shapes.

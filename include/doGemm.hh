@@ -10,6 +10,8 @@
 #include "../ArmPL/gemm.hh"
 #elif defined CPU_ONEMKL
 #include "../oneMKL/CPU/gemm.hh"
+#elif defined CPU_AOCL
+#include "../AOCL/gemm.hh"
 #endif
 
 #if defined GPU_CUBLAS

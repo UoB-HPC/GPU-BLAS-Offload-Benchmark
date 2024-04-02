@@ -44,7 +44,12 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
   std::string cpuEnabledStr = (doCpu) ? "True" : "False";
   std::string gpuEnabledStr = (doGpu) ? "True" : "False";
   unsigned int ompThreads =
+#if defined CPU_AOCL
+      (getenv("BLIS_NUM_THREADS") != NULL) ? atoi(getenv("BLIS_NUM_THREADS"))
+                                           : 1;
+#else
       (getenv("OMP_NUM_THREADS") != NULL) ? atoi(getenv("OMP_NUM_THREADS")) : 1;
+#endif
   const char* ompProcBind =
       (getenv("OMP_PROC_BIND") != NULL) ? getenv("OMP_PROC_BIND") : "Not Set";
   const char* ompPlaces =
@@ -57,7 +62,11 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
   std::cout << "\tCPU Library: " << CPU_LIB_NAME << std::endl;
   std::cout << "\tGPU Kernels Enabled: " << gpuEnabledStr << std::endl;
   std::cout << "\tGPU Library: " << GPU_LIB_NAME << std::endl;
+#if defined CPU_AOCL
+  std::cout << "\tBLIS_NUM_THREADS: " << ompThreads << std::endl;
+#else
   std::cout << "\tOMP_NUM_THREADS: " << ompThreads << std::endl;
+#endif
   std::cout << "\tOMP_PROC_BIND: " << ompProcBind << std::endl;
   std::cout << "\tOMP_PLACES: " << ompPlaces << std::endl;
   std::cout << std::endl;

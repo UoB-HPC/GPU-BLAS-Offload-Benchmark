@@ -102,8 +102,17 @@ endif
 HEADER_FILES+= $(wildcard oneMKL/CPU/*.hh)
 
 else ifeq ($(CPU_LIB), AOCL)
-# Do AOCL stuff
-$(error The CPU_LIB $(CPU_LIB) is currently not supported.)
+ifeq ($(COMPILER), INTEL)
+override CXXFLAGS += -lblis-mt -qopenmp
+else
+override CXXFLAGS += -lblis-mt -fopenmp
+endif
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+$(info $(TAB)$(TAB)Add `CXXFLAGS="-I<AOCL_BLAS>/lib -I<AOCL_BLAS>/include"` to make command)
+$(info $(TAB)$(TAB)Add `<AOCL_BLAS>/lib` to `$$LD_LIBRARY_PATH`)
+$(info )
+HEADER_FILES+= $(wildcard AOCL/*.hh)
+
 
 else ifeq ($(CPU_LIB), OPENBLAS)
 # Do OpenBLAS stuff

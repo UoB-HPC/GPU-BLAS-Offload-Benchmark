@@ -93,8 +93,11 @@ When using oneMKL as the CPU BLAS Library, setting the following environment var
  - `OMP_PROC_BIND`
  - `OMP_PLACES`
 
-<!-- When using oneMKL as the GPU BLAS Library, you may need to set the following environment variables:
- - `export ONEAPI_DEVICE_SELECTOR="opencl:gpu"` -- to correct device indexes -->
+### <u>AMD Optimizing CPU libraries </u>
+When using AOCL, setting the following environment variables is beneficial:
+ - `BLIS_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
+ - `OMP_PROC_BIND`
+ - `OMP_PLACES`
 
 
 # BLAS Kernels Supported
@@ -135,8 +138,8 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [ ] Add support for rocBLAS
    - [x] GEMM
    - [ ] GEMV
- - [ ] Add support for AOCL (AMD Optimizing CPU libraries)(?)
-   - [ ] GEMM
+ - [ ] Add support for AOCL (AMD Optimizing CPU libraries)
+   - [x] GEMM
    - [ ] GEMV
  - [ ] Add support for NVPL CPU Library
    - [ ] GEMM
@@ -147,6 +150,10 @@ The kernels listed below are computed by the benchmark for a wide range of probl
  - [ ] Add support for BLIS
    - [ ] GEMM
    - [ ] GEMV
+ - [ ] Add batched GEMM functions for GPU Libraries
+   - [ ] cuBLAS
+   - [ ] OneMKL
+   - [ ] rocBLAS
 
  - [x] Create python script to auto generate a png graph for each csv file (x-axis = matrix size, y-axis=GFLOP/s)
  - [x] Outline what kernels are included in the benchmark, along with how they will be run.

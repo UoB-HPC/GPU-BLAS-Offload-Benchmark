@@ -86,8 +86,7 @@ else
 # For all other compilers, require additional input flags for linking
 override CXXFLAGS += -larmpl_lp64_mp -fopenmp
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
-$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<ARMPL_DIR>/lib -I<ARMPL_DIR>/include_lp64_mp"` to make command)
-$(info $(TAB)$(TAB)Add `<ARMPL_DIR>/lib` to `$$LD_LIBRARY_PATH`)
+$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<ARMPL_DIR>/lib -I<ARMPL_DIR>/include_lp64_mp -Wl,-rpath,<ARMPL_DIR>/lib"` to make command)
 $(info )
 endif
 HEADER_FILES += $(wildcard ArmPL/*.hh)
@@ -128,8 +127,7 @@ else
 override CXXFLAGS += -lblis-mt -fopenmp
 endif
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
-$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<AOCL_BLAS>/lib -I<AOCL_BLAS>/include/blis"` to make command)
-$(info $(TAB)$(TAB)Add `<AOCL_BLAS>/lib` to `$$LD_LIBRARY_PATH`)
+$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<AOCL_DIR>/lib -I<AOCL_DIR>/include/blis -Wl,-rpath,<AOCL_DIR>/lib"` to make command)
 $(info )
 HEADER_FILES+= $(wildcard AOCL/*.hh)
 
@@ -142,6 +140,9 @@ else ifeq ($(COMPILER), HIP)
 $(error Selected compiler $(COMPILER) is not currently compatible with NVPL)
 else
 override CXXFLAGS += -lnvpl_blas_lp64_gomp
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<NVPL_DIR>/lib -I<NVPL_DIR>/include -Wl,-rpath,<NVPL_DIR>/lib"` to make command)
+$(info )
 ifeq ($(COMPILER), GNU)
 override CXXFLAGS += -lgomp
 else ifeq ($(COMPILER), NVIDIA)
@@ -155,11 +156,13 @@ HEADER_FILES+= $(wildcard NVPL/*.hh)
 
 
 else ifeq ($(CPU_LIB), OPENBLAS)
-# Do OpenBLAS stuff
-$(error The CPU_LIB $(CPU_LIB) is currently not supported.)
+override CXXFLAGS += -lopenblas -lpthread
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<OPENBLAS_DIR>/lib -I<OPENBLAS_DIR>/include -Wl,-rpath,<OPENBLAD_DIR>/lib"` to make command)
+$(info )
 
 else
-$(warning Provided CPU_LIB not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). No CPU kernels will be run.)
+$(warning Provided CPU_LIB not valid (use ARMPL, ONEMKL, AOCL, NVPL, OPENBLAS). No CPU kernels will be run.)
 endif
 
 # -------
@@ -175,7 +178,7 @@ else
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-L<NVHPC_DIR>/.../math_libs/lib64 -L<NVHPC_DIR>/.../cuda/lib64` to make command)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<NVHPC_DIR>/.../math_libs/include -I<NVHPC_DIR>/.../cuda/include` to make command)
-$(info $(TAB)$(TAB)Add both aforementioned `lib64` directories to `$$LD_LIBRARY_PATH`)
+$(info $(TAB)$(TAB)Add `CXXFLAGS=-Wl,-rpath,<NVHPC_DIR>/.../math_libs/lib64 -Wl,-rpath,<NVHPC_DIR>/.../cuda/lib64` to make command)
 $(info )
 override CXXFLAGS += -lcublas -lcudart
 endif
@@ -190,6 +193,9 @@ endif
 # Add compiler and link options
 override CXXFLAGS += -fsycl -L$(MKLROOT)/lib -lmkl_sycl_blas -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -lsycl -lpthread -lm -ldl  -fsycl -DMKL_ILP64  -I"$(MKLROOT)/include"
 # `lmkl_tbb_thread` can replace `lmkl_sequential`
+$(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
+$(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
+$(info )
 else
 # Only Intel DPC++ compiler is supported for OneMKL GPU implementation.
 $(error Selected compiler $(COMPILER) is not currently compatible with oneMKL GPU Library)
@@ -202,7 +208,7 @@ override CXXFLAGS += -lrocblas -lm -lpthread -D__HIP_PLATFORM_AMD__
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-L<ROCM_PATH>/lib -L<ROCBLAS_PATH>/lib` to make command)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<ROCM_PATH>/include -I<ROCBLAS_PATH>/include` to make command)
-$(info $(TAB)$(TAB)Add both aforementioned `lib` directories to `$$LD_LIBRARY_PATH`)
+$(info $(TAB)$(TAB)Add `CXXFLAGS=-Wl,-rpath,<ROCM_PATH>/lib -Wl,-rpath,<ROCBLAS_PATH>/lib` to make command)
 HEADER_FILES += $(wildcard rocBLAS/*.hh)
 else
 $(error Selected compiler $(COMPILER) is not currently compatible with rocBLAS GPU Library)
@@ -234,7 +240,7 @@ all: $(EXE)
 
 $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
 	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/consume.so
-	$(CXX) $(CXXFLAGS) $(SRC_FILES) src/Consume/consume.so $(LDFLAGS) -o $@
+	$(CXX) $(SRC_FILES) $(CXXFLAGS) -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS) -o $@
 
 clean:
 	rm -f $(EXE) src/Consume/consume.so

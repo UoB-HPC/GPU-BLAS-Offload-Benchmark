@@ -36,6 +36,9 @@ The supported Libraries are as follows:
  - Arm Performance Libraries : `ARMPL`
  - Intel OneMKL : `ONEMKL`
    - May require the use of an additional `MKLROOT` make option specifying the root directory of the oneMKL Library.
+ - AMD Optimized Compute Libraries : `AOCL`
+ - NVIDIA Performance Libraries : `NVPL`
+ - OpenBLAS : `OPENBLAS`
 
 If no library is selected then no CPU BLAS kernels will be executed.
 
@@ -57,7 +60,7 @@ If no library is selected then no GPU BLAS kernels will be executed.
 ### <u>Additional Flags</u>
 Some combinations of BLAS Libraries and compilers will require additional flags. Many of these have been pre-configured in the Makefile, but some require the inclusion of additional shared objects etc. These can be passed to the Makefile using `CXXFLAGS=`:
 ```bash
-make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS CXXFLAGS="-I/path/to/include -L/path/to/lib"
+make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS CXXFLAGS="-I/path/to/include -L/path/to/lib -Wl,-rpath,/path/to/lib"
 ```
 
 
@@ -79,8 +82,6 @@ Additional arguments are as follows:
 # Environment Variables
 It is recommended to set the relevant environment variables to ensure the best performance on host and device. 
 
-Many libraries will require updating `$LD_LIBRARY_PATH` if any `lib` directories were specified in `CXXFLAGS="..."`.
-
 ### <u>Arm Performance Libraries</u>
 When using ArmPL, setting the following environment variables is beneficial:
  - `OMP_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
@@ -100,6 +101,12 @@ When using AOCL, setting the following environment variables is beneficial:
  - `OMP_PLACES`
 
 ### <u>NVIDIA Performance Libraries</u>
+When using NVPL as the CPU BLAS Library, setting the following environment variables is beneficial:
+ - `OMP_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
+ - `OMP_PROC_BIND`
+ - `OMP_PLACES`
+
+ ### <u>OpenBLAS</u>
 When using NVPL as the CPU BLAS Library, setting the following environment variables is beneficial:
  - `OMP_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
  - `OMP_PROC_BIND`

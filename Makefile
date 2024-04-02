@@ -27,6 +27,20 @@ $(warning COMPILER not set (use ARM, CLANG, GNU, INTEL, NVIDIA, or HIP). Using G
 COMPILER=GNU
 endif
 
+ifneq ($(COMPILER), ARM)
+ifneq ($(COMPILER), CLANG)
+ifneq ($(COMPILER), GNU)
+ifneq ($(COMPILER), INTEL)
+ifneq ($(COMPILER), NVIDIA)
+ifneq ($(COMPILER), HIP)
+$(error Given compiler $(COMPILER) not valid. Please choose from ARM, CLANG, GNU, INTEL, NVIDIA, or HIP)
+endif
+endif
+endif
+endif
+endif
+endif
+
 CXX_ARM     = armclang++
 CXX_CLANG   = clang++
 CXX_GNU     = g++

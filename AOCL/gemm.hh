@@ -50,10 +50,10 @@ class gemm_cpu : public gemm<T> {
   void postLoopRequirements() override {}
 
   /** The constant value Alpha. */
-  const T alpha = ALPHA;
+  T alpha = ALPHA;
 
   /** The constant value Beta. */
-  const T beta = BETA;
+  T beta = BETA;
 
   /** The distance in elements to the next column. */
   const int rowStride = 1;

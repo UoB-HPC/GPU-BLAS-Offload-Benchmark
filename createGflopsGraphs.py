@@ -24,9 +24,7 @@ gemmFilenames = []
 for i in range(0, len(filenames)):
     if "gemm_" in filenames[i]:
         gemmFilenames.append(filenames[i])
-
-### CSV header format ==== Device,Kernel,M,N,K,Total Problem Size (KiB),Iterations,Total Seconds,GFLOP/s
-for i in range(0, len(gemmFilenames)):
+for fileName in gemmFilenames:
     mnk = []
     iters = 0
     kernel = ""
@@ -36,7 +34,7 @@ for i in range(0, len(gemmFilenames)):
     gpuU_Gflops = []
 
     # Open file and get all lines
-    fName = os.path.join(os.getcwd(), 'CSV_Results', gemmFilenames[i])
+    fName = os.path.join(os.getcwd(), 'CSV_Results', fileName)
     openFile = open(fName, 'r')
     lines = openFile.readlines()
     lines.pop(0) # Remove headers
@@ -70,51 +68,71 @@ for i in range(0, len(gemmFilenames)):
     inputTypeStr = ""
     x_name = ""
     xVals = []
-    if "_square_square_M=N=K" in gemmFilenames[i]:
+    if "_square_square_M=N=K" in fileName:
         x_name = "Value of M, N, K"
         inputTypeStr = "Square x Square (M=N=K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_tall-thin_short-wide_M=N_M=16K" in gemmFilenames[i]:
+    elif "_tall-thin_short-wide_M=N_M=16K" in fileName:
         x_name = "Value of K where M=16K and N=16K"
         inputTypeStr = "Tall-Thin x Short-Wide (M=N=16K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][2])
-    elif "_tall-thin_short-wide_M=N_K=32" in gemmFilenames[i]:
+    elif "_tall-thin_short-wide_M=N_K=32" in fileName:
         x_name = "Value of M and N, where K=32"
         inputTypeStr = "Tall-Thin x Short-Wide (M=N, K=32)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_short-wide_tall-thin_M=N_K=16M" in gemmFilenames[i]:
+    elif "_short-wide_tall-thin_M=N_K=16M" in fileName:
         x_name = "Value of M and N, where K=16M"
         inputTypeStr = "Short-Wide x Tall-Thin (M=N, K=16M)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_short-wide_tall-thin_M=N=32_K" in gemmFilenames[i]:
+    elif "_short-wide_tall-thin_M=N=32_K" in fileName:
         x_name = "Value of K, where M=32 and N=32"
         inputTypeStr = "Short-Wide x Tall-Thin (M=N=32, K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][2])
-    elif "_tall-thin_square_K=N_M=16K" in gemmFilenames[i]:
+    elif "_tall-thin_square_K=N_M=16K" in fileName:
         x_name = "Value of N and K, where M=16K"
         inputTypeStr = "Tall-Thin x Square (N=K, M=16K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][2])
-    elif "_tall-thin_square_K=N=32_M" in gemmFilenames[i]:
+    elif "_tall-thin_square_K=N=32_M" in fileName:
         x_name = "Value of M, where N=32 and K=32"
         inputTypeStr = "Tall-Thin x Square (M, N=K=32)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_square_short-wide_M=K_N=16K" in gemmFilenames[i]:
+    elif "_square_short-wide_M=K_N=16K" in fileName:
         x_name = "Value of M and K, where N=16K"
         inputTypeStr = "Square x Short-Wide (M=K, N=16K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_square_short-wide_M=K=32_N" in gemmFilenames[i]:
+    elif "_square_short-wide_M=K=32_N" in fileName:
         x_name = "Value of N, where M=32 and K=32"
         inputTypeStr = "Square x Short-Wide (M=K=32, N)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][1])
+    elif "_rectangular_16MxK" in fileName:
+        x_name = "Value of K, where M=N=16K"
+        inputTypeStr = "Rectangular (M = N = 16K)"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][0])
+    elif "_rectangular_Mx32" in fileName:
+        x_name = "Value of M and N, where M=N and K=32"
+        inputTypeStr = "Rectangular (M=N, K=32)"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][0])
+    elif "_rectangular_Mx16" in fileName:
+        x_name = "Value of N, where K=16N"
+        inputTypeStr = "Rectangular (K=16N)"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][1])
+    elif "_sparse_square" in fileName:
+        x_name = "Value of N, where N=M=K"
+        inputTypeStr = "Sparse square (M=N=K"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][0])
 
 
 
@@ -178,7 +196,7 @@ for i in range(0, len(gemmFilenames)):
     plt.xlabel(x_name, fontsize=16)
     plt.ylabel(y_name, fontsize=16)
     plt.title(title, fontsize=20)
-    plt.savefig(fname="{}/{}.png".format(graphDir, gemmFilenames[i][:-4]), format="png", dpi=100)
+    plt.savefig(fname="{}/{}.png".format(graphDir, fileName[:-4]), format="png", dpi=100)
     
 
 print("Finished!")

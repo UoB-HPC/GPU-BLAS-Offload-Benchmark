@@ -71,8 +71,6 @@ class doGemm {
     for (int dim = startDimention_; dim <= upperLimit_; dim++) {
       // M = dim, N = dim, K = dim;
       callDenseKernels(csvFile, dim, dim, dim);
-      std::ofstream csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
-                                          getKernelName() + "_square.csv");
     }
     // Close file
     csvFile.close();

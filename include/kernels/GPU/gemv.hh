@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../gemm.hh"
+#include "../gemv.hh"
 
 namespace gpu {
 

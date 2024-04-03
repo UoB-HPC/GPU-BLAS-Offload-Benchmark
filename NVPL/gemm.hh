@@ -54,9 +54,6 @@ class gemm_cpu : public gemm<T> {
 
   /** The constant value Beta. */
   T beta = BETA;
-
-  /** The distance in elements to the next column. */
-  const int rowStride = 1;
 };
 }  // namespace cpu
 #endif

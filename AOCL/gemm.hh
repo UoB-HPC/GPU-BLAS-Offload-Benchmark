@@ -33,7 +33,7 @@ class gemm_cpu : public gemm<T> {
                 &beta, C_, rowStride, std::max(1, m_));
     } else {
       // Un-specialised class will not do any work - print error and exit.
-      std::cout << "ERROR - Datatype for ArmPL CPU GEMM kernel not supported."
+      std::cout << "ERROR - Datatype for AOCL CPU GEMM kernel not supported."
                 << std::endl;
       exit(1);
     }

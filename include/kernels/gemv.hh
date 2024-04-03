@@ -88,7 +88,7 @@ class gemv {
   /** Matrix dimension M. */
   int m_ = 0;
 
-  /** Matrix /vector dimension N. */
+  /** Matrix / vector dimension N. */
   int n_ = 0;
 
   /** Input matrix A. */
@@ -99,4 +99,7 @@ class gemv {
 
   /** Input vector y. */
   T* y_;
+
+  /** The distance between two vector elements. */
+  const int vecIncrement_ = 1;
 };

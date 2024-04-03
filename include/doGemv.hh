@@ -186,7 +186,7 @@ class doGemv {
       cpuResult = gemvCpu_.compute();
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
       // Write result to CSV file
-      writeLineToCsv(csvFile, "cpu", kernelName, M, N, probSize, iterations_,
+      writeLineToCsv(csvFile, "cpu", kernelName, M, N, 0, probSize, iterations_,
                      cpuResult.runtime, cpuResult.gflops);
     }
 #endif
@@ -215,13 +215,13 @@ class doGemv {
           calcGflops(flops, iterations_, gpuResult_unified.runtime);
 
       // Write results to CSV file
-      writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, probSize,
+      writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, 0, probSize,
                      iterations_, gpuResult_once.runtime,
                      gpuResult_once.gflops);
-      writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, probSize,
-                     iterations_, gpuResult_always.runtime,
+      writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, 0,
+                     probSize, iterations_, gpuResult_always.runtime,
                      gpuResult_always.gflops);
-      writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, probSize,
+      writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, 0, probSize,
                      iterations_, gpuResult_unified.runtime,
                      gpuResult_unified.gflops);
     }
@@ -255,7 +255,7 @@ class doGemv {
                       time_checksum_gflop gpuResult_once,
                       time_checksum_gflop gpuResult_always,
                       time_checksum_gflop gpuResult_unified, const int M,
-                      const int N, const int K) {
+                      const int N) {
     // Ensure that each checksum difference is less than 0.1%
     double hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
     if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) *
@@ -267,7 +267,7 @@ class doGemv {
       std::cerr << "ERROR - " << getKernelName()
                 << " kernel checksums do not match:\n\tInput "
                    "dimensions: M="
-                << M << ", N=" << N << ", K=" << K << std::endl;
+                << M << ", N=" << N << std::endl;
       std::cerr << std::setprecision(10)
                 << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
       std::cerr << std::setprecision(10)
@@ -355,8 +355,8 @@ class doGemv {
     // Ax + y = M (addition)
     // = 2MN + M + M + M
 
-    // If beta==0; = 2MNK + M ------- alpha*Ax Always done
-    // Else; = 2MNK + 3M
+    // If beta==0; = 2MN + M ------- alpha*Ax Always done
+    // Else; = 2MN + 3M
     uint64_t scalar = (BETA != 0) ? 3 : 1;
     return (2 * (uint64_t)M * (uint64_t)N) + (scalar * (uint64_t)M);
   }

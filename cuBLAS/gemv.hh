@@ -73,11 +73,11 @@ class gemv_gpu : public gemv<T> {
       cudaCheckError(cudaMallocManaged(&y_, sizeof(T) * m_));
     } else {
       // Allocate matrices on host
-      cudaCheckError(cudaMallocHost((void**)&A_, sizeof(T) * m_ * k_));
+      cudaCheckError(cudaMallocHost((void**)&A_, sizeof(T) * m_ * n_));
       cudaCheckError(cudaMallocHost((void**)&x_, sizeof(T) * n_));
       cudaCheckError(cudaMallocHost((void**)&y_, sizeof(T) * m_));
       // Allocate matrices on device
-      cudaCheckError(cudaMalloc((void**)&A_device_, sizeof(T) * m_ * k_));
+      cudaCheckError(cudaMalloc((void**)&A_device_, sizeof(T) * m_ * n_));
       cudaCheckError(cudaMalloc((void**)&x_device_, sizeof(T) * n_));
       cudaCheckError(cudaMalloc((void**)&y_device_, sizeof(T) * m_));
     }

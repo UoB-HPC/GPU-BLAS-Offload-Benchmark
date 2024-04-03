@@ -12,6 +12,7 @@ int main(int argc, char** argv) {
   printBenchmarkConfig(iters, upperLimit);
 
   if (!doCpu && !doGpu) {
+    std::cout << "Finished!" << std::endl;
     exit(0);
   }
 
@@ -20,8 +21,8 @@ int main(int argc, char** argv) {
   if (stat(CSV_DIR, &st) == -1) {
     mkdir(CSV_DIR, 0700);
   }
-  char absPath[4096];
-  realpath(CSV_DIR, absPath);
+
+  char* absPath = realpath(CSV_DIR, nullptr);
   std::cout << "All results will be saved in CSV files at '" << absPath << "'"
             << std::endl
             << std::endl;
@@ -51,6 +52,8 @@ int main(int argc, char** argv) {
   doGemv<double> dgemv(iters, startDim, upperLimit, doCpu, doGpu);
   dgemv.collectData();
   std::cout << "Finished!" << std::endl;
+
+  free(absPath);
   return 0;
 }
 

@@ -36,12 +36,15 @@ template <typename T>
 class doGemm {
  public:
   doGemm(const int iters, const int startDim, const int upperLimit, const
-  bool cpuEnabled = true, const bool gpuEnabled = true)
+  bool cpuEnabled = true, const bool gpuEnabled = true, const bool doDense =
+          true, const bool doSparse = true)
       : iterations_(iters),
         startDimention_(startDim),
         upperLimit_(upperLimit),
         doCPU_(cpuEnabled),
-        doGPU_(gpuEnabled)
+        doGPU_(gpuEnabled),
+        doDense_(dense),
+        doSparse_(sparse),
 #if CPU_ENABLED
         ,
         gemmCpu_(iterations_),
@@ -60,231 +63,234 @@ class doGemm {
 
   /** Run all problem types and write data to CSV files. */
   void collectData() {
-    // Square Problem Sizes...
-    // Re-initialise offload threshold structures
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    std::ofstream csvFile =
-        initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                    "_square_square_M=N=K.csv");
-    for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-      // M = dim, N = dim, K = dim;
-      callDenseKernels(csvFile, dim, dim, dim);
-    }
-    // Close file
-    csvFile.close();
+    if (doDense_) {
+      // Square Problem Sizes...
+      // Re-initialise offload threshold structures
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      std::ofstream csvFile =
+              initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                          "_square_square_M=N=K.csv");
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        // M = dim, N = dim, K = dim;
+        callDenseKernels(csvFile, dim, dim, dim);
+      }
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
+      if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Square x Square (M=N=K)");
     }
 #endif
 
-    // Rectangular Problem Sizes:
-    // Tall and thin (16M x K)...
-    // Re-initialise offload threshold structures
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_rectangular_16MxK.csv");
-    int K = startDimention_;
-    int M = 16 * K;
-    int N = 16 * K;
-    while (M <= upperLimit_) {
-      callDenseKernels(csvFile, M, N, K);
-      M += 16;
-      N += 16;
-      K++;
-    }
-    // Close file
-    csvFile.close();
+      // Rectangular Problem Sizes:
+      // Tall and thin (16M x K)...
+      // Re-initialise offload threshold structures
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_rectangular_16MxK.csv");
+      int K = startDimention_;
+      int M = 16 * K;
+      int N = 16 * K;
+      while (M <= upperLimit_) {
+        callDenseKernels(csvFile, M, N, K);
+        M += 16;
+        N += 16;
+        K++;
+      }
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
+      if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, M=16K)");
     }
 #endif
 
-    // Tall and thin x Short and wide
-    // Re-initialise offload threshold structures
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_rectangular_Mx32.csv");
-    if (upperLimit_ >= 32) {
-      for (int dim = 1; dim <= upperLimit_; dim++) {
-        callDenseKernels(csvFile, dim, dim, 32);
+      // Tall and thin x Short and wide
+      // Re-initialise offload threshold structures
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_rectangular_Mx32.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = 1; dim <= upperLimit_; dim++) {
+          callDenseKernels(csvFile, dim, dim, 32);
+        }
       }
-    }
-    // Close file
-    csvFile.close();
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
+      if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, K=32)");
     }
 #endif
 
-    // Short and wide x Tall and thin
-    // Re-initialise offload threshold structures
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_short-wide_tall-thin_M=N_K=16M.csv");
-    M = startDimention_;
-    N = startDimention_;
-    K = 16 * M;
-    while (K <= upperLimit_) {
-      callDenseKernels(csvFile, M, N, K);
-      M++;
-      N++;
-      K += 16;
-    }
-    // Close file
-    csvFile.close();
+      // Short and wide x Tall and thin
+      // Re-initialise offload threshold structures
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_short-wide_tall-thin_M=N_K=16M.csv");
+      M = startDimention_;
+      N = startDimention_;
+      K = 16 * M;
+      while (K <= upperLimit_) {
+        callDenseKernels(csvFile, M, N, K);
+        M++;
+        N++;
+        K += 16;
+      }
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
+      if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N, K=16M)");
     }
 #endif
 
-    // Short and wide x Tall and thin
-    // Re-initialise offload threshold structures
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_short-wide_tall-thin_M=N=32_K.csv");
-    if (upperLimit_ >= 32) {
-      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-        // M = 32, N = 32, K = dim;
-        callDenseKernels(csvFile, 32, 32, dim);
+      // Short and wide x Tall and thin
+      // Re-initialise offload threshold structures
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_short-wide_tall-thin_M=N=32_K.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+          // M = 32, N = 32, K = dim;
+          callDenseKernels(csvFile, 32, 32, dim);
+        }
       }
-    }
-    // Close file
-    csvFile.close();
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
+      if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N=32, K)");
     }
 #endif
 
-    // Short and wide (M x 16K)...
-    // Re-initialise offload threshold structures
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_rectangular_Mx16K.csv");
-    while (M <= upperLimit_) {
-      callDenseKernels(csvFile, M, N, K);
-      M += 16;
-      N++;
-      K++;
-    }
-    // Close file
-    csvFile.close();
+      // Short and wide (M x 16K)...
+      // Re-initialise offload threshold structures
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_rectangular_Mx16K.csv");
+      while (M <= upperLimit_) {
+        callDenseKernels(csvFile, M, N, K);
+        M += 16;
+        N++;
+        K++;
+      }
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
+      if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Tall-and-Thin x Square (K=N, M=16K)");
     }
 #endif
 
-    // Tall and Thin x Square
-    // Re-initialise offload threshold structures
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_tall-thin_square_K=N=32_M.csv");
-    if (upperLimit_ >= 32) {
-      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-        // M = dim, N = 32, K = 32;
-        callDenseKernels(csvFile, dim, 32, 32);
+      // Tall and Thin x Square
+      // Re-initialise offload threshold structures
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_tall-thin_square_K=N=32_M.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+          // M = dim, N = 32, K = 32;
+          callDenseKernels(csvFile, dim, 32, 32);
+        }
       }
-    }
-    // Close file
-    csvFile.close();
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
+      if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Tall-and-Thin x Square (M, K=N=32)");
     }
 #endif
 
-    // Square x Short and Wide
-    // Re-initialise offload threshold structures
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_square_short-wide_M=K_N=16K.csv");
-    M = startDimention_;
-    K = startDimention_;
-    N = 16 * K;
-    while (N <= upperLimit_) {
-      callDenseKernels(csvFile, M, N, K);
-      M++;
-      N += 16;
-      K++;
-    }
-    // Close file
-    csvFile.close();
+      // Square x Short and Wide
+      // Re-initialise offload threshold structures
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_square_short-wide_M=K_N=16K.csv");
+      M = startDimention_;
+      K = startDimention_;
+      N = 16 * K;
+      while (N <= upperLimit_) {
+        callDenseKernels(csvFile, M, N, K);
+        M++;
+        N += 16;
+        K++;
+      }
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
+      if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Square x Short-and-Wide (M=K, N=16K)");
     }
 #endif
 
-		// Square sparse matrix - sparse matrix multiplication
-	  cpuGpu_always_ = cpuGpu_offloadThreshold();
-	  cpuGpu_once_ = cpuGpu_offloadThreshold();
-	  cpuGpu_unified_ = cpuGpu_offloadThreshold();
-	  csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-	                        "_sparse_square.csv");
-	  if (upperLimit_ >= 32) {
-		  for (int dim = 1; dim <= upperLimit_; dim++) {
-			  callSparseKernels(csvFile, dim, 0.99);
-		  }
-	  }
-	  // Close file
-	  csvFile.close();
-#if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && dpGPU_) {
-      // Print offload results to stdout
-	    printOffloadThreshold("Sparse Square");
-    }
-#endif
-
-    // Square x Short and Wide
-    // Re-initialise offload threshold structures
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_square_short-wide_M=K=32_N.csv");
-    if (upperLimit_ >= 32) {
-      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-        // M = 32, N = dim, K = 32;
-        callDenseKernels(csvFile, 32, dim, 32);
+      // Square x Short and Wide
+      // Re-initialise offload threshold structures
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_square_short-wide_M=K=32_N.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+          // M = 32, N = dim, K = 32;
+          callDenseKernels(csvFile, 32, dim, 32);
+        }
       }
-    }
-    // Close file
-    csvFile.close();
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
+      if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Square x Short-and-Wide (M=K=32, N)");
     }
 #endif
+    }
+
+    if (doSparse_) {    // Square sparse matrix - sparse matrix multiplication
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_sparse_square.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+          callSparseKernels(csvFile, dim, 0.99);
+        }
+      }
+      // Close file
+      csvFile.close();
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && dpGPU_) {
+        // Print offload results to stdout
+        printOffloadThreshold("Sparse Square");
+      }
+#endif
+    }
   }
 
  private:
@@ -643,6 +649,10 @@ class doGemm {
 
   /** Whether the GPU kernels should be run. */
   const bool doGPU_ = true;
+
+  /** Whether we should run dense and or sparse kernels */
+  const bool doDense_;
+  const bool doSparse_;
 
 #if CPU_ENABLED
   /** The GEMM CPU kernel. */

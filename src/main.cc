@@ -28,13 +28,15 @@ int main(int argc, char** argv) {
 
   // SGEMM Comparison
   std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
-  doGemm<float> sgemm(iters, startDim, upperLimit, doCpu, doGpu);
+  doGemm<float> sgemm(iters, startDim, upperLimit, doCpu, doGpu, sgemm,
+                      sp_sgemm);
   sgemm.collectData();
   std::cout << "Finished!" << std::endl;
 
   // DGEMM Comparison
   std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
-  doGemm<double> dgemm(iters, startDim, upperLimit, doCpu, doGpu);
+  doGemm<double> dgemm(iters, startDim, upperLimit, doCpu, doGpu, dgemm,
+                       sp_dgemm);
   dgemm.collectData();
   std::cout << "Finished!" << std::endl;
   return 0;
@@ -154,6 +156,9 @@ void getParameters(int argc, char** argv) {
       std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
                    "(default: "
                 << upperLimit << ")" << std::endl;
+      std::cout << "  -k  --kernels <kernels>      comma separated list of "
+                   "kernels.  Options are sgemm, dgemm, sp-sgemm, sp-dgemm "
+                   "(default: sgemm,dgemm,sp-gemm,sp-dgemm)" << std::endl;
       std::cout << std::endl;
       exit(0);
 	    std::cout << std::endl;

@@ -239,7 +239,7 @@ EXE = gpu-blob
 all: $(EXE)
 
 $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
-	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/consume.so
+	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/libconsume.so
 	$(CXX) $(SRC_FILES) $(CXXFLAGS) -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS) -o $@
 
 clean:

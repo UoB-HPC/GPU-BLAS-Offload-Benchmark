@@ -63,6 +63,17 @@ struct time_checksum_gflop {
   double gflops = 0.0;
 };
 
+// Struct to hold key values at the point at which offloading to GPU becomes
+// worthwhile.
+struct cpuGpu_offloadThreshold {
+  double cpuGflops = 0.0;
+  double gpuGflops = 0.0;
+  double probSize_kib = 0.0;
+  int M = 0;
+  int N = 0;
+  int K = 0;
+};
+
 // External consume function used to ensure naive code is performed and not
 // optimised away, and that all iterations of any library BLAS call are
 // performed.

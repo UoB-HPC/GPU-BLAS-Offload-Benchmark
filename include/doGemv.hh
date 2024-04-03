@@ -26,16 +26,6 @@
 #include "../rocBLAS/gemv.hh"
 #endif
 
-/** Struct to hold key values at the point at which offloading to GPU becomes
- * worthwhile. */
-struct cpuGpu_offloadThreshold {
-  double cpuGflops = 0.0;
-  double gpuGflops = 0.0;
-  double probSize_kib = 0.0;
-  int M = 0;
-  int N = 0;
-};
-
 /** `T` represents the type of kernel that will be run - i.e. T=float is for
  *      SGEMV. */
 template <typename T>
@@ -358,11 +348,11 @@ class doGemv {
 
   /** A function for calculating FLOPs performed by a GEMV.
    * y = alpha*Ax + beta*y */
-  constexpr uint64_t calcFlops(const int M, const int N, const int K) const {
+  constexpr uint64_t calcFlops(const int M, const int N) const {
     // A * x = 2*M*N (FMA)
     // alpha * Ax = M (multiplication)
     // beta * y = M (multiplication)
-    // AB + C = M (addition)
+    // Ax + y = M (addition)
     // = 2MN + M + M + M
 
     // If beta==0; = 2MNK + M ------- alpha*Ax Always done
@@ -372,7 +362,7 @@ class doGemv {
   }
 
   /** A function for calculating the total GEMV problem size in KiB. */
-  constexpr double calcKib(const int M, const int N, const int K) const {
+  constexpr double calcKib(const int M, const int N) const {
     uint64_t M_ = (uint64_t)M, N_ = (uint64_t)N;
     uint64_t probSize = (M_ * N_) + N_ + M_;
     return ((double)(probSize * (sizeof(T))) / 1024);

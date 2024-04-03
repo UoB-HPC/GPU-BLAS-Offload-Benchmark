@@ -26,17 +26,6 @@
 #include "../rocBLAS/gemm.hh"
 #endif
 
-/** Struct to hold key values at the point at which offloading to GPU becomes
- * worthwhile. */
-struct cpuGpu_offloadThreshold {
-  double cpuGflops = 0.0;
-  double gpuGflops = 0.0;
-  double probSize_kib = 0.0;
-  int M = 0;
-  int N = 0;
-  int K = 0;
-};
-
 /** `T` represents the type of kernel that will be run - i.e. T=float is for
  *      SGEMM. */
 template <typename T>

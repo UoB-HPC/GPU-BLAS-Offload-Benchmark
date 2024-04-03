@@ -10,7 +10,8 @@ All computations performed by each BLAS library are done in column-major and are
 Only when an error occurs will any checksum be displayed to the user.
 
 GFLOP/s are calculated using the following Total FLOPs formulas. The compute time excludes any initialisation, but does include any data movement / prefetching to/from the GPU device:
- - **GEMM** : FLOPs = Alpha * (2 * M * N * K) + Beta * (M * N)
+ - **GEMM** : `FLOPs = (2 * M * N * K) + (b * M * N)` where `b` is `1` if BETA=0 and `3` if BETA=/=0
+ - **GEMV** : `FLOPs = (2 * M * N) + (b * M)` where `b` is `1` if BETA=0 and `3` if BETA=/=0
 
 # Build Options
 Select the compiler you wish to use. Regardless of choice, `gcc` is required in order to build the `Consume.so` external library.
@@ -80,7 +81,8 @@ Additional arguments are as follows:
  - `--no_gpu` : disables the GPU kernels from executing at runtime
 
 # Environment Variables
-It is recommended to set the relevant environment variables to ensure the best performance on host and device. 
+It is recommended to set the relevant environment variables to ensure the best performance on host and device. For more information about extrating the best library performance at runtime (especially for CPU libraries), please refer to the appropriate specifications.
+Seen below are some suggestions on commonly used environment variables for their associated libraries.
 
 ### <u>Arm Performance Libraries</u>
 When using ArmPL, setting the following environment variables is beneficial:
@@ -121,68 +123,24 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes
 
- - SpMM
+ <!-- - SpMM
    - FP32, FP64
-   - ...
+   - ... -->
 
 ### <u>Level 2 BLAS</u>
  - GEMV
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes 
 
- - SpMV
+ <!-- - SpMV
    - FP32, FP64
-   - ...
+   - ... -->
 
 
-
-# ToDo:
- - [ ] Add command line option to not run any CPU kernel (i.e. GPU only)
- - [ ] Add minimum start dimension command line option
- - [ ] Add support for ArmPL.
-   - [x] GEMM 
-   - [ ] GEMV 
- - [ ] Add support for cuBLAS.
-   - [x] GEMM 
-   - [ ] GEMV 
- - [ ] Add support for oneMKL (CPU & GPU)
-   - [x] GEMM
-   - [ ] GEMV
- - [ ] Add support for rocBLAS
-   - [x] GEMM
-   - [ ] GEMV
- - [ ] Add support for AOCL (AMD Optimizing CPU libraries)
-   - [x] GEMM
-   - [ ] GEMV
- - [ ] Add support for NVPL CPU Library
-   - [x] GEMM
-   - [ ] GEMV
- - [ ] Add support for OpenBLAS
-   - [x] GEMM
-   - [ ] GEMV
- - [ ] Add batched GEMM functions for GPU Libraries
-   - [ ] cuBLAS
-   - [ ] OneMKL
-   - [ ] rocBLAS
-
- - [x] Create python script to auto generate a png graph for each csv file (x-axis = matrix size, y-axis=GFLOP/s)
- - [x] Outline what kernels are included in the benchmark, along with how they will be run.
- - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
- - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
- - [ ] Add FP16/BF16 support for kernels
- - [ ] Add support for ArmPL Sparce
-   - [ ] SpMM 
-   - [ ] SpMV 
- - [ ] Add support for cuSPARSE
-   - [ ] SpMM
-   - [ ] SpMV
- - [ ] Add support for oneMKL Sparce
-   - [ ] SpMM
-   - [ ] SpMV
- - [ ] Add support for Apple Accelerate(?)
- - [ ] Add support for Apple Metal Performance Shaders(?)
 
 # Future Work
- - [ ] Add support for Intel AMX.
- - [ ] Add support for IBM Power10 MMA.
- - [ ] Add support for Arm SME (no hardware / libs available).
+ - [ ] Add support for Sparce Kernels
+ - [ ] Add FP16/BF16 support for kernels
+ - [ ] Add batched GEMM functions 
+ - [ ] Add support for Apple Accelerate
+ - [ ] Add support for Apple Metal Performance Shaders

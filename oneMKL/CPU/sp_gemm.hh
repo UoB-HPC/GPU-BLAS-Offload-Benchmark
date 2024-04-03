@@ -14,20 +14,17 @@ template <typename T>
 class sp_gemm_cpu : public sp_gemm<T> {
  public:
   using sp_gemm<T>::sp_gemm;
-  using sp_gemm<T>::initInputMatrices;
+  using sp_gemm<T>::initInputMatricesSparse;
+  using sp_gemm<T>::toCSR;
   using sp_gemm<T>::callConsume;
-  using sp_gemm<T>::m_;
   using sp_gemm<T>::n_;
-  using sp_gemm<T>::k_;
   using sp_gemm<T>::A_;
   using sp_gemm<T>::B_;
   using sp_gemm<T>::C_;
 
   /** Initialise the required data structures. */
-  void initialise(int m, int n, int k) {
-    m_ = m;
+  void initialise(int n, float sparsity) {
     n_ = n;
-    k_ = k;
 
     A_ = (T*)mkl_malloc(sizeof(T) * m_ * k_, 64);
     B_ = (T*)mkl_malloc(sizeof(T) * k_ * n_, 64);

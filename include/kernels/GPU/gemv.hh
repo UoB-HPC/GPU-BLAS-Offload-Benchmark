@@ -8,7 +8,7 @@ namespace gpu {
 template <typename T>
 class gemv : public ::gemv<T> {
  public:
-  using ::gemm<T>::gemv;
+  using ::gemv<T>::gemv;
 
   /** Initialise the required data structures.
    * `offload` refers to the data offload type:

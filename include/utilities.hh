@@ -42,9 +42,6 @@
 #define ALPHA 1
 #define BETA 0
 
-// Define output directory for csv files.
-#define CSV_DIR "CSV_Results"
-
 // Define seed for random number generation - use seeded srand() to ensure
 // inputs across libraries are consistent & comparable
 const unsigned int SEED = 19123005;

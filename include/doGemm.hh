@@ -31,9 +31,11 @@
 template <typename T>
 class doGemm {
  public:
-  doGemm(const int iters, const int startDim, const int upperLimit,
-         const bool cpuEnabled = true, const bool gpuEnabled = true)
-      : iterations_(iters),
+  doGemm(const std::string csvDir, const int iters, const int startDim,
+         const int upperLimit, const bool cpuEnabled = true,
+         const bool gpuEnabled = true)
+      : CSV_DIR(csvDir),
+        iterations_(iters),
         startDimention_(startDim),
         upperLimit_(upperLimit),
         doCPU_(cpuEnabled),
@@ -59,9 +61,8 @@ class doGemm {
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    std::ofstream csvFile =
-        initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                    "_square_square_M=N=K.csv");
+    std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
+                                        "_square_square_M=N=K.csv");
     for (int dim = startDimention_; dim <= upperLimit_; dim++) {
       // M = dim, N = dim, K = dim;
       callKernels(csvFile, dim, dim, dim);
@@ -81,7 +82,7 @@ class doGemm {
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_tall-thin_short-wide_M=N_M=16K.csv");
     int K = startDimention_;
     int M = 16 * K;
@@ -106,7 +107,7 @@ class doGemm {
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_tall-thin_short-wide_M=N_K=32.csv");
     if (upperLimit_ >= 32) {
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
@@ -128,7 +129,7 @@ class doGemm {
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_short-wide_tall-thin_M=N_K=16M.csv");
     M = startDimention_;
     N = startDimention_;
@@ -153,7 +154,7 @@ class doGemm {
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_short-wide_tall-thin_M=N=32_K.csv");
     if (upperLimit_ >= 32) {
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
@@ -175,7 +176,7 @@ class doGemm {
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_tall-thin_square_K=N_M=16K.csv");
     K = startDimention_;
     N = startDimention_;
@@ -200,7 +201,7 @@ class doGemm {
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_tall-thin_square_K=N=32_M.csv");
     if (upperLimit_ >= 32) {
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
@@ -222,7 +223,7 @@ class doGemm {
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_square_short-wide_M=K_N=16K.csv");
     M = startDimention_;
     K = startDimention_;
@@ -247,7 +248,7 @@ class doGemm {
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_square_short-wide_M=K=32_N.csv");
     if (upperLimit_ >= 32) {
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
@@ -562,6 +563,9 @@ class doGemm {
         problemName + " Problem Domian GPU Offload Thresholds:", header, rows);
     tPrinter.print(1);
   }
+
+  /** The output directory where CSV files should be saved to. */
+  const std::string CSV_DIR;
 
   /** The number of iterations to perform per problem size. */
   const int iterations_;

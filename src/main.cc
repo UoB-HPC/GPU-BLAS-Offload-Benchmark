@@ -7,6 +7,8 @@ int upperLimit = 128;
 bool doCpu = CPU_ENABLED;
 bool doGpu = GPU_ENABLED;
 
+std::string CSV_DIR = "CSV_Results";
+
 int main(int argc, char** argv) {
   getParameters(argc, argv);
   printBenchmarkConfig(iters, upperLimit);
@@ -18,11 +20,11 @@ int main(int argc, char** argv) {
 
   // Ensure CSV file directory exists.
   struct stat st = {0};
-  if (stat(CSV_DIR, &st) == -1) {
-    mkdir(CSV_DIR, 0700);
+  if (stat(CSV_DIR.c_str(), &st) == -1) {
+    mkdir(CSV_DIR.c_str(), 0700);
   }
 
-  char* absPath = realpath(CSV_DIR, nullptr);
+  char* absPath = realpath(CSV_DIR.c_str(), nullptr);
   std::cout << "All results will be saved in CSV files at '" << absPath << "'"
             << std::endl
             << std::endl;
@@ -30,26 +32,30 @@ int main(int argc, char** argv) {
   // -------- GEMM --------
   // SGEMM Comparison
   std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
-  doGemm<float> sgemm(iters, startDim, upperLimit, doCpu, doGpu);
+  doGemm<float> sgemm(std::string(absPath), iters, startDim, upperLimit, doCpu,
+                      doGpu);
   sgemm.collectData();
   std::cout << "Finished!" << std::endl;
 
   // DGEMM Comparison
   std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
-  doGemm<double> dgemm(iters, startDim, upperLimit, doCpu, doGpu);
+  doGemm<double> dgemm(std::string(absPath), iters, startDim, upperLimit, doCpu,
+                       doGpu);
   dgemm.collectData();
   std::cout << "Finished!" << std::endl;
 
   // -------- GEMV --------
   // SGEMV Comparison
   std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
-  doGemv<float> sgemv(iters, startDim, upperLimit, doCpu, doGpu);
+  doGemv<float> sgemv(std::string(absPath), iters, startDim, upperLimit, doCpu,
+                      doGpu);
   sgemv.collectData();
   std::cout << "Finished!" << std::endl;
 
   // DGEMV Comparison
   std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
-  doGemv<double> dgemv(iters, startDim, upperLimit, doCpu, doGpu);
+  doGemv<double> dgemv(std::string(absPath), iters, startDim, upperLimit, doCpu,
+                       doGpu);
   dgemv.collectData();
   std::cout << "Finished!" << std::endl;
 
@@ -135,6 +141,13 @@ void getParameters(int argc, char* argv[]) {
       doCpu = false;
     } else if (!strcmp(argv[i], "--no_gpu")) {
       doGpu = false;
+    } else if (!strcmp(argv[i], "--output_dir") || !strcmp(argv[i], "-o")) {
+      if (++i >= argc) {
+        std::cout << "ERROR - Invalid output directory" << std::endl;
+        exit(1);
+      } else {
+        CSV_DIR = argv[i];
+      }
     } else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       std::cout << std::endl;
       std::cout << "Usage: ./gpu-blob [OPTIONS]" << std::endl << std::endl;
@@ -145,6 +158,9 @@ void getParameters(int argc, char* argv[]) {
                 << std::endl;
       std::cout << "  --no_gpu                     Disable all GPU kernel Runs"
                 << std::endl;
+      std::cout
+          << "  -o  --output_dir             The CSV file output directory"
+          << std::endl;
       std::cout << "  -i  --iterations I           Repeat each kernel I times "
                    "(default: "
                 << iters << ")" << std::endl;

@@ -155,13 +155,10 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - [x] GEMM
    - [ ] GEMV
  - [ ] Add support for NVPL CPU Library
-   - [ ] GEMM
+   - [x] GEMM
    - [ ] GEMV
  - [ ] Add support for OpenBLAS
-   - [ ] GEMM
-   - [ ] GEMV
- - [ ] Add support for BLIS
-   - [ ] GEMM
+   - [x] GEMM
    - [ ] GEMV
  - [ ] Add batched GEMM functions for GPU Libraries
    - [ ] cuBLAS

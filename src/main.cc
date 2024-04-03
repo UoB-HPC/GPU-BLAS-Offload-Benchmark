@@ -26,6 +26,7 @@ int main(int argc, char** argv) {
             << std::endl
             << std::endl;
 
+  // -------- GEMM --------
   // SGEMM Comparison
   std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
   doGemm<float> sgemm(iters, startDim, upperLimit, doCpu, doGpu);
@@ -36,6 +37,19 @@ int main(int argc, char** argv) {
   std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
   doGemm<double> dgemm(iters, startDim, upperLimit, doCpu, doGpu);
   dgemm.collectData();
+  std::cout << "Finished!" << std::endl;
+
+  // -------- GEMV --------
+  // SGEMV Comparison
+  std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
+  doGemv<float> sgemv(iters, startDim, upperLimit, doCpu, doGpu);
+  sgemv.collectData();
+  std::cout << "Finished!" << std::endl;
+
+  // DGEMV Comparison
+  std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
+  doGemv<double> dgemv(iters, startDim, upperLimit, doCpu, doGpu);
+  dgemv.collectData();
   std::cout << "Finished!" << std::endl;
   return 0;
 }

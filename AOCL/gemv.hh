@@ -24,11 +24,13 @@ class gemv_cpu : public gemv<T> {
   /** Make call to the GEMV kernel. */
   void callGemv() override {
     if constexpr (std::is_same_v<T, float>) {
-      bli_sgemv(BLIS_NO_TRANSPOSE, m_, n_, &alpha, A_, rowStride,
-                std::max(1, m_), x_, vecIncrement_, &beta, y_, vecIncrement_);
+      bli_sgemv(BLIS_NO_TRANSPOSE, BLIS_NO_CONJUGATE, m_, n_, &alpha, A_,
+                rowStride, std::max(1, m_), x_, vecIncrement_, &beta, y_,
+                vecIncrement_);
     } else if constexpr (std::is_same_v<T, double>) {
-      bli_dgemv(BLIS_NO_TRANSPOSE, m_, n_, &alpha, A_, rowStride,
-                std::max(1, m_), x_, vecIncrement_, &beta, y_, vecIncrement_);
+      bli_dgemv(BLIS_NO_TRANSPOSE, BLIS_NO_CONJUGATE, m_, n_, &alpha, A_,
+                rowStride, std::max(1, m_), x_, vecIncrement_, &beta, y_,
+                vecIncrement_);
     } else {
       // Un-specialised class will not do any work - print error and exit.
       std::cout << "ERROR - Datatype for AOCL CPU GEMV kernel not supported."

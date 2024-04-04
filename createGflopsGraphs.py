@@ -136,14 +136,27 @@ for i in range(0, len(gemmFilenames)):
     fig1 = plt.figure(figsize=(25,14))
     ax1 = fig1.add_subplot()
 
+    gpuEnabled = False
     if len(cpu_Gflops) > 0:
         ax1.plot(xVals, cpu_Gflops, color="#332288", marker=".", label="CPU")
+        # Plot line at max GFLOP/s
+        yCoord = round(max(cpu_Gflops),1)
+        ax1.axhline(yCoord, color='black', linestyle='--')
+        ax1.text(x=0, y=yCoord, s="Max CPU GFLOP/s : {:,}".format(yCoord), fontsize=12, ha='left', va='bottom')
     if len(gpuO_Gflops) > 0:
         ax1.plot(xVals, gpuO_Gflops, color="#44AA99", marker="x", label="GPU (Offload Once)")
+        gpuEnabled = True
     if len(gpuA_Gflops) > 0:
         ax1.plot(xVals, gpuA_Gflops, color="#CC6677", marker="+", label="GPU (Offload Always)")
+        gpuEnabled = True
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
+        gpuEnabled = True
+
+    if(gpuEnabled):
+        yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)
+        ax1.axhline(yCoord, color='black', linestyle='--')
+        ax1.text(x=0, y=yCoord, s="Max GPU GFLOP/s : {:,}".format(yCoord), fontsize=12, ha='left', va='bottom')
 
     # Set X ticks
     NUM_TICK = 8
@@ -177,7 +190,7 @@ for i in range(0, len(gemmFilenames)):
     plt.yticks(ticks=yLoc)
 
     plt.margins(x=0.01, y=0.01)
-    plt.legend(loc='upper left', fancybox=True, ncol = 1)
+    plt.legend(loc='upper left', fancybox=True, ncol = 4)
     plt.xlabel(x_name, fontsize=16)
     plt.ylabel(y_name, fontsize=16)
     plt.title(title, fontsize=20)
@@ -287,14 +300,27 @@ for i in range(0, len(gemvFilenames)):
     fig1 = plt.figure(figsize=(25,14))
     ax1 = fig1.add_subplot()
 
+    gpuEnabled = False
     if len(cpu_Gflops) > 0:
         ax1.plot(xVals, cpu_Gflops, color="#332288", marker=".", label="CPU")
+        # Plot line at max GFLOP/s
+        yCoord = round(max(cpu_Gflops),1)
+        ax1.axhline(yCoord, color='black', linestyle='--')
+        ax1.text(x=0, y=yCoord, s="Max CPU GFLOP/s : {:,}".format(yCoord), fontsize=12, ha='left', va='bottom')
     if len(gpuO_Gflops) > 0:
         ax1.plot(xVals, gpuO_Gflops, color="#44AA99", marker="x", label="GPU (Offload Once)")
+        gpuEnabled = True
     if len(gpuA_Gflops) > 0:
         ax1.plot(xVals, gpuA_Gflops, color="#CC6677", marker="+", label="GPU (Offload Always)")
+        gpuEnabled = True
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
+        gpuEnabled = True
+
+    if(gpuEnabled):
+        yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)
+        ax1.axhline(yCoord, color='black', linestyle='--')
+        ax1.text(x=0, y=yCoord, s="Max GPU GFLOP/s : {:,}".format(yCoord), fontsize=12, ha='left', va='bottom')
 
     # Set X ticks
     NUM_TICK = 8
@@ -328,7 +354,7 @@ for i in range(0, len(gemvFilenames)):
     plt.yticks(ticks=yLoc)
 
     plt.margins(x=0.01, y=0.01)
-    plt.legend(loc='upper left', fancybox=True, ncol = 1)
+    plt.legend(loc='upper left', fancybox=True, ncol = 4)
     plt.xlabel(x_name, fontsize=16)
     plt.ylabel(y_name, fontsize=16)
     plt.title(title, fontsize=20)

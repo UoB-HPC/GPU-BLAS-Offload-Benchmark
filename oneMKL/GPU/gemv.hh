@@ -60,7 +60,7 @@ class gemv_gpu : public gemv<T> {
       y_device_ = (T*)sycl::malloc_device(sizeof(T) * m_, gpuQueue_);
     }
 
-    // Initialise the host input matrix and vector (A_ and x_)
+    // Initialise the host data structures
     initInputMatrixVector();
   }
 

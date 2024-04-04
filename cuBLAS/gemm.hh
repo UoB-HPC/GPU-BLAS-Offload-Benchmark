@@ -90,7 +90,7 @@ class gemm_gpu : public gemm<T> {
       cudaCheckError(cudaMalloc((void**)&C_device_, sizeof(T) * m_ * n_));
     }
 
-    // Initialise the host input matricies (A_ and B_)
+    // Initialise the host input matricies
     initInputMatrices();
   }
 

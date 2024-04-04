@@ -90,7 +90,7 @@ class gemv_gpu : public gemv<T> {
       hipCheckError(hipMalloc((void**)&y_device_, sizeof(T) * m_));
     }
 
-    // Initialise the host input matrix and vector (A_ and x_)
+    // Initialise the host data structures
     initInputMatrixVector();
   }
 

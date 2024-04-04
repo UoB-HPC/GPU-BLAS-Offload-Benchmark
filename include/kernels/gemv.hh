@@ -65,7 +65,7 @@ class gemv {
   }
 
  protected:
-  /** Initialise the input matrix and vector. */
+  /** Initialise the input data structures. */
   void initInputMatrixVector() {
     // Seed the random number generator
     srand(SEED);
@@ -76,6 +76,9 @@ class gemv {
     }
     for (int y = 0; y < n_; y++) {
       x_[y] = (T)((double)(rand() % 100) / 3.0);
+    }
+    for (int y = 0; y < m_; y++) {
+      c_[y] = (T)0.0;
     }
   }
 

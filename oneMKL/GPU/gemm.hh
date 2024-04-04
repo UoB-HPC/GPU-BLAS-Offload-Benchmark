@@ -61,7 +61,7 @@ class gemm_gpu : public gemm<T> {
       C_device_ = (T*)sycl::malloc_device(sizeof(T) * m_ * n_, gpuQueue_);
     }
 
-    // Initialise the host input matricies (A_ and B_)
+    // Initialise the host input matricies
     initInputMatrices();
   }
 

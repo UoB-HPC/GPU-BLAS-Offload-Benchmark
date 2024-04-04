@@ -32,7 +32,7 @@ class gemv_cpu : public gemv<T> {
     x_ = (T*)mkl_malloc(sizeof(T) * n_, 64);
     y_ = (T*)mkl_malloc(sizeof(T) * m_, 64);
 
-    // Initialise the input matrix and vector (A_ and x_)
+    // Initialise the input matrix and vectors
     initInputMatrixVector();
   }
 

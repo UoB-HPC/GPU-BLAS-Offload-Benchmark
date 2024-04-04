@@ -26,7 +26,7 @@ class gemv : public ::gemv<T> {
     x_ = (T*)malloc(sizeof(T) * n_);
     y_ = (T*)malloc(sizeof(T) * m_);
 
-    // Initialise the matrix and vector
+    // Initialise the matrix and vectors
     initInputMatrixVector();
   }
 

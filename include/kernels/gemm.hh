@@ -81,7 +81,7 @@ class gemm {
     }
     for (int y = 0; y < m_; y++) {
       for (int x = 0; x < n_; x++) {
-        B_[y * n_ + x] = (T)0.0;
+        C_[y * n_ + x] = (T)0.0;
       }
     }
   }

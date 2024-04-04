@@ -61,7 +61,7 @@ class gemv {
   constexpr double calcChecksum() {
     // Checksum for GEMV calculated by summing max and min element of output
     // vector
-    return ((double)y_[0] + (double)y_[n_ - 1]);
+    return ((double)y_[0] + (double)y_[m_ - 1]);
   }
 
  protected:

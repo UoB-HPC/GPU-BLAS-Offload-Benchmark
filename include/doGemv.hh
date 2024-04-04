@@ -245,7 +245,7 @@ class doGemv {
 
       // Check if offload threshold has been achieved for each GPU offload type.
       updateOffloadStructs(cpuResult, gpuResult_once, gpuResult_always,
-                           gpuResult_unified, M, N probSize);
+                           gpuResult_unified, M, N, probSize);
     }
 #endif
   }

@@ -78,7 +78,7 @@ class gemv {
       x_[y] = (T)((double)(rand() % 100) / 3.0);
     }
     for (int y = 0; y < m_; y++) {
-      c_[y] = (T)0.0;
+      y_[y] = (T)0.0;
     }
   }
 

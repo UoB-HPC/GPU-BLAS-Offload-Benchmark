@@ -93,7 +93,7 @@ class gemv_gpu : public gemv<T> {
   }
 
   /** Make a call to the BLAS Library Kernel. */
-  void callGemm() override {
+  void callGemv() override {
     switch (offload_) {
       case gpuOffloadType::always: {
         // Offload input data from host to the device.

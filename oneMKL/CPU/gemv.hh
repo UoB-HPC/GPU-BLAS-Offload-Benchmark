@@ -38,7 +38,7 @@ class gemv_cpu : public gemv<T> {
 
  private:
   /** Make call to the GEMV kernel. */
-  void callGemm() override {
+  void callGemv() override {
     if constexpr (std::is_same_v<T, float>) {
       cblas_sgemv(CblasColMajor, CblasNoTrans, m_, n_, alpha, A_,
                   std::max(1, m_), x_, vecIncrement_, beta, y_, vecIncrement_);

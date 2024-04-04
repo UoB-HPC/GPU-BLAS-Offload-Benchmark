@@ -43,8 +43,8 @@ class doGemm {
         upperLimit_(upperLimit),
         doCPU_(cpuEnabled),
         doGPU_(gpuEnabled),
-        doDense_(dense),
-        doSparse_(sparse),
+        doDense_(doDense),
+        doSparse_(doSparse)
 #if CPU_ENABLED
         ,
         gemmCpu_(iterations_),
@@ -61,6 +61,7 @@ class doGemm {
                   "following types: [float, double].");
   }
 
+  std::ofstream csvFile;
   /** Run all problem types and write data to CSV files. */
   void collectData() {
     if (doDense_) {
@@ -69,7 +70,7 @@ class doGemm {
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
-      std::ofstream csvFile =
+      csvFile =
               initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
                           "_square_square_M=N=K.csv");
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {

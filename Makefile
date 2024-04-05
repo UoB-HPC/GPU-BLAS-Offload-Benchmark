@@ -156,7 +156,7 @@ HEADER_FILES+= $(wildcard NVPL/*.hh)
 
 
 else ifeq ($(CPU_LIB), OPENBLAS)
-override CXXFLAGS += -lopenblas -lpthread
+override CXXFLAGS += -lopenblas -lpthread -lgfortran
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS="-L<OPENBLAS_DIR>/lib -I<OPENBLAS_DIR>/include -Wl,-rpath,<OPENBLAD_DIR>/lib"` to make command)
 $(info )
@@ -243,4 +243,4 @@ $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
 	$(CXX) $(SRC_FILES) $(CXXFLAGS) -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS) -o $@
 
 clean:
-	rm -f $(EXE) src/Consume/consume.so
+	rm -f $(EXE) src/Consume/libconsume.so

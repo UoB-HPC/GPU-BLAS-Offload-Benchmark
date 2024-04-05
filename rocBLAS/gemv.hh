@@ -42,7 +42,7 @@ class gemv_gpu : public gemv<T> {
    *  - Always:  Move data from host to device and device to host each iteration
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
-  void initialise(gpuOffloadType offload, int m, int n, int k) override {
+  void initialise(gpuOffloadType offload, int m, int n) override {
     if (!alreadyInitialised_) {
       alreadyInitialised_ = true;
       // Perform set-up which doesn't need to happen every problem size change.

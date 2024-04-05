@@ -130,7 +130,7 @@ for fileName in gemmFilenames:
             xVals.append(mnk[j][1])
     elif "_sparse_square" in fileName:
         x_name = "Value of N, where N=M=K"
-        inputTypeStr = "Sparse square (M=N=K"
+        inputTypeStr = "Sparse square (M=N=K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
 

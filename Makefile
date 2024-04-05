@@ -118,10 +118,7 @@ endif
 HEADER_FILES+= $(wildcard oneMKL/CPU/*.hh)
 
 else ifeq ($(CPU_LIB), AOCL)
-ifeq ($(COMPILER), HIP)
-# HIP compiler not compatible with AOCL
-$(error Selected compiler $(COMPILER) is not currently compatible with AOCL)
-else ifeq ($(COMPILER), INTEL)
+ifeq ($(COMPILER), INTEL)
 override CXXFLAGS += -lblis-mt -qopenmp
 else
 override CXXFLAGS += -lblis-mt -fopenmp

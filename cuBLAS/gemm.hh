@@ -26,7 +26,7 @@ class gemm_gpu : public gemm<T> {
   ~gemm_gpu() {
     if (alreadyInitialised_) {
       // Destroy the handle
-      cublasDestroy(handle_);
+      cublasCheckError(cublasDestroy(handle_));
 
       // Destroy streams after use
       cudaCheckError(cudaStreamDestroy(s1_));
@@ -47,18 +47,10 @@ class gemm_gpu : public gemm<T> {
       alreadyInitialised_ = true;
       // Perform set-up which doesn't need to happen every problem size change.
       // Create a handle for CUBLAS
-      cublasStatus_t status = cublasCreate(&handle_);
-      if (status != CUBLAS_STATUS_SUCCESS) {
-        std::cout << "Failed to make cublas handle: " << status << std::endl;
-        exit(1);
-      }
+      cublasCheckError(cublasCreate(&handle_));
 
       // Enable Tensor Cores
-      status = cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH);
-      if (status != CUBLAS_STATUS_SUCCESS) {
-        std::cout << "Failed to set cublas math mode: " << status << std::endl;
-        exit(1);
-      }
+      cublasCheckError(cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH));
 
       // Get device identifier
       cudaCheckError(cudaGetDevice(&gpuDevice_));
@@ -139,27 +131,19 @@ class gemm_gpu : public gemm<T> {
                                        cudaMemcpyHostToDevice, s3_));
         // Call cuBLAS GEMM kernel
         if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat = cublasGemmEx(
+          cublasCheckError(cublasGemmEx(
               handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
               (void*)A_device_, CUDA_R_32F, std::max(1, m_), (void*)B_device_,
               CUDA_R_32F, std::max(1, k_), (void*)&beta, (void*)C_device_,
               CUDA_R_32F, std::max(1, m_), CUBLAS_COMPUTE_32F,
-              CUBLAS_GEMM_DEFAULT);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+              CUBLAS_GEMM_DEFAULT));
         } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat = cublasGemmEx(
+          cublasCheckError(cublasGemmEx(
               handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
               (void*)A_device_, CUDA_R_64F, std::max(1, m_), (void*)B_device_,
               CUDA_R_64F, std::max(1, k_), (void*)&beta, (void*)C_device_,
               CUDA_R_64F, std::max(1, m_), CUBLAS_COMPUTE_64F,
-              CUBLAS_GEMM_DEFAULT);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+              CUBLAS_GEMM_DEFAULT));
         }
         // Offload output data from device to host
         cudaCheckError(cudaMemcpyAsync(C_, C_device_, sizeof(T) * m_ * n_,
@@ -171,52 +155,36 @@ class gemm_gpu : public gemm<T> {
       case gpuOffloadType::once: {
         // Call cuBLAS GEMM kernel
         if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat = cublasGemmEx(
+          cublasCheckError(cublasGemmEx(
               handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
               (void*)A_device_, CUDA_R_32F, std::max(1, m_), (void*)B_device_,
               CUDA_R_32F, std::max(1, k_), (void*)&beta, (void*)C_device_,
               CUDA_R_32F, std::max(1, m_), CUBLAS_COMPUTE_32F,
-              CUBLAS_GEMM_DEFAULT);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+              CUBLAS_GEMM_DEFAULT));
         } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat = cublasGemmEx(
+          cublasCheckError(cublasGemmEx(
               handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
               (void*)A_device_, CUDA_R_64F, std::max(1, m_), (void*)B_device_,
               CUDA_R_64F, std::max(1, k_), (void*)&beta, (void*)C_device_,
               CUDA_R_64F, std::max(1, m_), CUBLAS_COMPUTE_64F,
-              CUBLAS_GEMM_DEFAULT);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+              CUBLAS_GEMM_DEFAULT));
         }
         break;
       }
       case gpuOffloadType::unified: {
         // Call cuBLAS GEMM kernel
         if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat = cublasGemmEx(
+          cublasCheckError(cublasGemmEx(
               handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
               (void*)A_, CUDA_R_32F, std::max(1, m_), (void*)B_, CUDA_R_32F,
               std::max(1, k_), (void*)&beta, (void*)C_, CUDA_R_32F,
-              std::max(1, m_), CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+              std::max(1, m_), CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT));
         } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat = cublasGemmEx(
+          cublasCheckError(cublasGemmEx(
               handle_, CUBLAS_OP_N, CUBLAS_OP_N, m_, n_, k_, (void*)&alpha,
               (void*)A_, CUDA_R_64F, std::max(1, m_), (void*)B_, CUDA_R_64F,
               std::max(1, k_), (void*)&beta, (void*)C_, CUDA_R_64F,
-              std::max(1, m_), CUBLAS_COMPUTE_64F, CUBLAS_GEMM_DEFAULT);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+              std::max(1, m_), CUBLAS_COMPUTE_64F, CUBLAS_GEMM_DEFAULT));
         }
         break;
       }

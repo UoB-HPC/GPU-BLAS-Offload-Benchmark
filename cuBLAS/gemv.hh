@@ -26,7 +26,7 @@ class gemv_gpu : public gemv<T> {
   ~gemv_gpu() {
     if (alreadyInitialised_) {
       // Destroy the handle
-      cublasDestroy(handle_);
+      cublasCheckError(cublasDestroy(handle_));
 
       // Destroy streams after use
       cudaCheckError(cudaStreamDestroy(s1_));
@@ -47,11 +47,7 @@ class gemv_gpu : public gemv<T> {
       alreadyInitialised_ = true;
       // Perform set-up which doesn't need to happen every problem size change.
       // Create a handle for CUBLAS
-      cublasStatus_t status = cublasCreate(&handle_);
-      if (status != CUBLAS_STATUS_SUCCESS) {
-        std::cout << "Failed to make cublas handle: " << status << std::endl;
-        exit(1);
-      }
+      cublasCheckError(cublasCreate(&handle_));
 
       // Get device identifier
       cudaCheckError(cudaGetDevice(&gpuDevice_));
@@ -131,21 +127,13 @@ class gemv_gpu : public gemv<T> {
                                        cudaMemcpyHostToDevice, s3_));
         // Call cuBLAS GEMV kernel
         if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat = cublasSgemv(
+          cublasCheckError(cublasSgemv(
               handle_, CUBLAS_OP_N, m_, n_, &alpha, A_device_, std::max(1, m_),
-              x_device_, vecIncrement_, &beta, y_device_, vecIncrement_);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+              x_device_, vecIncrement_, &beta, y_device_, vecIncrement_));
         } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat = cublasDgemv(
+          cublasCheckError(cublasDgemv(
               handle_, CUBLAS_OP_N, m_, n_, &alpha, A_device_, std::max(1, m_),
-              x_device_, vecIncrement_, &beta, y_device_, vecIncrement_);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+              x_device_, vecIncrement_, &beta, y_device_, vecIncrement_));
         }
         // Offload output data from device to host
         cudaCheckError(cudaMemcpyAsync(y_, y_device_, sizeof(T) * m_,
@@ -157,42 +145,26 @@ class gemv_gpu : public gemv<T> {
       case gpuOffloadType::once: {
         // Call cuBLAS GEMV kernel
         if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat = cublasSgemv(
+          cublasCheckError(cublasSgemv(
               handle_, CUBLAS_OP_N, m_, n_, &alpha, A_device_, std::max(1, m_),
-              x_device_, vecIncrement_, &beta, y_device_, vecIncrement_);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+              x_device_, vecIncrement_, &beta, y_device_, vecIncrement_));
         } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat = cublasDgemv(
+          cublasCheckError(cublasDgemv(
               handle_, CUBLAS_OP_N, m_, n_, &alpha, A_device_, std::max(1, m_),
-              x_device_, vecIncrement_, &beta, y_device_, vecIncrement_);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+              x_device_, vecIncrement_, &beta, y_device_, vecIncrement_));
         }
         break;
       }
       case gpuOffloadType::unified: {
         // Call cuBLAS GEMV kernel
         if constexpr (std::is_same_v<T, float>) {
-          cublasStatus_t stat = cublasSgemv(
-              handle_, CUBLAS_OP_N, m_, n_, &alpha, A_, std::max(1, m_), x_,
-              vecIncrement_, &beta, y_, vecIncrement_);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+          cublasCheckError(cublasSgemv(handle_, CUBLAS_OP_N, m_, n_, &alpha, A_,
+                                       std::max(1, m_), x_, vecIncrement_,
+                                       &beta, y_, vecIncrement_));
         } else if constexpr (std::is_same_v<T, double>) {
-          cublasStatus_t stat = cublasDgemv(
-              handle_, CUBLAS_OP_N, m_, n_, &alpha, A_, std::max(1, m_), x_,
-              vecIncrement_, &beta, y_, vecIncrement_);
-          if (stat != CUBLAS_STATUS_SUCCESS) {
-            std::cout << "cuBLAS error:" << stat << std::endl;
-            exit(1);
-          }
+          cublasCheckError(cublasDgemv(handle_, CUBLAS_OP_N, m_, n_, &alpha, A_,
+                                       std::max(1, m_), x_, vecIncrement_,
+                                       &beta, y_, vecIncrement_));
         }
         break;
       }

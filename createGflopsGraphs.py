@@ -1,19 +1,28 @@
 import os
+import sys
 import matplotlib.pyplot as plt
 
 
+
+directory = "CSV_Results"
+# Get given CSV file directory
+if(len(sys.argv) > 1):
+    directory = sys.argv[1]
+
+outputDir = "Graphs_" + directory.replace('/', '_')
+
 # Check if CSV directory exists
-path = os.path.join(os.getcwd(), 'CSV_Results')
+path = os.path.join(os.getcwd(), directory)
 if(not os.path.isdir(path)):
-    print("ERROR - CSV_Results directory does not exist. Cannot generate any graphs.")
+    print("ERROR - {} directory does not exist. Cannot generate any graphs.".format)
     exit(1)
 
 # Get all filenames
-path = os.path.join(os.getcwd(), 'CSV_Results')
+path = os.path.join(os.getcwd(), directory)
 filenames = os.listdir(path)
 
 # Make Graphs directory
-graphDir = os.path.join(os.getcwd(), 'Graphs')
+graphDir = os.path.join(os.getcwd(), outputDir)
 if(not os.path.isdir(graphDir)):
     os.mkdir(graphDir)
 
@@ -36,7 +45,7 @@ for i in range(0, len(gemmFilenames)):
     gpuU_Gflops = []
 
     # Open file and get all lines
-    fName = os.path.join(os.getcwd(), 'CSV_Results', gemmFilenames[i])
+    fName = os.path.join(os.getcwd(), directory, gemmFilenames[i])
     openFile = open(fName, 'r')
     lines = openFile.readlines()
     lines.pop(0) # Remove headers
@@ -220,7 +229,7 @@ for i in range(0, len(gemvFilenames)):
     gpuU_Gflops = []
 
     # Open file and get all lines
-    fName = os.path.join(os.getcwd(), 'CSV_Results', gemvFilenames[i])
+    fName = os.path.join(os.getcwd(), directory, gemvFilenames[i])
     openFile = open(fName, 'r')
     lines = openFile.readlines()
     lines.pop(0) # Remove headers

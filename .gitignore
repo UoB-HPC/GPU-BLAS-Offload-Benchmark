@@ -53,8 +53,8 @@ dkms.conf
 
 # Executable and generated files
 gpu-blob
-CSV_Results
-Graphs
+CSV*
+Graphs*
 
 # VS Code
 .vscode

@@ -41,13 +41,13 @@ class gemm_cpu : public gemm<T> {
   /** Make call to the GEMM kernel. */
   void callGemm() override {
     if constexpr (std::is_same_v<T, float>) {
-      cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_,
-                  (float)ALPHA, A_, std::max(1, m_), B_, std::max(1, k_),
-                  (float)BETA, C_, std::max(1, m_));
+      cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, alpha,
+                  A_, std::max(1, m_), B_, std::max(1, k_), beta, C_,
+                  std::max(1, m_));
     } else if constexpr (std::is_same_v<T, double>) {
-      cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_,
-                  (double)ALPHA, A_, std::max(1, m_), B_, std::max(1, k_),
-                  (double)BETA, C_, std::max(1, m_));
+      cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, alpha,
+                  A_, std::max(1, m_), B_, std::max(1, k_), beta, C_,
+                  std::max(1, m_));
     } else {
       // Un-specialised class will not do any work - print error and exit.
       std::cout << "ERROR - Datatype for OneMKL CPU GEMM kernel not supported."
@@ -69,11 +69,16 @@ class gemm_cpu : public gemm<T> {
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
-    mkl_free_buffers();
     mkl_free(A_);
     mkl_free(B_);
     mkl_free(C_);
   }
+
+  /** The constant value Alpha. */
+  const T alpha = ALPHA;
+
+  /** The constant value Beta. */
+  const T beta = BETA;
 };
 }  // namespace cpu
 #endif

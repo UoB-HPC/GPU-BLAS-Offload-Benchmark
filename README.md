@@ -10,20 +10,22 @@ All computations performed by each BLAS library are done in column-major and are
 Only when an error occurs will any checksum be displayed to the user.
 
 GFLOP/s are calculated using the following Total FLOPs formulas. The compute time excludes any initialisation, but does include any data movement / prefetching to/from the GPU device:
- - **GEMM** : FLOPs = Alpha * (2 * M * N * K) + Beta * (M * N)
+ - **GEMM** : `FLOPs = (2 * M * N * K) + (b * M * N)` where `b` is `1` if BETA=0 and `3` if BETA=/=0
+ - **GEMV** : `FLOPs = (2 * M * N) + (b * M)` where `b` is `1` if BETA=0 and `3` if BETA=/=0
 
 # Build Options
 Select the compiler you wish to use. Regardless of choice, `gcc` is required in order to build the `Consume.so` external library.
 ``` bash
 make COMPILER=GNU
 ```
-The supported compiler names are: `ARM`, `CLANG`, `GNU`, `INTEL`, `NVIDIA`, with the default option being `GNU`.\ 
+The supported compiler names are: `ARM`, `CLANG`, `GNU`, `INTEL`, `NVIDIA`, `HIP` with the default option being `GNU`.\ 
 These compiler choices correspond to:
  - `ARM` --> armclang++
  - `CLANG` --> clang++
  - `GNU` --> g++
- - `INTEL` --> icx (Intel's oneAPI DPC++/C++ Compiler)
+ - `INTEL` --> icpx (Intel's oneAPI DPC++/C++ Compiler)
  - `NVIDIA` --> nvc++
+ - `HIP` --> hipcc
 
 
 ### <u>CPU BLAS Library</u>
@@ -35,6 +37,9 @@ The supported Libraries are as follows:
  - Arm Performance Libraries : `ARMPL`
  - Intel OneMKL : `ONEMKL`
    - May require the use of an additional `MKLROOT` make option specifying the root directory of the oneMKL Library.
+ - AMD Optimized Compute Libraries : `AOCL`
+ - NVIDIA Performance Libraries : `NVPL`
+ - OpenBLAS : `OPENBLAS`
 
 If no library is selected then no CPU BLAS kernels will be executed.
 
@@ -49,13 +54,14 @@ The supported Libraries are as follows:
    <!-- - Implies the usage of the cuSPARCE Library (also packaged with NVIDIA's HPC SDK) -->
  - Intel OneMKL : `ONEMKL`
    - May require the use of an additional `MKLROOT` make option specifying the root directory of the oneMKL Library.
+ - AMD rocBLAS : `ROCBLAS`
 
 If no library is selected then no GPU BLAS kernels will be executed.
 
 ### <u>Additional Flags</u>
 Some combinations of BLAS Libraries and compilers will require additional flags. Many of these have been pre-configured in the Makefile, but some require the inclusion of additional shared objects etc. These can be passed to the Makefile using `CXXFLAGS=`:
 ```bash
-make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS CXXFLAGS="-I/path/to/include -L/path/to/lib"
+make COMPILER=GNU CPU_LIB=ARMPL GPU_LIB=CUBLAS CXXFLAGS="-I/path/to/include -L/path/to/lib -Wl,-rpath,/path/to/lib"
 ```
 
 
@@ -70,11 +76,13 @@ Where `I` (default of `10`) specifies how many iterations each kernel will run, 
 __Example:__ For a square GEMM, the problem size will iterate from `M=N=K=S`, up to `M=N=K=D`.\
 __Example:__ For a rectangular GEMM where `M=N` and `K=4*M`, the probelm size will iterate from `M=N=S` and `K=S*4`  up to`M=N=D` and `K=D*4`.
 
+Additional arguments are as follows:
+ - `--no_cpu` : disables the CPU kernels from executing at runtime
+ - `--no_gpu` : disables the GPU kernels from executing at runtime
 
 # Environment Variables
-It is recommended to set the relevant environment variables to ensure the best performance on host and device. 
-
-Many libraries will require updating `$LD_LIBRARY_PATH` if any `lib` directories were specified in `CXXFLAGS="..."`.
+It is recommended to set the relevant environment variables to ensure the best performance on host and device. For more information about extrating the best library performance at runtime (especially for CPU libraries), please refer to the appropriate specifications.
+Seen below are some suggestions on commonly used environment variables for their associated libraries.
 
 ### <u>Arm Performance Libraries</u>
 When using ArmPL, setting the following environment variables is beneficial:
@@ -88,8 +96,23 @@ When using oneMKL as the CPU BLAS Library, setting the following environment var
  - `OMP_PROC_BIND`
  - `OMP_PLACES`
 
-<!-- When using oneMKL as the GPU BLAS Library, you may need to set the following environment variables:
- - `export ONEAPI_DEVICE_SELECTOR="opencl:gpu"` -- to correct device indexes -->
+### <u>AMD Optimizing CPU libraries </u>
+When using AOCL, setting the following environment variables is beneficial:
+ - `BLIS_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
+ - `OMP_PROC_BIND`
+ - `OMP_PLACES`
+
+### <u>NVIDIA Performance Libraries</u>
+When using NVPL as the CPU BLAS Library, setting the following environment variables is beneficial:
+ - `OMP_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
+ - `OMP_PROC_BIND`
+ - `OMP_PLACES`
+
+ ### <u>OpenBLAS</u>
+When using NVPL as the CPU BLAS Library, setting the following environment variables is beneficial:
+ - `OMP_NUM_THREADS` -- Setting to the core count of the host CPU should ensure the best performance
+ - `OMP_PROC_BIND`
+ - `OMP_PLACES`
 
 
 # BLAS Kernels Supported
@@ -100,67 +123,24 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes
 
- - SpMM
+ <!-- - SpMM
    - FP32, FP64
-   - ...
+   - ... -->
 
 ### <u>Level 2 BLAS</u>
  - GEMV
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes 
 
- - SpMV
+ <!-- - SpMV
    - FP32, FP64
-   - ...
+   - ... -->
 
 
-
-# ToDo:
- - [ ] Add command line option to not run any CPU kernel (i.e. GPU only)
- - [ ] Add minimum start dimension command line option
- - [ ] Add FP16 support for kernels
- - [ ] Add support for ArmPL.
-   - [x] GEMM 
-   - [ ] GEMV 
- - [ ] Add support for cuBLAS.
-   - [x] GEMM 
-   - [ ] GEMV 
- - [ ] Add support for oneMKL (CPU & GPU)
-   - [x] GEMM
-   - [ ] GEMV
- - [ ] Add support for rocBLAS
-   - [ ] GEMM
-   - [ ] GEMV
- - [ ] Add support for OpenBLAS
-   - [ ] GEMM
-   - [ ] GEMV
- - [ ] Add support for BLIS
-   - [ ] GEMM
-   - [ ] GEMV
- - [ ] Add support for AOCL (AMD Optimizing CPU libraries)(?)
-   - [ ] GEMM
-   - [ ] GEMV
- - [ ] Add support for NVPL CPU Library
-   - [ ] GEMM
-   - [ ] GEMV
-
- - [x] Create python script to auto generate a png graph for each csv file (x-axis = matrix size, y-axis=GFLOP/s)
- - [x] Outline what kernels are included in the benchmark, along with how they will be run.
- - [ ] Research how to fairly and properly evaluate sparce BLAS kernels 
- - [ ] Finish Sparce function descriptions, including what problems are evaluated and why.
- - [ ] Add support for ArmPL Sparce
-   - [ ] SpMM 
-   - [ ] SpMV 
- - [ ] Add support for cuSPARSE
-   - [ ] SpMM
-   - [ ] SpMV
- - [ ] Add support for oneMKL Sparce
-   - [ ] SpMM
-   - [ ] SpMV
- - [ ] Add support for Apple Accelerate(?)
- - [ ] Add support for Apple Metal Performance Shaders(?)
 
 # Future Work
- - [ ] Add support for Intel AMX.
- - [ ] Add support for IBM Power10 MMA.
- - [ ] Add support for Arm SME (no hardware / libs available).
+ - [ ] Add support for Sparce Kernels
+ - [ ] Add FP16/BF16 support for kernels
+ - [ ] Add batched GEMM functions 
+ - [ ] Add support for Apple Accelerate
+ - [ ] Add support for Apple Metal Performance Shaders

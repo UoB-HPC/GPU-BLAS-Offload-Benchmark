@@ -23,8 +23,22 @@ endif
 # -------
 
 ifndef COMPILER
-$(warning COMPILER not set (use ARM, CLANG, GNU, INTEL, or NVIDIA). Using GNU as default)
+$(warning COMPILER not set (use ARM, CLANG, GNU, INTEL, NVIDIA, or HIP). Using GNU as default)
 COMPILER=GNU
+endif
+
+ifneq ($(COMPILER), ARM)
+ifneq ($(COMPILER), CLANG)
+ifneq ($(COMPILER), GNU)
+ifneq ($(COMPILER), INTEL)
+ifneq ($(COMPILER), NVIDIA)
+ifneq ($(COMPILER), HIP)
+$(error Given compiler $(COMPILER) not valid. Please choose from ARM, CLANG, GNU, INTEL, NVIDIA, or HIP)
+endif
+endif
+endif
+endif
+endif
 endif
 
 CXX_ARM     = armclang++
@@ -32,6 +46,7 @@ CXX_CLANG   = clang++
 CXX_GNU     = g++
 CXX_INTEL   = icpx
 CXX_NVIDIA  = nvc++
+CXX_HIP     = hipcc
 CXX = $(CXX_$(COMPILER))
 
 CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
@@ -39,6 +54,7 @@ CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_GNU     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native -Wno-tautological-constant-compare
 CXXFLAGS_NVIDIA  = -std=c++17 -Wall -O3 -fast -$(ARCHFLAG)=native
+CXXFLAGS_HIP     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 
 ifndef CXXFLAGS
 CXXFLAGS = $(CXXFLAGS_$(COMPILER))
@@ -54,22 +70,24 @@ HEADER_FILES = $(wildcard include/*.hh)
 # -------
 
 ifndef CPU_LIB
-$(warning CPU_LIB not set (use ARMPL, ONEMKL, AOCL, OPENBLAS). No CPU kernels will be run.)
+$(warning CPU_LIB not set (use ARMPL, ONEMKL, AOCL, NVPL, OPENBLAS). No CPU kernels will be run.)
 
 else ifeq ($(CPU_LIB), ARMPL)
 # Add ARM compiler options
 ifeq ($(COMPILER), ARM)
 override CXXFLAGS += -armpl=parallel -fopenmp
+else ifeq ($(COMPILER), INTEL)
+# INTEL compiler not compatible with ArmPL
+$(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
+else ifeq ($(COMPILER), HIP)
+# HIP compiler not compatible with ArmPL
+$(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
+else 
 # For all other compilers, require additional input flags for linking
-else ifneq ($(COMPILER), INTEL)
 override CXXFLAGS += -larmpl_lp64_mp -fopenmp
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
-$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<ARMPL_DIR>/lib -I<ARMPL_DIR>/include_lp64_mp"` to make command)
-$(info $(TAB)$(TAB)Add `<ARMPL_DIR>/lib` to `$$LD_LIBRARY_PATH`)
+$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<ARMPL_DIR>/lib -I<ARMPL_DIR>/include_lp64_mp -Wl,-rpath,<ARMPL_DIR>/lib"` to make command)
 $(info )
-# INTEL compiler not compatible with ArmPL
-else
-$(error Selected compiler $(COMPILER) is not currently compatible with ArmPL)
 endif
 HEADER_FILES += $(wildcard ArmPL/*.hh)
 
@@ -100,15 +118,48 @@ endif
 HEADER_FILES+= $(wildcard oneMKL/CPU/*.hh)
 
 else ifeq ($(CPU_LIB), AOCL)
-# Do AOCL stuff
-$(error The CPU_LIB $(CPU_LIB) is currently not supported.)
+ifeq ($(COMPILER), INTEL)
+override CXXFLAGS += -lblis-mt -qopenmp
+else
+override CXXFLAGS += -lblis-mt -fopenmp
+endif
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<AOCL_DIR>/lib -I<AOCL_DIR>/include/blis -Wl,-rpath,<AOCL_DIR>/lib"` to make command)
+$(info )
+HEADER_FILES+= $(wildcard AOCL/*.hh)
+
+else ifeq ($(CPU_LIB), NVPL)
+ifeq ($(COMPILER), INTEL)
+# INTEL compiler not compatible with NVPL
+$(error Selected compiler $(COMPILER) is not currently compatible with NVPL)
+else ifeq ($(COMPILER), HIP)
+# HIP compiler not compatible with NVPL
+$(error Selected compiler $(COMPILER) is not currently compatible with NVPL)
+else
+override CXXFLAGS += -lnvpl_blas_lp64_gomp
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<NVPL_DIR>/lib -I<NVPL_DIR>/include -Wl,-rpath,<NVPL_DIR>/lib"` to make command)
+$(info )
+ifeq ($(COMPILER), GNU)
+override CXXFLAGS += -lgomp
+else ifeq ($(COMPILER), NVIDIA)
+override CXXFLAGS += -lnvomp
+else
+# LLVM based compilers (CLANG, ARMCLANG)
+override CXXFLAGS += -lomp
+endif
+endif
+HEADER_FILES+= $(wildcard NVPL/*.hh)
+
 
 else ifeq ($(CPU_LIB), OPENBLAS)
-# Do OpenBLAS stuff
-$(error The CPU_LIB $(CPU_LIB) is currently not supported.)
+override CXXFLAGS += -lopenblas -lpthread -lgfortran
+$(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
+$(info $(TAB)$(TAB)Add `CXXFLAGS="-L<OPENBLAS_DIR>/lib -I<OPENBLAS_DIR>/include -Wl,-rpath,<OPENBLAD_DIR>/lib"` to make command)
+$(info )
 
 else
-$(warning Provided CPU_LIB not valid (use ARMPL, ONEMKL, AOCL, OPENBLAS). No CPU kernels will be run.)
+$(warning Provided CPU_LIB not valid (use ARMPL, ONEMKL, AOCL, NVPL, OPENBLAS). No CPU kernels will be run.)
 endif
 
 # -------
@@ -124,7 +175,7 @@ else
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-L<NVHPC_DIR>/.../math_libs/lib64 -L<NVHPC_DIR>/.../cuda/lib64` to make command)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<NVHPC_DIR>/.../math_libs/include -I<NVHPC_DIR>/.../cuda/include` to make command)
-$(info $(TAB)$(TAB)Add both aforementioned `lib64` directories to `$$LD_LIBRARY_PATH`)
+$(info $(TAB)$(TAB)Add `CXXFLAGS=-Wl,-rpath,<NVHPC_DIR>/.../math_libs/lib64 -Wl,-rpath,<NVHPC_DIR>/.../cuda/lib64` to make command)
 $(info )
 override CXXFLAGS += -lcublas -lcudart
 endif
@@ -139,14 +190,27 @@ endif
 # Add compiler and link options
 override CXXFLAGS += -fsycl -L$(MKLROOT)/lib -lmkl_sycl_blas -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -lsycl -lpthread -lm -ldl  -fsycl -DMKL_ILP64  -I"$(MKLROOT)/include"
 # `lmkl_tbb_thread` can replace `lmkl_sequential`
+$(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
+$(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
+$(info )
 else
 # Only Intel DPC++ compiler is supported for OneMKL GPU implementation.
 $(error Selected compiler $(COMPILER) is not currently compatible with oneMKL GPU Library)
 endif
 
 else ifeq ($(GPU_LIB), ROCBLAS)
+ifeq ($(COMPILER), HIP)
 # Do rocBLAS stuff
-$(error The GPU_LIB $(GPU_LIB) is currently not supported.)
+override CXXFLAGS += -lrocblas -lm -lpthread -D__HIP_PLATFORM_AMD__
+$(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
+$(info $(TAB)$(TAB)Add `CXXFLAGS=-L<ROCM_PATH>/lib -L<ROCBLAS_PATH>/lib` to make command)
+$(info $(TAB)$(TAB)Add `CXXFLAGS=-I<ROCM_PATH>/include -I<ROCBLAS_PATH>/include` to make command)
+$(info $(TAB)$(TAB)Add `CXXFLAGS=-Wl,-rpath,<ROCM_PATH>/lib -Wl,-rpath,<ROCBLAS_PATH>/lib` to make command)
+HEADER_FILES += $(wildcard rocBLAS/*.hh)
+else
+$(error Selected compiler $(COMPILER) is not currently compatible with rocBLAS GPU Library)
+endif
+
 
 else
 $(warning Provided GPU_LIB not valid (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be run.)
@@ -172,8 +236,8 @@ EXE = gpu-blob
 all: $(EXE)
 
 $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
-	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/consume.so
-	$(CXX) $(CXXFLAGS) $(SRC_FILES) src/Consume/consume.so $(LDFLAGS) -o $@
+	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/libconsume.so
+	$(CXX) $(SRC_FILES) $(CXXFLAGS) -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS) -o $@
 
 clean:
-	rm -f $(EXE) src/Consume/consume.so
+	rm -f $(EXE) src/Consume/libconsume.so

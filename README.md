@@ -136,6 +136,10 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - FP32, FP64
    - ... -->
 
+# Auxiliary Files
+Additional to the main benchmark, there are two auxiliary python scripts which perform the following:
+ - `createGflopsGraphs.py` : Will read all default filenames from `CSV_Results` and create a CPU, GPU, or GPU-GPU graph as appropriate. A custom CSV directory can be passed as a runtime argument.
+ - `calculateOffloadThresholds.py` : Takes two mandatory runtime arguments; the first being a CPU-only CSV file, the second being a GPU-only CSV file. This will calculate and print the offload threshold table akin to GPU-BLOB.
 
 
 # Future Work

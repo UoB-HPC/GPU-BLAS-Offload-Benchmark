@@ -13,6 +13,7 @@ class gemm_gpu : public gemm<T> {
  public:
   using gemm<T>::gemm;
   using gemm<T>::initInputMatrices;
+  using gemm<T>::cacheLineWidth_;
   using gemm<T>::m_;
   using gemm<T>::n_;
   using gemm<T>::k_;
@@ -84,9 +85,9 @@ class gemm_gpu : public gemm<T> {
       }
       case gpuOffloadType::unified: {
         // Prefetch memory to device --- prefetch broken / not working
-        // gpuQueue_.prefetch(A_, sizeof(T) * m_ * k_);
-        // gpuQueue_.prefetch(B_, sizeof(T) * k_ * n_);
-        // gpuQueue_.prefetch(C_, sizeof(T) * m_ * n_);
+        gpuQueue_.prefetch(A_, sizeof(T) * m_ * k_);
+        gpuQueue_.prefetch(B_, sizeof(T) * k_ * n_);
+        gpuQueue_.prefetch(C_, sizeof(T) * m_ * n_);
         gpuQueue_.wait_and_throw();
         break;
       }
@@ -172,7 +173,10 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::unified: {
-        // TODO - Ensure all data resides on host once work has completed
+        // Ensure all data resides on host once work has completed
+        for (uint64_t i = 0; i < (sizeof(T) * m_ * n_); i += cacheLineWidth_) {
+          _mm_prefetch(C_ + i, _MM_HINT_NTA);
+        }
         gpuQueue_.wait_and_throw();
         break;
       }

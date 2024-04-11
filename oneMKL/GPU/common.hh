@@ -2,6 +2,7 @@
 
 #ifdef GPU_ONEMKL
 
+#include <immintrin.h>
 #include <mkl.h>
 
 #include <oneapi/mkl/blas.hpp>

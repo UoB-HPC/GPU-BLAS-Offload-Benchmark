@@ -13,6 +13,7 @@ class gemv_gpu : public gemv<T> {
  public:
   using gemv<T>::gemv;
   using gemv<T>::initInputMatrixVector;
+  using gemm<T>::cacheLineWidth_;
   using gemv<T>::m_;
   using gemv<T>::n_;
   using gemv<T>::A_;
@@ -83,9 +84,9 @@ class gemv_gpu : public gemv<T> {
       }
       case gpuOffloadType::unified: {
         // Prefetch memory to device --- prefetch broken / not working
-        // gpuQueue_.prefetch(A_, sizeof(T) * m_ * n_);
-        // gpuQueue_.prefetch(x_, sizeof(T) * n_);
-        // gpuQueue_.prefetch(y_, sizeof(T) * m_);
+        gpuQueue_.prefetch(A_, sizeof(T) * m_ * n_);
+        gpuQueue_.prefetch(x_, sizeof(T) * n_);
+        gpuQueue_.prefetch(y_, sizeof(T) * m_);
         gpuQueue_.wait_and_throw();
         break;
       }
@@ -169,7 +170,10 @@ class gemv_gpu : public gemv<T> {
         break;
       }
       case gpuOffloadType::unified: {
-        // TODO - Ensure all data resides on host once work has completed
+        // Ensure all data resides on host once work has completed
+        for (uint64_t i = 0; i < (sizeof(T) * m_); i += cacheLineWidth_) {
+          _mm_prefetch(y_ + i, _MM_HINT_NTA);
+        }
         gpuQueue_.wait_and_throw();
         break;
       }

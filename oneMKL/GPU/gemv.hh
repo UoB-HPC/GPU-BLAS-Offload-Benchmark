@@ -13,7 +13,7 @@ class gemv_gpu : public gemv<T> {
  public:
   using gemv<T>::gemv;
   using gemv<T>::initInputMatrixVector;
-  using gemm<T>::cacheLineWidth_;
+  using gemv<T>::cacheLineWidth_;
   using gemv<T>::m_;
   using gemv<T>::n_;
   using gemv<T>::A_;

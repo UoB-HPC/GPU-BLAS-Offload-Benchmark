@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unistd.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -12,7 +14,9 @@
 template <typename T>
 class gemm {
  public:
-  gemm(const int iters) : iterations_(iters) {}
+  gemm(const int iters)
+      : iterations_(iters),
+        cacheLineWidth_(sysconf(_SC_LEVEL1_DCACHE_LINESIZE)) {}
 
   /** Call the BLAS kernel n times.
    * Returns the time elapsed for n BLAS calls in seconds. */
@@ -91,6 +95,9 @@ class gemm {
 
   /** The number of iterations to perform per problem size. */
   const int iterations_;
+
+  /** The size of the host CPU's cache line. */
+  long cacheLineWidth_ = 64;
 
   /** Matrix dimension M. */
   int m_ = 0;

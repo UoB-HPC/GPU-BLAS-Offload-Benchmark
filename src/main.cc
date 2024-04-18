@@ -37,27 +37,30 @@ int main(int argc, char** argv) {
   sgemm.collectData();
   std::cout << "Finished!" << std::endl;
 
-  // DGEMM Comparison
-  std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
-  doGemm<double> dgemm(std::string(absPath), iters, startDim, upperLimit, doCpu,
-                       doGpu);
-  dgemm.collectData();
-  std::cout << "Finished!" << std::endl;
+  // // DGEMM Comparison
+  // std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
+  // doGemm<double> dgemm(std::string(absPath), iters, startDim, upperLimit,
+  // doCpu,
+  //                      doGpu);
+  // dgemm.collectData();
+  // std::cout << "Finished!" << std::endl;
 
-  // -------- GEMV --------
-  // SGEMV Comparison
-  std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
-  doGemv<float> sgemv(std::string(absPath), iters, startDim, upperLimit, doCpu,
-                      doGpu);
-  sgemv.collectData();
-  std::cout << "Finished!" << std::endl;
+  // // -------- GEMV --------
+  // // SGEMV Comparison
+  // std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
+  // doGemv<float> sgemv(std::string(absPath), iters, startDim, upperLimit,
+  // doCpu,
+  //                     doGpu);
+  // sgemv.collectData();
+  // std::cout << "Finished!" << std::endl;
 
-  // DGEMV Comparison
-  std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
-  doGemv<double> dgemv(std::string(absPath), iters, startDim, upperLimit, doCpu,
-                       doGpu);
-  dgemv.collectData();
-  std::cout << "Finished!" << std::endl;
+  // // DGEMV Comparison
+  // std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
+  // doGemv<double> dgemv(std::string(absPath), iters, startDim, upperLimit,
+  // doCpu,
+  //                      doGpu);
+  // dgemv.collectData();
+  // std::cout << "Finished!" << std::endl;
 
   free(absPath);
   return 0;

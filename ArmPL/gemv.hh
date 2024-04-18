@@ -15,7 +15,7 @@ template <typename T>
 class gemv_cpu : public gemv<T> {
  public:
   using gemv<T>::gemv;
-  using gemv<T>::callonsume;
+  using gemv<T>::callConsume;
   using gemv<T>::m_;
   using gemv<T>::n_;
   using gemv<T>::A_;

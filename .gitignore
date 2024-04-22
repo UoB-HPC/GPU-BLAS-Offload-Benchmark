@@ -53,6 +53,7 @@ dkms.conf
 
 # Executable and generated files
 gpu-blob
+cpu-blob
 CSV*
 Graphs*
 

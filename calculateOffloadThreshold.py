@@ -106,6 +106,9 @@ if(len(cpuLines) * 3 != len(gpuLines)):
 
 # Go through all entries and find offload threshold
 kernel = ""
+prevGpuOgflops = 0.0
+prevGpuAgflops = 0.0
+prevGpuUgflops = 0.0
 for cpu in cpuLines:
     cpu = cpu.split(',')
     gpuO = gpuLines.pop(0).split(',')
@@ -145,26 +148,32 @@ for cpu in cpuLines:
 
     # Check if offload structures should be reset (CPU.gflops >= GPU.gflops)
     if(gpuOnce.M != 0 and float(cpu[8]) >= float(gpuO[8])):
-        gpuOnce.cpuGflops = 0.0
-        gpuOnce.gpuGflops = 0.0
-        gpuOnce.totalKib = 0.0
-        gpuOnce.M = 0
-        gpuOnce.N = 0
-        gpuOnce.K = 0
+        # Do check to see if this is a momentary drop that we should ignore
+        if (prevGpuOgflops <= float(cpu[8])) and  (float(gpuLines[0].split(',')[8]) <= float(cpu[8])):
+            gpuOnce.cpuGflops = 0.0
+            gpuOnce.gpuGflops = 0.0
+            gpuOnce.totalKib = 0.0
+            gpuOnce.M = 0
+            gpuOnce.N = 0
+            gpuOnce.K = 0
     if(gpuAlways.M != 0 and float(cpu[8]) >= float(gpuA[8])):
-        gpuAlways.cpuGflops = 0.0
-        gpuAlways.gpuGflops = 0.0
-        gpuAlways.totalKib = 0.0
-        gpuAlways.M = 0
-        gpuAlways.N = 0
-        gpuAlways.K = 0
+        # Do check to see if this is a momentary drop that we should ignore
+        if (prevGpuAgflops <= float(cpu[8])) and  (float(gpuLines[1].split(',')[8]) <= float(cpu[8])):
+            gpuAlways.cpuGflops = 0.0
+            gpuAlways.gpuGflops = 0.0
+            gpuAlways.totalKib = 0.0
+            gpuAlways.M = 0
+            gpuAlways.N = 0
+            gpuAlways.K = 0
     if(gpuUnified.M != 0 and float(cpu[8]) >= float(gpuU[8])):
-        gpuUnified.cpuGflops = 0.0
-        gpuUnified.gpuGflops = 0.0
-        gpuUnified.totalKib = 0.0
-        gpuUnified.M = 0
-        gpuUnified.N = 0
-        gpuUnified.K = 0
+        # Do check to see if this is a momentary drop that we should ignore
+        if (prevGpuUgflops <= float(cpu[8])) and  (float(gpuLines[2].split(',')[8]) <= float(cpu[8])):
+            gpuUnified.cpuGflops = 0.0
+            gpuUnified.gpuGflops = 0.0
+            gpuUnified.totalKib = 0.0
+            gpuUnified.M = 0
+            gpuUnified.N = 0
+            gpuUnified.K = 0
     # Update offload threshold if GPU.gflops > CPU.gflops
     if(gpuOnce.M == 0 and float(cpu[8]) < float(gpuO[8])):
         gpuOnce.cpuGflops = float(cpu[8])
@@ -187,5 +196,9 @@ for cpu in cpuLines:
         gpuUnified.M = int(gpuU[2])
         gpuUnified.N = int(gpuU[3])
         gpuUnified.K = int(gpuU[4])
+
+    prevGpuAgflops = float(gpuA[8])
+    prevGpuOgflops = float(gpuO[8])
+    prevGpuUgflops = float(gpuU[8])
 
 printResults(gpuOnce, gpuAlways, gpuUnified, strToKernel(kernel))

@@ -121,7 +121,7 @@ void getParameters(int argc, char* argv[]) {
       }
     } else if (!strcmp(argv[i], "--start_dimension") ||
                !strcmp(argv[i], "-s")) {
-      if (++i >= argc || (startDim = parseInt(argv[i])) < 0) {
+      if (++i >= argc || (startDim = parseInt(argv[i])) <= 0) {
         std::cout << "ERROR - Invalid start dimension" << std::endl;
         exit(1);
       }

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -eu
+date
+pwd 
+nproc
+numactl -H
+nvidia-smi topo -m
+
+
+set -o xtrace
+./gpu-blob -i "$ITER" -d "$SIZE" --no_cpu -o "CSV_gh200_gpu_i${ITER}_d${SIZE}"

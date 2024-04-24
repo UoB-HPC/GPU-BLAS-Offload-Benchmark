@@ -1,0 +1,15 @@
+#!/bin/bash
+ 
+set -eu
+date
+pwd 
+nproc
+numactl -H
+nvidia-smi topo -m
+
+set -o xtrace
+
+export OMP_NUM_THREADS=$NPROC 
+export OMP_PROC_BIND=spread 
+export OMP_PLACES=cores 
+./cpu-blob -i "$ITER" -d "$SIZE" --no_gpu -o "CSV_gh200_cpu_nvpl_i${ITER}_d${SIZE}_${OMP_NUM_THREADS}t_${OMP_PROC_BIND}_${OMP_PLACES}"

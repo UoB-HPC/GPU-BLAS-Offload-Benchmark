@@ -61,7 +61,7 @@ for i in range(0, len(gemmFilenames)):
     for line in lines:
         line = line.split(',')
         # Get MNK
-        if (len(mnk) == 0) or (mnk[-1] != [line[2], line[3], line[4]]):
+        if (len(mnk) == 0) or ([line[2], line[3], line[4]] not in mnk):
             mnk.append([line[2], line[3], line[4]])
         # Get Gflops
         gflops = float(line[-1].rstrip())
@@ -73,7 +73,6 @@ for i in range(0, len(gemmFilenames)):
             gpuA_Gflops.append(gflops)
         elif line[0] == "gpu_unified":
             gpuU_Gflops.append(gflops)
-
 
     # Create x-axis label and tick values
     inputTypeStr = ""
@@ -142,7 +141,7 @@ for i in range(0, len(gemmFilenames)):
     title = "{}GEMM Performance for {} Problems - {} iterations per problem size".format(kernel[0].upper(), inputTypeStr, iters)
 
     # Make Graph
-    fig1 = plt.figure(figsize=(25,14))
+    fig1 = plt.figure(figsize=(28,16))
     ax1 = fig1.add_subplot()
 
     gpuEnabled = False
@@ -172,7 +171,7 @@ for i in range(0, len(gemmFilenames)):
     numXVals = len(xVals)
     if numXVals < NUM_TICK:
         # Print all labels
-        plt.xticks(ticks=range(0, numXVals, 1), labels=xVals)
+        plt.xticks(ticks=range(0, numXVals, 1), labels=xVals, fontsize=20)
     else:
         # Calculate labels
         locInterval = int((numXVals) / (NUM_TICK-1))
@@ -187,7 +186,7 @@ for i in range(0, len(gemmFilenames)):
             tickLabs.append(int(xVals[0]) + (labelInterval * q))
         tickLabs.append(int(xVals[-1]))
 
-        plt.xticks(ticks=tickLocs, labels=tickLabs)
+        plt.xticks(ticks=tickLocs, labels=tickLabs, fontsize=20)
 
     # Force setting of y-axis labels. If this isn't done then the range is weird...
     yLoc, yLab = plt.yticks()
@@ -196,14 +195,18 @@ for i in range(0, len(gemmFilenames)):
     if yLoc[0] != 0:
         yLoc = yLoc[1:]
     plt.ylim(0, yLoc[-1])
-    plt.yticks(ticks=yLoc)
+    plt.yticks(ticks=yLoc, fontsize=20)
 
     plt.margins(x=0.01, y=0.01)
-    plt.legend(loc='upper left', fancybox=True, ncol = 4)
-    plt.xlabel(x_name, fontsize=16)
-    plt.ylabel(y_name, fontsize=16)
+    leg = plt.legend(loc='upper left', fancybox=True, ncol = 2, fontsize=18)
+    for obj in leg.legendHandles:
+        obj.set_linewidth(3.0)
+        obj.set_markersize(15.0)
+        obj.set_markeredgewidth(3.0)
+    plt.xlabel(x_name, fontsize=20)
+    plt.ylabel(y_name, fontsize=20)
     plt.title(title, fontsize=20)
-    plt.savefig(fname="{}/{}.png".format(graphDir, gemmFilenames[i][:-4]), format="png", dpi=100)
+    plt.savefig(fname="{}/{}.png".format(graphDir, gemmFilenames[i][:-4]), format="png", dpi=100, bbox_inches="tight")
     plt.close('all')
     
 
@@ -245,7 +248,7 @@ for i in range(0, len(gemvFilenames)):
     for line in lines:
         line = line.split(',')
         # Get MN
-        if (len(mn) == 0) or (mn[-1] != [line[2], line[3]]):
+        if (len(mn) == 0) or ([line[2], line[3]] not in mn):
             mn.append([line[2], line[3]])
         # Get Gflops
         gflops = float(line[-1].rstrip())
@@ -306,7 +309,7 @@ for i in range(0, len(gemvFilenames)):
     title = "{}GEMV Performance for {} Problems - {} iterations per problem size".format(kernel[0].upper(), inputTypeStr, iters)
 
     # Make Graph
-    fig1 = plt.figure(figsize=(25,14))
+    fig1 = plt.figure(figsize=(28,16))
     ax1 = fig1.add_subplot()
 
     gpuEnabled = False
@@ -336,7 +339,7 @@ for i in range(0, len(gemvFilenames)):
     numXVals = len(xVals)
     if numXVals < NUM_TICK:
         # Print all labels
-        plt.xticks(ticks=range(0, numXVals, 1), labels=xVals)
+        plt.xticks(ticks=range(0, numXVals, 1), labels=xVals, fontsize=20)
     else:
         # Calculate labels
         locInterval = int((numXVals) / (NUM_TICK-1))
@@ -351,7 +354,7 @@ for i in range(0, len(gemvFilenames)):
             tickLabs.append(int(xVals[0]) + (labelInterval * q))
         tickLabs.append(int(xVals[-1]))
 
-        plt.xticks(ticks=tickLocs, labels=tickLabs)
+        plt.xticks(ticks=tickLocs, labels=tickLabs, fontsize=20)
 
     # Force setting of y-axis labels. If this isn't done then the range is weird...
     yLoc, yLab = plt.yticks()
@@ -360,14 +363,18 @@ for i in range(0, len(gemvFilenames)):
     if yLoc[0] != 0:
         yLoc = yLoc[1:]
     plt.ylim(0, yLoc[-1])
-    plt.yticks(ticks=yLoc)
+    plt.yticks(ticks=yLoc, fontsize=20)
 
     plt.margins(x=0.01, y=0.01)
-    plt.legend(loc='upper left', fancybox=True, ncol = 4)
-    plt.xlabel(x_name, fontsize=16)
-    plt.ylabel(y_name, fontsize=16)
+    leg = plt.legend(loc='upper left', fancybox=True, ncol = 2, fontsize=18)
+    for obj in leg.legendHandles:
+        obj.set_linewidth(3.0)
+        obj.set_markersize(15.0)
+        obj.set_markeredgewidth(3.0)
+    plt.xlabel(x_name, fontsize=20)
+    plt.ylabel(y_name, fontsize=20)
     plt.title(title, fontsize=20)
-    plt.savefig(fname="{}/{}.png".format(graphDir, gemvFilenames[i][:-4]), format="png", dpi=100)
+    plt.savefig(fname="{}/{}.png".format(graphDir, gemvFilenames[i][:-4]), format="png", dpi=100, bbox_inches="tight")
     plt.close('all')
     
 

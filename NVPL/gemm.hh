@@ -1,10 +1,7 @@
 #pragma once
 
-#ifdef CPU_ARMPL
-#include <armpl.h>
-#include <omp.h>
-
-#include <algorithm>
+#ifdef CPU_NVPL
+#include <nvpl_blas_cblas.h>
 
 #include "../include/kernels/CPU/gemm.hh"
 #include "../include/utilities.hh"
@@ -53,10 +50,10 @@ class gemm_cpu : public gemm<T> {
   void postLoopRequirements() override {}
 
   /** The constant value Alpha. */
-  const T alpha = ALPHA;
+  T alpha = ALPHA;
 
   /** The constant value Beta. */
-  const T beta = BETA;
+  T beta = BETA;
 };
 }  // namespace cpu
 #endif

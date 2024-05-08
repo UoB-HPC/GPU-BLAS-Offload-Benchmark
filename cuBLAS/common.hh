@@ -14,6 +14,16 @@
     }                                                                    \
   } while (false)
 
+/** Macro function to check if error occurred when calling cuBLAS. */
+#define cublasCheckError(f)                                                \
+  do {                                                                     \
+    if (cublasStatus_t e = (f); e != CUBLAS_STATUS_SUCCESS) {              \
+      std::cout << "CUBLAS error: " << __FILE__ << ":" << __LINE__ << ": " \
+                << cublasGetStatusString(e) << std::endl;                  \
+      exit(1);                                                             \
+    }                                                                      \
+  } while (false)
+
 #define cusparseCheckError(f)                                                 \
   do {                                                                        \
     cusparseStatus_t status = (f);                                            \

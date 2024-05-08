@@ -1,10 +1,7 @@
 #pragma once
 
-#ifdef CPU_ARMPL
-#include <armpl.h>
-#include <omp.h>
-
-#include <algorithm>
+#ifdef CPU_AOCL
+#include <blis.h>
 
 #include "../include/kernels/CPU/gemm.hh"
 #include "../include/utilities.hh"
@@ -27,16 +24,16 @@ class gemm_cpu : public gemm<T> {
   /** Make call to the GEMM kernel. */
   void callGemm() override {
     if constexpr (std::is_same_v<T, float>) {
-      cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, alpha,
-                  A_, std::max(1, m_), B_, std::max(1, k_), beta, C_,
-                  std::max(1, m_));
+      bli_sgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m_, n_, k_, &alpha, A_,
+                rowStride, std::max(1, m_), B_, rowStride, std::max(1, k_),
+                &beta, C_, rowStride, std::max(1, m_));
     } else if constexpr (std::is_same_v<T, double>) {
-      cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m_, n_, k_, alpha,
-                  A_, std::max(1, m_), B_, std::max(1, k_), beta, C_,
-                  std::max(1, m_));
+      bli_dgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m_, n_, k_, &alpha, A_,
+                rowStride, std::max(1, m_), B_, rowStride, std::max(1, k_),
+                &beta, C_, rowStride, std::max(1, m_));
     } else {
       // Un-specialised class will not do any work - print error and exit.
-      std::cout << "ERROR - Datatype for ArmPL CPU GEMM kernel not supported."
+      std::cout << "ERROR - Datatype for AOCL CPU GEMM kernel not supported."
                 << std::endl;
       exit(1);
     }
@@ -53,10 +50,13 @@ class gemm_cpu : public gemm<T> {
   void postLoopRequirements() override {}
 
   /** The constant value Alpha. */
-  const T alpha = ALPHA;
+  T alpha = ALPHA;
 
   /** The constant value Beta. */
-  const T beta = BETA;
+  T beta = BETA;
+
+  /** The distance in elements to the next column. */
+  const int rowStride = 1;
 };
 }  // namespace cpu
 #endif

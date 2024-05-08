@@ -10,6 +10,12 @@
 #include "../ArmPL/gemm.hh"
 #elif defined CPU_ONEMKL
 #include "../oneMKL/CPU/gemm.hh"
+#elif defined CPU_AOCL
+#include "../AOCL/gemm.hh"
+#elif defined CPU_NVPL
+#include "../NVPL/gemm.hh"
+#elif defined CPU_OPENBLAS
+#include "../OpenBLAS/gemm.hh"
 #endif
 
 #if defined GPU_CUBLAS
@@ -17,28 +23,21 @@
 #include "../cuBLAS/sp_gemm.hh"
 #elif defined GPU_ONEMKL
 #include "../oneMKL/GPU/gemm.hh"
+#elif defined GPU_ROCBLAS
+#include "../rocBLAS/gemm.hh"
 #endif
-
-/** Struct to hold key values at the point at which offloading to GPU becomes
- * worthwhile. */
-struct cpuGpu_offloadThreshold {
-  double cpuGflops = 0.0;
-  double gpuGflops = 0.0;
-  double probSize_kib = 0.0;
-  int M = 0;
-  int N = 0;
-  int K = 0;
-};
 
 /** `T` represents the type of kernel that will be run - i.e. T=float is for
  *      SGEMM. */
 template <typename T>
 class doGemm {
  public:
-  doGemm(const int iters, const int startDim, const int upperLimit, const
-  bool cpuEnabled = true, const bool gpuEnabled = true, const bool doDense =
-          true, const bool doSparse = true)
-      : iterations_(iters),
+  doGemm(const std::string csvDir, const int iters, const int startDim,
+         const int upperLimit, const bool cpuEnabled = true,
+         const bool gpuEnabled = true, const bool doDense = true, const bool
+         doSparse = true)
+      : CSV_DIR(csvDir),
+        iterations_(iters),
         startDimention_(startDim),
         upperLimit_(upperLimit),
         doCPU_(cpuEnabled),
@@ -61,7 +60,6 @@ class doGemm {
                   "following types: [float, double].");
   }
 
-  std::ofstream csvFile;
   /** Run all problem types and write data to CSV files. */
   void collectData() {
     if (doDense_) {
@@ -70,9 +68,8 @@ class doGemm {
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
-      csvFile =
-              initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_square_square_M=N=K.csv");
+      std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
+                                          "_square_square_M=N=K.csv");
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = dim, K = dim;
         callDenseKernels(csvFile, dim, dim, dim);
@@ -81,19 +78,19 @@ class doGemm {
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Square x Square (M=N=K)");
-    }
+        // Print offload results to stdout
+        printOffloadThreshold("Square x Square (M=N=K)");
+      }
 #endif
 
       // Rectangular Problem Sizes:
-      // Tall and thin (16M x K)...
+      // Tall and thin x Short and wide
       // Re-initialise offload threshold structures
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
-      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                            "_rectangular_16MxK.csv");
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
+                            "_tall-thin_short-wide_M=N_M=16K.csv");
       int K = startDimention_;
       int M = 16 * K;
       int N = 16 * K;
@@ -107,9 +104,9 @@ class doGemm {
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, M=16K)");
-    }
+        // Print offload results to stdout
+        printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, M=16K)");
+      }
 #endif
 
       // Tall and thin x Short and wide
@@ -117,10 +114,11 @@ class doGemm {
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
-      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                            "_rectangular_Mx32.csv");
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
+                            "_tall-thin_short-wide_M=N_K=32.csv");
       if (upperLimit_ >= 32) {
-        for (int dim = 1; dim <= upperLimit_; dim++) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+          // M = dim, N = dim, K = 32;
           callDenseKernels(csvFile, dim, dim, 32);
         }
       }
@@ -128,9 +126,9 @@ class doGemm {
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, K=32)");
-    }
+        // Print offload results to stdout
+        printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, K=32)");
+      }
 #endif
 
       // Short and wide x Tall and thin
@@ -138,7 +136,7 @@ class doGemm {
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
-      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_short-wide_tall-thin_M=N_K=16M.csv");
       M = startDimention_;
       N = startDimention_;
@@ -153,9 +151,9 @@ class doGemm {
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N, K=16M)");
-    }
+        // Print offload results to stdout
+        printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N, K=16M)");
+      }
 #endif
 
       // Short and wide x Tall and thin
@@ -163,7 +161,7 @@ class doGemm {
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
-      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_short-wide_tall-thin_M=N=32_K.csv");
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
@@ -175,18 +173,21 @@ class doGemm {
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N=32, K)");
-    }
+        // Print offload results to stdout
+        printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N=32, K)");
+      }
 #endif
 
-      // Short and wide (M x 16K)...
+      // Tall and Thin x Square
       // Re-initialise offload threshold structures
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
-      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                            "_rectangular_Mx16K.csv");
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
+                            "_tall-thin_square_K=N_M=16K.csv");
+      K = startDimention_;
+      N = startDimention_;
+      M = 16 * K;
       while (M <= upperLimit_) {
         callDenseKernels(csvFile, M, N, K);
         M += 16;
@@ -197,9 +198,9 @@ class doGemm {
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Tall-and-Thin x Square (K=N, M=16K)");
-    }
+        // Print offload results to stdout
+        printOffloadThreshold("Tall-and-Thin x Square (K=N, M=16K)");
+      }
 #endif
 
       // Tall and Thin x Square
@@ -207,7 +208,7 @@ class doGemm {
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
-      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_tall-thin_square_K=N=32_M.csv");
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
@@ -219,9 +220,9 @@ class doGemm {
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Tall-and-Thin x Square (M, K=N=32)");
-    }
+        // Print offload results to stdout
+        printOffloadThreshold("Tall-and-Thin x Square (M, K=N=32)");
+      }
 #endif
 
       // Square x Short and Wide
@@ -229,7 +230,7 @@ class doGemm {
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
-      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_square_short-wide_M=K_N=16K.csv");
       M = startDimention_;
       K = startDimention_;
@@ -244,9 +245,9 @@ class doGemm {
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Square x Short-and-Wide (M=K, N=16K)");
-    }
+        // Print offload results to stdout
+        printOffloadThreshold("Square x Short-and-Wide (M=K, N=16K)");
+      }
 #endif
 
       // Square x Short and Wide
@@ -254,7 +255,7 @@ class doGemm {
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
-      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_square_short-wide_M=K=32_N.csv");
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
@@ -266,9 +267,9 @@ class doGemm {
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Square x Short-and-Wide (M=K=32, N)");
-    }
+        // Print offload results to stdout
+        printOffloadThreshold("Square x Short-and-Wide (M=K=32, N)");
+      }
 #endif
     }
 
@@ -283,8 +284,6 @@ class doGemm {
           callSparseKernels(csvFile, dim, 0.9999);
         }
       }
-      // Close file
-      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && dpGPU_) {
         // Print offload results to stdout
@@ -385,7 +384,7 @@ class doGemm {
                       time_checksum_gflop gpuResult_unified, const int M,
                       const int N, const int K) {
     // Ensure that each checksum difference is less than 0.1%
-    T hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
+    double hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
     if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) *
           hundredOverChecksum)) > 0.1 &&
         ((std::fabs(cpuResult.checksum - gpuResult_always.checksum) *
@@ -536,8 +535,17 @@ class doGemm {
   /** A function for calculating FLOPs performed by a GEMM.
    * C = alpha*AB + beta*C */
   constexpr uint64_t calcFlops(const int M, const int N, const int K) const {
-    return ((ALPHA * (2 * (uint64_t)M * (uint64_t)N * (uint64_t)K)) +
-            (BETA * (uint64_t)M * (uint64_t)N));
+    // A * B = 2*M*N*K (FMA)
+    // alpha * AB = M*N (multiplication)
+    // beta * C = M*N (multiplication)
+    // AB + C = M*N (addition)
+    // = 2MNK + MN + MN + MN
+
+    // If beta==0; = 2MNK + MN ------- alpha*AB Always done
+    // Else; = 2MNK + 3MN
+    uint64_t scalar = (BETA != 0) ? 3 : 1;
+    return (2 * (uint64_t)M * (uint64_t)N * (uint64_t)K) +
+           (scalar * (uint64_t)M * (uint64_t)N);
   }
 
   /** A function for calculating the total GEMM problem size in KiB. */
@@ -560,7 +568,7 @@ class doGemm {
   }
 
   /** Print to stdout the offload thresholds. */
-  void printOffloadThreshold(const std::string& problemName) const {
+  void printOffloadThreshold(std::string problemName) const {
     std::vector<std::string> header = {
         "Device",  "M",          "N", "K", "Total Prob. Size (KiB)",
         "GFLOP/s", "CPU GFLOP/s"};
@@ -635,6 +643,9 @@ class doGemm {
         problemName + " Problem Domian GPU Offload Thresholds:", header, rows);
     tPrinter.print(1);
   }
+
+  /** The output directory where CSV files should be saved to. */
+  const std::string CSV_DIR;
 
   /** The number of iterations to perform per problem size. */
   const int iterations_;

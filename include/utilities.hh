@@ -5,10 +5,12 @@
 #define CPU_LIB_NAME "Arm Performance Libraries"
 #elif defined CPU_ONEMKL
 #define CPU_LIB_NAME "Intel OneMKL"
-#elif defined CPU_OPENBLAS
-#define CPU_LIB_NAME "OpenBLAS"
 #elif defined CPU_AOCL
 #define CPU_LIB_NAME "AMD Optimized CPU Libraries"
+#elif defined CPU_NVPL
+#define CPU_LIB_NAME "NVIDIA Performance Libraries"
+#elif defined CPU_OPENBLAS
+#define CPU_LIB_NAME "OpenBLAS"
 #else
 #define CPU_DEFAULT
 #define CPU_LIB_NAME "None"
@@ -40,9 +42,6 @@
 #define ALPHA 1
 #define BETA 0
 
-// Define output directory for csv files.
-#define CSV_DIR "CSV_Results"
-
 // Define seed for random number generation - use seeded srand() to ensure
 // inputs across libraries are consistent & comparable
 const unsigned int SEED = 19123005;
@@ -59,6 +58,17 @@ struct time_checksum_gflop {
   double runtime = 0.0;
   double checksum = 0.0;
   double gflops = 0.0;
+};
+
+// Struct to hold key values at the point at which offloading to GPU becomes
+// worthwhile.
+struct cpuGpu_offloadThreshold {
+  double cpuGflops = 0.0;
+  double gpuGflops = 0.0;
+  double probSize_kib = 0.0;
+  int M = 0;
+  int N = 0;
+  int K = 0;
 };
 
 // External consume function used to ensure naive code is performed and not

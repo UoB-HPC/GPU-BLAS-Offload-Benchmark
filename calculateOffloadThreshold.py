@@ -165,7 +165,7 @@ for cpu in cpuLines:
             gpuAlways.M = 0
             gpuAlways.N = 0
             gpuAlways.K = 0
-    if(gpuUnified.M != 0 and float(cpu[8]) >= float(gpuU[8])):
+    if("gemm" in kernel and gpuUnified.M != 0 and float(cpu[8]) >= float(gpuU[8])):
         # Do check to see if this is a momentary drop that we should ignore
         if (prevGpuUgflops <= float(cpu[8])) and  (float(gpuLines[2].split(',')[8]) <= float(cpu[8])):
             gpuUnified.cpuGflops = 0.0

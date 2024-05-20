@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef CPU_ONEMKL
+#include <mkl.h>
+#endif
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -160,7 +164,7 @@ class gemm {
     return true;
   }
 
-  void toCSR(T* dense, int n_col, int n_row, T* vals, int* col_index,
+  void toCSR_int(T* dense, int n_col, int n_row, T* vals, int* col_index,
              int* row_ptr) {
     int nnz_encountered = 0;
     for (int row = 0; row < n_row; row++) {
@@ -178,6 +182,25 @@ class gemm {
     row_ptr[n_row] = nnz_encountered;
   }
 
+#ifdef CPU_ONEMKL
+  void toCSR_mkl(T* dense, int n_col, int n_row, T* vals, MKL_INT* col_index,
+                 MKL_INT* row_ptr) {
+    int nnz_encountered = 0;
+    for (int row = 0; row < n_row; row++) {
+      row_ptr[row] = (MKL_INT)nnz_encountered;
+      int nnz_row = 0;
+      for (int col = 0; col < n_col; col++) {
+        if (dense[(row * n_col) + col] != 0.0) {
+          nnz_row++;
+          col_index[nnz_encountered] = (MKL_INT)col;
+          vals[nnz_encountered] = dense[(row * n_col) + col];
+          nnz_encountered++;
+        }
+      }
+    }
+    row_ptr[n_row] = (MKL_INT)nnz_encountered;
+  }
+#endif
   /** The number of iterations to perform per problem size. */
   const int iterations_;
 

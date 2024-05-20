@@ -178,55 +178,56 @@ void getParameters(int argc, char* argv[]) {
         std::cout << "ERROR - no implemented kernels in list" << std::endl;
         exit(1);
       } else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-      std::cout << std::endl;
-      std::cout << "Usage: ./gpu-blob [OPTIONS]" << std::endl << std::endl;
-      std::cout << "Options:" << std::endl;
-      std::cout << "  -h  --help                   Print this message"
-                << std::endl;
-      std::cout << "  --no_cpu                     Disable all CPU kernel Runs"
-                << std::endl;
-      std::cout << "  --no_gpu                     Disable all GPU kernel Runs"
-                << std::endl;
-      std::cout
-          << "  -o  --output_dir             The CSV file output directory"
-          << std::endl;
-      std::cout << "  -i  --iterations I           Repeat each kernel I times "
-                   "(default: "
-                << iters << ")" << std::endl;
-      std::cout << "  -s  --start_dimension S      First value of M, N, K is S "
-                   "(default: "
-                << startDim << ")" << std::endl;
-      std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
-                   "(default: "
-                << upperLimit << ")" << std::endl;
-      std::cout << "  -k  --kernels <kernels>      Comma-separated list of "
-                   "kernels to be run.  Options are sgemm, dgemm, sp-sgemm, "
-                   "sp-dgemm (default: sgemm,dgemm,sp-gemm,sp-dgemm)" <<
-                   std::endl;
-      std::cout << std::endl;
-      exit(0);
-	    std::cout << std::endl;
-	    std::cout << "Usage: ./gpu-blob [OPTIONS]" << std::endl << std::endl;
-	    std::cout << "Options:" << std::endl;
-	    std::cout << "  -h  --help                   Print this message"
-	              << std::endl;
-	    std::cout << "  -i  --iterations I           Repeat each kernel I times "
-	                 "(default: "
-	              << iters << ")" << std::endl;
-	    std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
-	                 "(default: "
-	              << upperLimit << ")" << std::endl;
-	    std::cout << "  -k  --kernels <list>         Run the kernels provided "
-	                 "in the comma-separated list <list> (all implemented "
-	                 "kernels are run by default)" << std::endl <<
-	              "                               implemented kernels are: "
-	              "sgemm, dgemm, sp_sgemm, and sp_dgemm" << std::endl;
-	    std::cout << std::endl;
-	    exit(0);
-    } else {
-      std::cout << "Unrecognized argument '" << argv[i] << "' (try '--help')"
-                << std::endl;
-      exit(1);
+        std::cout << std::endl;
+        std::cout << "Usage: ./gpu-blob [OPTIONS]" << std::endl << std::endl;
+        std::cout << "Options:" << std::endl;
+        std::cout << "  -h  --help                   Print this message"
+                  << std::endl;
+        std::cout << "  --no_cpu                     Disable all CPU kernel Runs"
+                  << std::endl;
+        std::cout << "  --no_gpu                     Disable all GPU kernel Runs"
+                  << std::endl;
+        std::cout
+            << "  -o  --output_dir             The CSV file output directory"
+            << std::endl;
+        std::cout << "  -i  --iterations I           Repeat each kernel I times "
+                     "(default: "
+                  << iters << ")" << std::endl;
+        std::cout << "  -s  --start_dimension S      First value of M, N, K is S "
+                     "(default: "
+                  << startDim << ")" << std::endl;
+        std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
+                     "(default: "
+                  << upperLimit << ")" << std::endl;
+        std::cout << "  -k  --kernels <kernels>      Comma-separated list of "
+                     "kernels to be run.  Options are sgemm, dgemm, sp-sgemm, "
+                     "sp-dgemm (default: sgemm,dgemm,sp-gemm,sp-dgemm)" <<
+                     std::endl;
+        std::cout << std::endl;
+        exit(0);
+        std::cout << std::endl;
+        std::cout << "Usage: ./gpu-blob [OPTIONS]" << std::endl << std::endl;
+        std::cout << "Options:" << std::endl;
+        std::cout << "  -h  --help                   Print this message"
+                  << std::endl;
+        std::cout << "  -i  --iterations I           Repeat each kernel I times "
+                     "(default: "
+                  << iters << ")" << std::endl;
+        std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
+                     "(default: "
+                  << upperLimit << ")" << std::endl;
+        std::cout << "  -k  --kernels <list>         Run the kernels provided "
+                     "in the comma-separated list <list> (all implemented "
+                     "kernels are run by default)" << std::endl <<
+                  "                               implemented kernels are: "
+                  "sgemm, dgemm, sp_sgemm, and sp_dgemm" << std::endl;
+        std::cout << std::endl;
+        exit(0);
+      } else {
+        std::cout << "Unrecognized argument '" << argv[i] << "' (try '--help')"
+                  << std::endl;
+        exit(1);
+      }
     }
   }
 }

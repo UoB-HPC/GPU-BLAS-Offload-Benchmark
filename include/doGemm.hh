@@ -57,10 +57,13 @@ class doGemm {
   /** Run all problem types and write data to CSV files. */
   void collectData() {
     // Square Problem Sizes...
-    // Re-initialise offload threshold structures
+    // Re-initialise offload threshold structures & previous results
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
+    prev_gpuResult_always = time_checksum_gflop();
+    prev_gpuResult_once = time_checksum_gflop();
+    prev_gpuResult_unified = time_checksum_gflop();
     std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                                         "_square_square_M=N=K.csv");
     for (int dim = startDimention_; dim <= upperLimit_; dim++) {
@@ -78,10 +81,13 @@ class doGemm {
 
     // Rectangular Problem Sizes:
     // Tall and thin x Short and wide
-    // Re-initialise offload threshold structures
+    // Re-initialise offload threshold structures & previous results
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
+    prev_gpuResult_always = time_checksum_gflop();
+    prev_gpuResult_once = time_checksum_gflop();
+    prev_gpuResult_unified = time_checksum_gflop();
     csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_tall-thin_short-wide_M=N_M=16K.csv");
     int K = startDimention_;
@@ -103,10 +109,13 @@ class doGemm {
 #endif
 
     // Tall and thin x Short and wide
-    // Re-initialise offload threshold structures
+    // Re-initialise offload threshold structures & previous results
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
+    prev_gpuResult_always = time_checksum_gflop();
+    prev_gpuResult_once = time_checksum_gflop();
+    prev_gpuResult_unified = time_checksum_gflop();
     csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_tall-thin_short-wide_M=N_K=32.csv");
     if (upperLimit_ >= 32) {
@@ -125,10 +134,13 @@ class doGemm {
 #endif
 
     // Short and wide x Tall and thin
-    // Re-initialise offload threshold structures
+    // Re-initialise offload threshold structures & previous results
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
+    prev_gpuResult_always = time_checksum_gflop();
+    prev_gpuResult_once = time_checksum_gflop();
+    prev_gpuResult_unified = time_checksum_gflop();
     csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_short-wide_tall-thin_M=N_K=16M.csv");
     M = startDimention_;
@@ -150,10 +162,13 @@ class doGemm {
 #endif
 
     // Short and wide x Tall and thin
-    // Re-initialise offload threshold structures
+    // Re-initialise offload threshold structures & previous results
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
+    prev_gpuResult_always = time_checksum_gflop();
+    prev_gpuResult_once = time_checksum_gflop();
+    prev_gpuResult_unified = time_checksum_gflop();
     csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_short-wide_tall-thin_M=N=32_K.csv");
     if (upperLimit_ >= 32) {
@@ -172,10 +187,13 @@ class doGemm {
 #endif
 
     // Tall and Thin x Square
-    // Re-initialise offload threshold structures
+    // Re-initialise offload threshold structures & previous results
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
+    prev_gpuResult_always = time_checksum_gflop();
+    prev_gpuResult_once = time_checksum_gflop();
+    prev_gpuResult_unified = time_checksum_gflop();
     csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_tall-thin_square_K=N_M=16K.csv");
     K = startDimention_;
@@ -197,10 +215,13 @@ class doGemm {
 #endif
 
     // Tall and Thin x Square
-    // Re-initialise offload threshold structures
+    // Re-initialise offload threshold structures & previous results
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
+    prev_gpuResult_always = time_checksum_gflop();
+    prev_gpuResult_once = time_checksum_gflop();
+    prev_gpuResult_unified = time_checksum_gflop();
     csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_tall-thin_square_K=N=32_M.csv");
     if (upperLimit_ >= 32) {
@@ -219,10 +240,13 @@ class doGemm {
 #endif
 
     // Square x Short and Wide
-    // Re-initialise offload threshold structures
+    // Re-initialise offload threshold structures & previous results
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
+    prev_gpuResult_always = time_checksum_gflop();
+    prev_gpuResult_once = time_checksum_gflop();
+    prev_gpuResult_unified = time_checksum_gflop();
     csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_square_short-wide_M=K_N=16K.csv");
     M = startDimention_;
@@ -244,10 +268,13 @@ class doGemm {
 #endif
 
     // Square x Short and Wide
-    // Re-initialise offload threshold structures
+    // Re-initialise offload threshold structures & previous results
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
+    prev_gpuResult_always = time_checksum_gflop();
+    prev_gpuResult_once = time_checksum_gflop();
+    prev_gpuResult_unified = time_checksum_gflop();
     csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_square_short-wide_M=K=32_N.csv");
     if (upperLimit_ >= 32) {
@@ -345,6 +372,11 @@ class doGemm {
       // Check if offload threshold has been achieved for each GPU offload type.
       updateOffloadStructs(cpuResult, gpuResult_once, gpuResult_always,
                            gpuResult_unified, M, N, K, probSize);
+
+      // Update previous results
+      prev_gpuResult_once = gpuResult_once;
+      prev_gpuResult_always = gpuResult_always;
+      prev_gpuResult_unified = gpuResult_unified;
     }
 #endif
   }
@@ -385,13 +417,15 @@ class doGemm {
 
   /** Check whether the offload structures need to be reset; and doing so if
    * required.
-   *   - If CPU.gflops >= GPU.gflops, then reset offload structures as GPU may
-   *     not necessarily have reached the offload threshold. */
+   *   - If CPU.gflops >= GPU.gflops for last two problem sizes, then reset
+   * offload structures as GPU may not necessarily have reached the offload
+   * threshold. */
   void checkOffloadStructReset(time_checksum_gflop cpuResult,
                                time_checksum_gflop gpuResult_once,
                                time_checksum_gflop gpuResult_always,
                                time_checksum_gflop gpuResult_unified) {
-    if ((cpuGpu_once_.M != 0) && cpuResult.gflops >= gpuResult_once.gflops) {
+    if ((cpuGpu_once_.M != 0) && (cpuResult.gflops >= gpuResult_once.gflops) &&
+        (cpuResult.gflops >= prev_gpuResult_once.gflops)) {
       cpuGpu_once_.cpuGflops = 0.0;
       cpuGpu_once_.gpuGflops = 0.0;
       cpuGpu_once_.probSize_kib = 0.0;
@@ -400,7 +434,8 @@ class doGemm {
       cpuGpu_once_.K = 0;
     }
     if ((cpuGpu_always_.M != 0) &&
-        cpuResult.gflops >= gpuResult_always.gflops) {
+        (cpuResult.gflops >= gpuResult_always.gflops) &&
+        (cpuResult.gflops >= prev_gpuResult_always.gflops)) {
       cpuGpu_always_.cpuGflops = 0.0;
       cpuGpu_always_.gpuGflops = 0.0;
       cpuGpu_always_.probSize_kib = 0.0;
@@ -409,7 +444,8 @@ class doGemm {
       cpuGpu_always_.K = 0;
     }
     if ((cpuGpu_unified_.M != 0) &&
-        cpuResult.gflops >= gpuResult_unified.gflops) {
+        (cpuResult.gflops >= gpuResult_unified.gflops) &&
+        (cpuResult.gflops >= prev_gpuResult_unified.gflops)) {
       cpuGpu_unified_.cpuGflops = 0.0;
       cpuGpu_unified_.gpuGflops = 0.0;
       cpuGpu_unified_.probSize_kib = 0.0;
@@ -602,4 +638,13 @@ class doGemm {
   /** The point at which offloading to GPU (unified memory) becomes worthwhile.
    */
   cpuGpu_offloadThreshold cpuGpu_unified_;
+
+  /** The previous problem size's GPU (offload once) performance results. */
+  time_checksum_gflop prev_gpuResult_once;
+
+  /** The previous problem size's GPU (offload always) performance results. */
+  time_checksum_gflop prev_gpuResult_always;
+
+  /** The previous problem size's GPU (unified memory) performance results. */
+  time_checksum_gflop prev_gpuResult_unified;
 };

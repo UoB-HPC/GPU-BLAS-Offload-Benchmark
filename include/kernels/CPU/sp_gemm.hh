@@ -1,9 +1,9 @@
 #pragma once
 
-#ifdef CPU_ONEMKL
 #include "../gemm.hh"
 
 #include <random>
+#include <memory>
 
 namespace cpu {
 
@@ -25,21 +25,78 @@ namespace cpu {
 			/** Initialise the required data structures. */
 			virtual void initialise(int n, double sparsity, bool binary = false) {
 				n_ = n;
+        sparsity_ = sparsity;
+
+        // Note that the below should be the same as the edges calculation
+        // used in the initInputMatricesSparse function.  If changed here,
+        // change there
+        nnz_ = 1 + (int) (n_ * n_ * (1 - sparsity_));
 
 				A_ = (T*)malloc(sizeof(T) * n_ * n_);
 				B_ = (T*)malloc(sizeof(T) * n_ * n_);
 				C_ = (T*)malloc(sizeof(T) * n_ * n_);
 
-				initInputMatricesSparse(sparsity);
+				initInputMatricesSparse(sparsity_);
+
+        toCSR();
 			}
 
 			private:
 				/** Do any necessary cleanup (free pointers, close library handles, etc.)
 				 * after Kernel has been called. */
-				void postCallKernelCleanup() {
-					free(A_);
-					free(B_);
-					free(C_);
-				}
+      void postCallKernelCleanup() {
+        free(A_);
+        free(B_);
+        free(C_);
+      }
+
+      void toCSR() {
+        // Move A to CSR
+        A_row_ptr_ = new int[n_ + 1];
+        A_col_index_ = new int[nnz_];
+        A_vals_ = new T[nnz_];
+        int nnz_encountered = 0;
+        for (int row = 0; row < n_; row++) {
+          A_row_ptr_[row] = nnz_encountered;
+          for (int col = 0; col < n_; col++) {
+            if (A_[(row * n_) + col] != 0.0) {
+              A_col_index_[nnz_encountered] = col;
+              A_vals_[nnz_encountered] = A_[(row * n_) + col];
+              nnz_encountered++;
+            }
+          }
+        }
+
+        // Move B to CSR
+        B_row_ptr_ = new int[n_ + 1];
+        B_col_index_ = new int[nnz_];
+        B_vals_ = new T[nnz_];
+        nnz_encountered = 0;
+        for (int row = 0; row < n_; row++) {
+          B_row_ptr_[row] = nnz_encountered;
+          for (int col = 0; col < n_; col++) {
+            if (B_[(row * n_) + col] != 0.0) {
+              B_col_index_[nnz_encountered] = col;
+              B_vals_[nnz_encountered] = B_[(row * n_) + col];
+              nnz_encountered++;
+            }
+          }
+        }
+      }
+
+      double sparsity_;
+
+      int nnz_;
+
+      int* A_row_ptr_;
+      int* A_col_index_;
+      int* B_row_ptr_;
+      int* B_col_index_;
+      int* C_row_ptr_;
+      int* C_col_index_;
+      T* A_vals_;
+      T* B_vals_;
+      T* C_vals;
+
 		};
 }  // namespace cpu

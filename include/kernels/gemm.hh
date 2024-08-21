@@ -91,6 +91,9 @@ class gemm {
     }
   }
 
+  // Note that the below should be the same as the nnz calculation
+  // used in the cpu initialise functions.  If changed here,
+  // change there
   void initInputMatricesSparse(float sparsity) {
     for (int i = 0; i < (n_ * n_); i++) {
       A_[i] = 0.0;
@@ -193,6 +196,25 @@ class gemm {
         if (dense[(row * n_col) + col] != 0.0) {
           nnz_row++;
           col_index[nnz_encountered] = (MKL_INT)col;
+          vals[nnz_encountered] = dense[(row * n_col) + col];
+          nnz_encountered++;
+        }
+      }
+    }
+    row_ptr[n_row] = (MKL_INT)nnz_encountered;
+  }
+#endif
+#ifdef CPU_AOCL
+    void toCSR_aocl(T* dense, int n_col, int n_row, T* vals, aoclsparse_int*
+    col_index, aoclsparse_int* row_ptr) {
+    int nnz_encountered = 0;
+    for (int row = 0; row < n_row; row++) {
+      row_ptr[row] = (aoclsparse_int)nnz_encountered;
+      int nnz_row = 0;
+      for (int col = 0; col < n_col; col++) {
+        if (dense[(row * n_col) + col] != 0.0) {
+          nnz_row++;
+          col_index[nnz_encountered] = (aoclsparse_int)col;
           vals[nnz_encountered] = dense[(row * n_col) + col];
           nnz_encountered++;
         }

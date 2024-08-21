@@ -23,6 +23,7 @@ class gemm_cpu : public gemm<T> {
  private:
   /** Make call to the GEMM kernel. */
   void callGemm() override {
+
     if constexpr (std::is_same_v<T, float>) {
       bli_sgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m_, n_, k_, &alpha, A_,
                 rowStride, std::max(1, m_), B_, rowStride, std::max(1, k_),

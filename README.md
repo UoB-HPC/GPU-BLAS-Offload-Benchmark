@@ -1,4 +1,7 @@
 # GPU-BLOB: GPU BLas Offload Benchmark
+[![DOI](https://zenodo.org/badge/738950425.svg)](https://zenodo.org/doi/10.5281/zenodo.13835296)
+
+
 GPU-BLOB is a benchmark tool which can be used to determine at what point (i.e. problem size) it is worthwhile to offload select BLAS computations to the GPU on a heterogeneous system.
 Not only can this aid to help programmers understand the characteristics of the hardware they are optimising for, but also whether or not it would be useful for them to utilise the GPU at all for their specific application.
 

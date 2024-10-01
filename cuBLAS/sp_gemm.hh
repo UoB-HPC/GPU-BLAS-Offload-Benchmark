@@ -1,8 +1,7 @@
 #pragma once
 
 #ifdef GPU_CUBLAS
-#include "cusparse.h"
-#include <cublas_v2.h>
+#include <cusparse_v2.h>
 #include <cuda_runtime.h>
 #include <type_traits>
 #include <random>
@@ -13,13 +12,13 @@
 #include "common.hh"
 
 namespace gpu {
-/** A class for GEMM GPU BLAS kernels. */
+/** A class for sparse GEMM GPU BLAS kernels. */
 template <typename T>
 class sp_gemm_gpu : public sp_gemm<T> {
  public:
   using sp_gemm<T>::sp_gemm;
   using sp_gemm<T>::initInputMatricesSparse;
-  using sp_gemm<T>::toCSR;
+  using sp_gemm<T>::toCSR_int;
   using sp_gemm<T>::n_;
   using sp_gemm<T>::A_;
   using sp_gemm<T>::B_;
@@ -44,7 +43,7 @@ class sp_gemm_gpu : public sp_gemm<T> {
       std::cout << "INVALID DATA TYPE PASSED TO cuSPARSE" << std::endl;
       exit(1);
     }
-    n_ = 100 * n;
+    n_ = n;
 
     // Get device identifier
     cudaCheckError(cudaGetDevice(&gpuDevice_));

@@ -4,6 +4,7 @@
 
 #include <random>
 #include <memory>
+#include <iostream>
 
 namespace cpu {
 
@@ -11,10 +12,11 @@ namespace cpu {
 		template <typename T>
 		class sp_gemm : public ::gemm<T> {
 		public:
-				using ::gemm<T>::gemm;
+        using ::gemm<T>::gemm;
         using ::gemm<T>::initInputMatricesSparse;
-        using ::gemm<T>::toCSR;
-				using ::gemm<T>::m_;
+        using ::gemm<T>::toCSR_int;
+				using ::gemm<T>::iterations_;
+        using ::gemm<T>::m_;
 				using ::gemm<T>::n_;
 				using ::gemm<T>::k_;
 				using ::gemm<T>::A_;
@@ -30,7 +32,8 @@ namespace cpu {
         // Note that the below should be the same as the edges calculation
         // used in the initInputMatricesSparse function.  If changed here,
         // change there
-        nnz_ = 1 + (int) (n_ * n_ * (1 - sparsity_));
+        nnz_ = 1 + (int) ((double)n_ * (double)n_ * (1.0 - sparsity_));
+//        std::cout << "nnz_ = " << nnz_ << std::endl;
 
 				A_ = (T*)malloc(sizeof(T) * n_ * n_);
 				B_ = (T*)malloc(sizeof(T) * n_ * n_);
@@ -38,10 +41,12 @@ namespace cpu {
 
 				initInputMatricesSparse(sparsity_);
 
-        toCSR();
+        toCSR_int();
 			}
 
-			private:
+      int nnz_;
+
+    private:
 				/** Do any necessary cleanup (free pointers, close library handles, etc.)
 				 * after Kernel has been called. */
       void postCallKernelCleanup() {
@@ -50,7 +55,7 @@ namespace cpu {
         free(C_);
       }
 
-      void toCSR() {
+      void toCSR_int() {
         // Move A to CSR
         A_row_ptr_ = new int[n_ + 1];
         A_col_index_ = new int[nnz_];
@@ -86,8 +91,6 @@ namespace cpu {
 
       double sparsity_;
 
-      int nnz_;
-
       int* A_row_ptr_;
       int* A_col_index_;
       int* B_row_ptr_;
@@ -96,7 +99,7 @@ namespace cpu {
       int* C_col_index_;
       T* A_vals_;
       T* B_vals_;
-      T* C_vals;
+      T* C_vals_;
 
 		};
 }  // namespace cpu

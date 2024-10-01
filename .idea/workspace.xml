@@ -1,0 +1,541 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="CMakeRunConfigurationManager">
+    <generated>
+      <config projectName="GPU-BLAS-Offload-Benchmark" targetName="all" />
+      <config projectName="GPU-BLAS-Offload-Benchmark" targetName="gpu-blob" />
+    </generated>
+  </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" ENABLED="true" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Adding AOCL files" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="clangTidyViaClangd" value="false" />
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="UPDATE_TYPE" value="REBASE" />
+  </component>
+  <component name="MakefileLocalSettings">
+    <option name="availableProjects">
+      <map>
+        <entry>
+          <key>
+            <ExternalProjectPojo>
+              <option name="name" value="GPU-BLAS-Offload-Benchmark" />
+              <option name="path" value="$PROJECT_DIR$" />
+            </ExternalProjectPojo>
+          </key>
+          <value>
+            <list>
+              <ExternalProjectPojo>
+                <option name="name" value="GPU-BLAS-Offload-Benchmark" />
+                <option name="path" value="$PROJECT_DIR$" />
+              </ExternalProjectPojo>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="projectSyncType">
+      <map>
+        <entry key="$PROJECT_DIR$" value="RE_IMPORT" />
+      </map>
+    </option>
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="OCResolveContextSettings">
+    <option name="configuration" value="$PROJECT_DIR$/src/main.cc" />
+  </component>
+  <component name="ProjectApplicationVersion">
+    <option name="ide" value="CLion" />
+    <option name="majorVersion" value="2023" />
+    <option name="minorVersion" value="3" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
+  <component name="ProjectId" id="2bAwYDqoTyLBV0DE8xYqkQ0FEw0" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;C/C++ File.main.cc.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;cf.advertisement.text.has.clang-format&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;sparse&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/no22498/Documents/GPU-BLAS-Offload-Benchmark&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
+    &quot;structure.view.defaults.are.configured&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/CSV_Results" />
+    </key>
+  </component>
+  <component name="RunManager" selected="C/C++ File.main.cc">
+    <configuration name="all" type="CLionNativeAppRunConfigurationType" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="GPU-BLAS-Offload-Benchmark" TARGET_NAME="all" CONFIG_NAME="all" version="1">
+      <method v="2">
+        <option name="CLION.COMPOUND.BUILD" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="gpu-blob" type="CLionNativeAppRunConfigurationType" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="GPU-BLAS-Offload-Benchmark" TARGET_NAME="gpu-blob" CONFIG_NAME="gpu-blob" version="1">
+      <method v="2">
+        <option name="CLION.COMPOUND.BUILD" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="main.cc" type="CppFileRunConfiguration" factoryName="CppFileRunConfiguration" temporary="true" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="GPU-BLAS-Offload-Benchmark" TARGET_NAME="main.cc" CONFIG_NAME="main.cc">
+      <option name="sourceFile" value="src/main.cc" />
+      <method v="2">
+        <option name="com.jetbrains.cidr.cpp.runfile.CppFileBuildBeforeRunTaskProvider$BasicBuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="C/C++ File.main.cc" />
+      <item itemvalue="Native Application.all" />
+      <item itemvalue="Native Application.gpu-blob" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="C/C++ File.main.cc" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="" />
+      <created>1705671236426</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1705671236426</updated>
+      <workItem from="1705671237559" duration="4602000" />
+      <workItem from="1706262352145" duration="10830000" />
+      <workItem from="1706520146967" duration="113000" />
+      <workItem from="1706524361669" duration="11224000" />
+      <workItem from="1706871479435" duration="19313000" />
+      <workItem from="1707150032379" duration="1154000" />
+      <workItem from="1707218344676" duration="510000" />
+      <workItem from="1707218861842" duration="7823000" />
+      <workItem from="1707568200980" duration="5614000" />
+      <workItem from="1708954563821" duration="751000" />
+      <workItem from="1708955322064" duration="16518000" />
+      <workItem from="1709217936554" duration="14897000" />
+      <workItem from="1709904670690" duration="598000" />
+      <workItem from="1710146767066" duration="2251000" />
+      <workItem from="1710157491483" duration="1263000" />
+      <workItem from="1710158763389" duration="2993000" />
+      <workItem from="1710161850416" duration="103978000" />
+      <workItem from="1711446443157" duration="118701000" />
+      <workItem from="1715785109710" duration="13531000" />
+      <workItem from="1716389199190" duration="1275000" />
+      <workItem from="1716897681894" duration="598000" />
+      <workItem from="1716899034743" duration="1217000" />
+      <workItem from="1716981059825" duration="14000" />
+      <workItem from="1722246444109" duration="2990000" />
+      <workItem from="1722496439084" duration="24843000" />
+      <workItem from="1723101242209" duration="21225000" />
+      <workItem from="1724244974273" duration="40294000" />
+      <workItem from="1726568120590" duration="8508000" />
+      <workItem from="1726828018604" duration="38592000" />
+    </task>
+    <task id="LOCAL-00001" summary="trivial changes">
+      <option name="closed" value="true" />
+      <created>1706261672580</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1706261672580</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Adding sparse algorithm">
+      <option name="closed" value="true" />
+      <created>1706568127804</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1706568127804</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Integrating algorithm with benchmark">
+      <option name="closed" value="true" />
+      <created>1706881882900</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1706881882900</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Adding commandline options to select only sparse or dense kernels">
+      <option name="closed" value="true" />
+      <created>1707233768599</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1707233768599</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Changes">
+      <option name="closed" value="true" />
+      <created>1709208672718</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1709208672718</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Changes">
+      <option name="closed" value="true" />
+      <created>1709211130948</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1709211130948</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Adding sparse kernel to doGemm">
+      <option name="closed" value="true" />
+      <created>1709217956669</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1709217956669</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Adding matrix type enum class">
+      <option name="closed" value="true" />
+      <created>1709218027209</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1709218027209</updated>
+    </task>
+    <task id="LOCAL-00009" summary="changes">
+      <option name="closed" value="true" />
+      <created>1709368112577</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1709368112577</updated>
+    </task>
+    <task id="LOCAL-00010" summary="changes">
+      <option name="closed" value="true" />
+      <created>1709368228167</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1709368228167</updated>
+    </task>
+    <task id="LOCAL-00011" summary="adding command line kernel selection">
+      <option name="closed" value="true" />
+      <created>1709582619984</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1709582619984</updated>
+    </task>
+    <task id="LOCAL-00012" summary="adding command line kernel selection">
+      <option name="closed" value="true" />
+      <created>1710157174669</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1710157174669</updated>
+    </task>
+    <task id="LOCAL-00013" summary="Adding basic sparse multiplication kernel for default CPU and GPU">
+      <option name="closed" value="true" />
+      <created>1710172355530</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1710172355530</updated>
+    </task>
+    <task id="LOCAL-00014" summary="Implementing cuSPARSE kernel">
+      <option name="closed" value="true" />
+      <created>1710337387217</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1710337387217</updated>
+    </task>
+    <task id="LOCAL-00015" summary="Trying to work out CSR malloc bug">
+      <option name="closed" value="true" />
+      <created>1710338720376</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1710338720376</updated>
+    </task>
+    <task id="LOCAL-00016" summary="Trying to work out CSR malloc bug">
+      <option name="closed" value="true" />
+      <created>1710338867534</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1710338867534</updated>
+    </task>
+    <task id="LOCAL-00017" summary="cuSPARSE unified memory implementation">
+      <option name="closed" value="true" />
+      <created>1710853559721</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1710853559721</updated>
+    </task>
+    <task id="LOCAL-00018" summary="Now compiles">
+      <option name="closed" value="true" />
+      <created>1711026531002</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1711026531002</updated>
+    </task>
+    <task id="LOCAL-00019" summary="Now compiles">
+      <option name="closed" value="true" />
+      <created>1711026902576</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1711026902576</updated>
+    </task>
+    <task id="LOCAL-00020" summary="Now compiles with fewer runtime errors">
+      <option name="closed" value="true" />
+      <created>1711361513432</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1711361513432</updated>
+    </task>
+    <task id="LOCAL-00021" summary="Implementing other offload types - still some runtime errors">
+      <option name="closed" value="true" />
+      <created>1711453016707</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1711453016707</updated>
+    </task>
+    <task id="LOCAL-00022" summary="All implemented and running.  No checksum at the end">
+      <option name="closed" value="true" />
+      <created>1711457712445</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1711457712445</updated>
+    </task>
+    <task id="LOCAL-00023" summary="Removing print statements">
+      <option name="closed" value="true" />
+      <created>1711457867311</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1711457867311</updated>
+    </task>
+    <task id="LOCAL-00024" summary="All three offload types working for large problem sizes">
+      <option name="closed" value="true" />
+      <created>1711715754311</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1711715754311</updated>
+    </task>
+    <task id="LOCAL-00025" summary="Removing print statements">
+      <option name="closed" value="true" />
+      <created>1711715920815</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1711715920815</updated>
+    </task>
+    <task id="LOCAL-00026" summary="Superficial changes">
+      <option name="closed" value="true" />
+      <created>1711961476350</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1711961476350</updated>
+    </task>
+    <task id="LOCAL-00027" summary="rebasing">
+      <option name="closed" value="true" />
+      <created>1711961618074</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1711961618074</updated>
+    </task>
+    <task id="LOCAL-00028" summary="rebasing">
+      <option name="closed" value="true" />
+      <created>1711961836984</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1711961836984</updated>
+    </task>
+    <task id="LOCAL-00029" summary="rebasing">
+      <option name="closed" value="true" />
+      <created>1711961942373</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1711961942374</updated>
+    </task>
+    <task id="LOCAL-00030" summary="Fixing after rebase">
+      <option name="closed" value="true" />
+      <created>1712057111636</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1712057111636</updated>
+    </task>
+    <task id="LOCAL-00031" summary="Tidying up spGEMM classes to remove duplicated code">
+      <option name="closed" value="true" />
+      <created>1712136173732</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1712136173732</updated>
+    </task>
+    <task id="LOCAL-00032" summary="Fixing py script to accomodate new kernels">
+      <option name="closed" value="true" />
+      <created>1712141872451</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1712141872451</updated>
+    </task>
+    <task id="LOCAL-00033" summary="Fixing memory bug.  Implementing --kernels flag">
+      <option name="closed" value="true" />
+      <created>1712153668999</created>
+      <option name="number" value="00033" />
+      <option name="presentableId" value="LOCAL-00033" />
+      <option name="project" value="LOCAL" />
+      <updated>1712153668999</updated>
+    </task>
+    <task id="LOCAL-00034" summary="Getting rid of print statements">
+      <option name="closed" value="true" />
+      <created>1712222760735</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1712222760735</updated>
+    </task>
+    <task id="LOCAL-00035" summary="WIP">
+      <option name="closed" value="true" />
+      <created>1712311301376</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1712311301376</updated>
+    </task>
+    <task id="LOCAL-00036" summary="Finalising">
+      <option name="closed" value="true" />
+      <created>1713959722407</created>
+      <option name="number" value="00036" />
+      <option name="presentableId" value="LOCAL-00036" />
+      <option name="project" value="LOCAL" />
+      <updated>1713959722407</updated>
+    </task>
+    <task id="LOCAL-00037" summary="Rebasing">
+      <option name="closed" value="true" />
+      <created>1715161012243</created>
+      <option name="number" value="00037" />
+      <option name="presentableId" value="LOCAL-00037" />
+      <option name="project" value="LOCAL" />
+      <updated>1715161012243</updated>
+    </task>
+    <task id="LOCAL-00038" summary="Rebasing">
+      <option name="closed" value="true" />
+      <created>1715161090646</created>
+      <option name="number" value="00038" />
+      <option name="presentableId" value="LOCAL-00038" />
+      <option name="project" value="LOCAL" />
+      <updated>1715161090646</updated>
+    </task>
+    <task id="LOCAL-00039" summary="Adding AOCL files">
+      <option name="closed" value="true" />
+      <created>1716198459677</created>
+      <option name="number" value="00039" />
+      <option name="presentableId" value="LOCAL-00039" />
+      <option name="project" value="LOCAL" />
+      <updated>1716198459677</updated>
+    </task>
+    <task id="LOCAL-00040" summary="Adding AOCL files">
+      <option name="closed" value="true" />
+      <created>1724234752813</created>
+      <option name="number" value="00040" />
+      <option name="presentableId" value="LOCAL-00040" />
+      <option name="project" value="LOCAL" />
+      <updated>1724234752813</updated>
+    </task>
+    <option name="localTasksCounter" value="41" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Adding sparse kernel to doGemm" />
+    <MESSAGE value="Adding matrix type enum class" />
+    <MESSAGE value="changes" />
+    <MESSAGE value="adding command line kernel selection" />
+    <MESSAGE value="Adding basic sparse multiplication kernel for default CPU and GPU" />
+    <MESSAGE value="Implementing cuSPARSE kernel" />
+    <MESSAGE value="Trying to work out CSR malloc bug" />
+    <MESSAGE value="cuSPARSE unified memory implementation" />
+    <MESSAGE value="Now compiles" />
+    <MESSAGE value="Now compiles with fewer runtime errors" />
+    <MESSAGE value="Implementing other offload types - still some runtime errors" />
+    <MESSAGE value="All implemented and running.  No checksum at the end" />
+    <MESSAGE value="All three offload types working for large problem sizes" />
+    <MESSAGE value="Removing print statements" />
+    <MESSAGE value="Superficial changes" />
+    <MESSAGE value="rebasing" />
+    <MESSAGE value="Fixing after rebase" />
+    <MESSAGE value="Tidying up spGEMM classes to remove duplicated code" />
+    <MESSAGE value="Fixing py script to accomodate new kernels" />
+    <MESSAGE value="Fixing memory bug.  Implementing --kernels flag" />
+    <MESSAGE value="Getting rid of print statements" />
+    <MESSAGE value="WIP" />
+    <MESSAGE value="Finalising" />
+    <MESSAGE value="Rebasing" />
+    <MESSAGE value="Adding AOCL files" />
+    <option name="LAST_COMMIT_MESSAGE" value="Adding AOCL files" />
+  </component>
+</project>

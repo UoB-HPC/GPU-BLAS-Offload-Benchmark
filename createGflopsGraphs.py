@@ -123,6 +123,11 @@ for i in range(0, len(gemmFilenames)):
         inputTypeStr = "Square x Short-Wide (M=K=32, N)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][1])
+    elif "_sparse_square" in gemmFilenames[i]:
+        x_name = "Value of M, N, K"
+        inputTypeStr = "Sparse square matrices"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][0])
     else:
         # File not supported so go to next file
         continue

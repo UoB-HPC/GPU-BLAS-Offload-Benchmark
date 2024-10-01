@@ -123,6 +123,11 @@ for i in range(0, len(gemmFilenames)):
         inputTypeStr = "Square x Short-Wide (M=K=32, N)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][1])
+    elif "_sparse_square" in gemmFilenames[i]:
+        x_name = "Value of M, N, K"
+        inputTypeStr = "Sparse square matrices"
+        for j in range(0, len(mnk)):
+            xVals.append(mnk[j][0])
     else:
         # File not supported so go to next file
         continue
@@ -199,7 +204,7 @@ for i in range(0, len(gemmFilenames)):
 
     plt.margins(x=0.01, y=0.01)
     leg = plt.legend(loc='upper left', fancybox=True, ncol = 2, fontsize=18)
-    for obj in leg.legendHandles:
+    for obj in leg.legend_handles:
         obj.set_linewidth(3.0)
         obj.set_markersize(15.0)
         obj.set_markeredgewidth(3.0)

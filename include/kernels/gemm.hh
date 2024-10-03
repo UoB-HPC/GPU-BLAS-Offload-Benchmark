@@ -28,13 +28,10 @@ class gemm {
         std::chrono::high_resolution_clock::now();
 
     // Perform all GEMM calls
-//    std::cout << "about to do pre-loop requirements" << std::endl;
     preLoopRequirements();
     for (int i = 0; i < iterations_; i++) {
-//      std::cout << "entering loop " << i << std::endl;
       callGemm();
     }
-//    std::cout << "about to do post-loop requirements" << std::endl;
     postLoopRequirements();
 
     // Stop Timer

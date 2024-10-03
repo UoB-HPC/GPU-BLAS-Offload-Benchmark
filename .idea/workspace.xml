@@ -125,9 +125,9 @@
       </method>
     </configuration>
     <list>
-      <item itemvalue="C/C++ File.main.cc" />
       <item itemvalue="Native Application.all" />
       <item itemvalue="Native Application.gpu-blob" />
+      <item itemvalue="C/C++ File.main.cc" />
     </list>
     <recent_temporary>
       <list>
@@ -171,7 +171,9 @@
       <workItem from="1723101242209" duration="21225000" />
       <workItem from="1724244974273" duration="40294000" />
       <workItem from="1726568120590" duration="8508000" />
-      <workItem from="1726828018604" duration="38592000" />
+      <workItem from="1726828018604" duration="52619000" />
+      <workItem from="1727941759103" duration="43000" />
+      <workItem from="1727941814674" duration="165000" />
     </task>
     <task id="LOCAL-00001" summary="trivial changes">
       <option name="closed" value="true" />

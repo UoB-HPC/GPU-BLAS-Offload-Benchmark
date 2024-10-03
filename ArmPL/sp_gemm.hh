@@ -53,9 +53,6 @@ class sp_gemm_cpu : public sp_gemm<T> {
     // Todo -- See if using armpl_spmat_hint can improve performance here.
     //  If so, follow with optimisation functions
 
-
-
-
     if constexpr (std::is_same_v<T, float>) {
       status_ = armpl_spmm_exec_s(transA_,
                                   transB_,
@@ -63,7 +60,7 @@ class sp_gemm_cpu : public sp_gemm<T> {
                                   A_armpl_,
                                   B_armpl_,
                                   beta,
-                                  B_armpl_);
+                                  C_armpl_);
     } else if constexpr (std::is_same_v<T, double>) {
       status_ = armpl_spmm_exec_d(transA_,
                                   transB_,
@@ -71,7 +68,7 @@ class sp_gemm_cpu : public sp_gemm<T> {
                                   A_armpl_,
                                   B_armpl_,
                                   beta,
-                                  B_armpl_);
+                                  C_armpl_);
     } else {
       // Un-specialised class will not do any work - print error and exit.
       std::cout << "ERROR - Datatype for ArmPL CPU GEMM kernel not supported."
@@ -107,11 +104,11 @@ class sp_gemm_cpu : public sp_gemm<T> {
       std::cout << "ERROR " << status_ << std::endl;
       exit(1);
     }
-//    status_ = armpl_spmat_destroy(*C_armpl_);
-//    if (status_ != ARMPL_STATUS_SUCCESS) {
-//      std::cout << "ERROR " << status_ << std::endl;
-//      exit(1);
-//    }
+    status_ = armpl_spmat_destroy(C_armpl_);
+    if (status_ != ARMPL_STATUS_SUCCESS) {
+      std::cout << "ERROR " << status_ << std::endl;
+      exit(1);
+    }
 
     delete [] A_armpl_row_ptr_;
     delete [] A_armpl_col_index_;
@@ -119,9 +116,9 @@ class sp_gemm_cpu : public sp_gemm<T> {
     delete [] B_armpl_row_ptr_;
     delete [] B_armpl_col_index_;
     delete [] B_vals_;
-//    delete [] C_armpl_row_ptr_;
-//    delete [] C_armpl_col_index_;
-//    delete [] C_vals_;
+    delete [] C_armpl_row_ptr_;
+    delete [] C_armpl_col_index_;
+    delete [] C_vals_;
 
   }
 
@@ -172,6 +169,24 @@ class sp_gemm_cpu : public sp_gemm<T> {
       }
     }
 
+    // Move C to CSR
+    C_armpl_row_ptr_ = new armpl_int_t[n_ + 1];
+    C_armpl_col_index_ = new armpl_int_t[nnz_];
+    C_vals_ = new T[nnz_];
+    C_armpl_row_ptr_[0] = 0;
+
+    nnz_encountered = 0;
+    for (int row = 0; row < n_; row++) {
+      C_armpl_row_ptr_[row + 1] = nnz_encountered;
+      for (int col = 0; col < n_; col++) {
+        if (B_[(row * n_) + col] != 0.0) {
+          C_armpl_col_index_[nnz_encountered] = col;
+          C_vals_[nnz_encountered] = static_cast<T>(B_[(row * n_) + col]);
+          nnz_encountered++;
+        }
+      }
+    }
+
     if constexpr (std::is_same_v<T, float>) {
 //      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
 //                nnz_, flags_);
@@ -200,6 +215,20 @@ class sp_gemm_cpu : public sp_gemm<T> {
         std::cout << "ERROR " << status_ << std::endl;
         exit(1);
       }
+
+//      printCSR(n_armpl_, C_armpl_row_ptr_, C_armpl_col_index_, C_vals_,
+//                nnz_, flags_);
+      status_ = armpl_spmat_create_csr_s(&C_armpl_,
+                                         n_armpl_,
+                                         n_armpl_,
+                                         C_armpl_row_ptr_,
+                                         C_armpl_col_index_,
+                                         C_vals_,
+                                         flags_);
+      if (status_ != ARMPL_STATUS_SUCCESS) {
+        std::cout << "ERROR " << status_ << std::endl;
+        exit(1);
+      }
     } else if constexpr (std::is_same_v<T, double>) {
 //      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
 //                nnz_, flags_
@@ -223,6 +252,20 @@ class sp_gemm_cpu : public sp_gemm<T> {
                                          B_armpl_row_ptr_,
                                          B_armpl_col_index_,
                                          B_vals_,
+                                         flags_);
+      if (status_ != ARMPL_STATUS_SUCCESS) {
+        std::cout << "ERROR " << status_ << std::endl;
+        exit(1);
+      }
+
+//      printCSR(n_armpl_, C_armpl_row_ptr_, C_armpl_col_index_, C_vals_,
+//                nnz_, flags_);
+      status_ = armpl_spmat_create_csr_d(&C_armpl_,
+                                         n_armpl_,
+                                         n_armpl_,
+                                         C_armpl_row_ptr_,
+                                         C_armpl_col_index_,
+                                         C_vals_,
                                          flags_);
       if (status_ != ARMPL_STATUS_SUCCESS) {
         std::cout << "ERROR " << status_ << std::endl;

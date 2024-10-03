@@ -15,7 +15,10 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Adding AOCL files" />
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="working changes">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ArmPL/sp_gemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/sp_gemm.hh" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -125,9 +128,9 @@
       </method>
     </configuration>
     <list>
+      <item itemvalue="C/C++ File.main.cc" />
       <item itemvalue="Native Application.all" />
       <item itemvalue="Native Application.gpu-blob" />
-      <item itemvalue="C/C++ File.main.cc" />
     </list>
     <recent_temporary>
       <list>
@@ -174,6 +177,7 @@
       <workItem from="1726828018604" duration="52619000" />
       <workItem from="1727941759103" duration="43000" />
       <workItem from="1727941814674" duration="165000" />
+      <workItem from="1727941995420" duration="3199000" />
     </task>
     <task id="LOCAL-00001" summary="trivial changes">
       <option name="closed" value="true" />
@@ -495,7 +499,15 @@
       <option name="project" value="LOCAL" />
       <updated>1724234752813</updated>
     </task>
-    <option name="localTasksCounter" value="41" />
+    <task id="LOCAL-00041" summary="working changes">
+      <option name="closed" value="true" />
+      <created>1727942003511</created>
+      <option name="number" value="00041" />
+      <option name="presentableId" value="LOCAL-00041" />
+      <option name="project" value="LOCAL" />
+      <updated>1727942003511</updated>
+    </task>
+    <option name="localTasksCounter" value="42" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -513,7 +525,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Adding sparse kernel to doGemm" />
     <MESSAGE value="Adding matrix type enum class" />
     <MESSAGE value="changes" />
     <MESSAGE value="adding command line kernel selection" />
@@ -538,6 +549,7 @@
     <MESSAGE value="Finalising" />
     <MESSAGE value="Rebasing" />
     <MESSAGE value="Adding AOCL files" />
-    <option name="LAST_COMMIT_MESSAGE" value="Adding AOCL files" />
+    <MESSAGE value="working changes" />
+    <option name="LAST_COMMIT_MESSAGE" value="working changes" />
   </component>
 </project>

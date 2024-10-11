@@ -207,8 +207,8 @@ class doGemv {
       cpuResult = gemvCpu_.compute();
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
       // Write result to CSV file
-      writeLineToCsv(csvFile, "cpu", kernelName, M, N, 0, probSize, iterations_,
-                     cpuResult.runtime, cpuResult.gflops);
+      writeLineToCsv(csvFile, "cpu", kernelName, M, N, 0, probSize, 0.0,
+                     iterations_, cpuResult.runtime, cpuResult.gflops);
     }
 #endif
 
@@ -237,13 +237,13 @@ class doGemv {
 
       // Write results to CSV file
       writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, 0, probSize,
-                     iterations_, gpuResult_once.runtime,
+                     0.0, iterations_, gpuResult_once.runtime,
                      gpuResult_once.gflops);
       writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, 0,
-                     probSize, iterations_, gpuResult_always.runtime,
+                     probSize, 0.0, iterations_, gpuResult_always.runtime,
                      gpuResult_always.gflops);
       writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, 0, probSize,
-                     iterations_, gpuResult_unified.runtime,
+                     0.0, iterations_, gpuResult_unified.runtime,
                      gpuResult_unified.gflops);
     }
 #endif
@@ -500,8 +500,8 @@ class doGemv {
   const bool doGPU_ = true;
 
   /** Whether sparse and or dense kernels should be run. */
-  const bool doSparse_;
   const bool doDense_;
+  const bool doSparse_;
 
 #if CPU_ENABLED
   /** The GEMV CPU kernel. */

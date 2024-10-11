@@ -2,7 +2,7 @@
 
 #if defined GPU_CUBLAS
 
-#include "cusparse.h"
+#include <cusparse_v2.h>
 
 /** Macro function to check if error occurred when calling cuBLAS. */
 /** Macro function to check if error occurred when calling CUDA. */

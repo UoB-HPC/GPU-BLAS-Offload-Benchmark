@@ -355,6 +355,7 @@ class sp_gemm_cpu : public sp_gemm<T> {
         std::cout << "ERROR " << status_ << std::endl;
         exit(1);
       }
+
 //      std::cout << "Okay, all matrices made!!" << std::endl;
     }
 

@@ -17,8 +17,8 @@ std::ofstream initCSVFile(const std::string filename) {
 
   std::ofstream newFile(filename);
 
-  newFile << "Device,Kernel,M,N,K,Total Problem Size (KiB),Iterations,Total "
-             "Seconds,GFLOP/s"
+  newFile << "Device,Kernel,M,N,K,Total Problem Size (KiB),sparsity,Iterations,"
+             "Total Seconds,GFLOP/s"
           << std::endl;
 
   return newFile;
@@ -28,15 +28,17 @@ std::ofstream initCSVFile(const std::string filename) {
  * Function does not close the file. */
 void writeLineToCsv(std::ofstream& file, const std::string device,
                     const std::string kernel, const int M, const int N,
-                    const int K, const double totalProbSize, const int iters,
-                    const double totalTime, const double gflops) {
+                    const int K, const double totalProbSize, const float
+                    sparsity, const int iters, const double totalTime,
+                    const double gflops) {
   if (!file.is_open()) {
     std::cout << "ERROR - Attempted to write line to a closed CSV file."
               << std::endl;
     exit(1);
   }
   file << device << "," << kernel << "," << M << "," << N << "," << K << ","
-       << std::fixed << std::setprecision(3) << totalProbSize << "," << iters
+       << std::fixed << std::setprecision(3) << totalProbSize << ","
+       << std::fixed << std::setprecision(8) << sparsity << "," << iters
        << "," << std::fixed << std::setprecision(5) << totalTime << ","
        << std::fixed << std::setprecision(3) << gflops << std::endl;
 }

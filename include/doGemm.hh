@@ -364,8 +364,8 @@ class doGemm {
       cpuResult = gemmCpu_.compute();
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
       // Write result to CSV file
-      writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize, iterations_,
-                     cpuResult.runtime, cpuResult.gflops);
+      writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize,
+                     0.0, iterations_, cpuResult.runtime, cpuResult.gflops);
     }
 #endif
 
@@ -394,13 +394,13 @@ class doGemm {
 
       // Write results to CSV file
       writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,
-                     iterations_, gpuResult_once.runtime,
+                     0.0, iterations_, gpuResult_once.runtime,
                      gpuResult_once.gflops);
       writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K,
-                     probSize, iterations_, gpuResult_always.runtime,
+                     probSize, 0.0, iterations_, gpuResult_always.runtime,
                      gpuResult_always.gflops);
       writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, K, probSize,
-                     iterations_, gpuResult_unified.runtime,
+                     0.0, iterations_, gpuResult_unified.runtime,
                      gpuResult_unified.gflops);
     }
 #endif
@@ -550,8 +550,9 @@ class doGemm {
       time_checksum_gflop cpuResult = spGemmCpu_.compute();
 //      std::cout << " computed";
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
-		  writeLineToCsv(csvFile, "cpu", kernelName, N, N, N, probSize, iterations_,
-		               cpuResult.runtime, cpuResult.gflops);
+		  writeLineToCsv(csvFile, "cpu", kernelName, N, N, N, probSize,
+                     sparsity, iterations_, cpuResult.runtime,
+                     cpuResult.gflops);
 //      std::cout << " done!" << std::endl;
     }
 #endif
@@ -592,13 +593,14 @@ class doGemm {
 
 		// Write lines to CSV file
 		  writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, N, N, probSize,
-		               iterations_, gpuResult_once.runtime, gpuResult_once.gflops);
+		                sparsity, iterations_, gpuResult_once.runtime,
+                    gpuResult_once.gflops);
 		  writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, N, N, probSize,
-		               iterations_, gpuResult_always.runtime,
-		               gpuResult_always.gflops);
+		                sparsity, iterations_, gpuResult_always.runtime,
+		                gpuResult_always.gflops);
 		  writeLineToCsv(csvFile, "gpu_unified", kernelName, N, N, N, probSize,
-		               iterations_, gpuResult_unified.runtime,
-		               gpuResult_unified.gflops);
+		                sparsity, iterations_, gpuResult_unified.runtime,
+		                gpuResult_unified.gflops);
 
     }
 #endif

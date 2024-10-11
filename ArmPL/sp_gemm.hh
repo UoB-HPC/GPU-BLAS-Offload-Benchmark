@@ -89,6 +89,90 @@ class sp_gemm_cpu : public sp_gemm<T> {
   void preLoopRequirements() override {
     // Need to put A_ and B_ into A_armpl_ and B_armpl_
     toCSR_armpl();
+
+    /** providing hints to ARMPL and optimizing the matrix datastructures */
+    // TODO -- is noallocs best here?
+    status_ = armpl_spmat_hint(A_armpl_, ARMPL_SPARSE_HINT_MEMORY,
+                               ARMPL_SPARSE_MEMORY_NOALLOCS);
+    if (status_ != ARMPL_STATUS_SUCCESS) {
+      std::cout << "ERROR " << status_ << std::endl;
+      exit(1);
+    }
+    status_ = armpl_spmat_hint(B_armpl_, ARMPL_SPARSE_HINT_MEMORY,
+                               ARMPL_SPARSE_MEMORY_NOALLOCS);
+    if (status_ != ARMPL_STATUS_SUCCESS) {
+      std::cout << "ERROR " << status_ << std::endl;
+      exit(1);
+    }
+
+    status_ = armpl_spmat_hint(A_armpl_, ARMPL_SPARSE_HINT_STRUCTURE,
+                               ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED);
+    if (status_ != ARMPL_STATUS_SUCCESS) {
+      std::cout << "ERROR " << status_ << std::endl;
+      exit(1);
+    }
+    status_ = armpl_spmat_hint(B_armpl_, ARMPL_SPARSE_HINT_STRUCTURE,
+                               ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED);
+    if (status_ != ARMPL_STATUS_SUCCESS) {
+      std::cout << "ERROR " << status_ << std::endl;
+      exit(1);
+    }
+
+    // TODO -- will this be FEW?
+    status_ = armpl_spmat_hint(A_armpl_, ARMPL_SPARSE_HINT_SPMM_INVOCATIONS,
+                               ARMPL_SPARSE_INVOCATIONS_MANY);
+    if (status_ != ARMPL_STATUS_SUCCESS) {
+      std::cout << "ERROR " << status_ << std::endl;
+      exit(1);
+    }
+    status_ = armpl_spmat_hint(B_armpl_, ARMPL_SPARSE_HINT_SPMM_INVOCATIONS,
+                               ARMPL_SPARSE_INVOCATIONS_MANY);
+    if (status_ != ARMPL_STATUS_SUCCESS) {
+      std::cout << "ERROR " << status_ << std::endl;
+      exit(1);
+    }
+
+    status_ = armpl_spmat_hint(A_armpl_, ARMPL_SPARSE_HINT_SPMM_OPERATION,
+                               ARMPL_SPARSE_OPERATION_NOTRANS);
+    if (status_ != ARMPL_STATUS_SUCCESS) {
+      std::cout << "ERROR " << status_ << std::endl;
+      exit(1);
+    }
+    status_ = armpl_spmat_hint(B_armpl_, ARMPL_SPARSE_HINT_SPMM_OPERATION,
+                               ARMPL_SPARSE_OPERATION_NOTRANS);
+    if (status_ != ARMPL_STATUS_SUCCESS) {
+      std::cout << "ERROR " << status_ << std::endl;
+      exit(1);
+    }
+
+    // TODO -- investigate whch is better here
+    status_ = armpl_spmat_hint(A_armpl_, ARMPL_SPARSE_HINT_SPMM_STRATEGY,
+                               ARMPL_SPARSE_SPMM_STRAT_OPT_PART_STRUCT);
+    if (status_ != ARMPL_STATUS_SUCCESS) {
+      std::cout << "ERROR " << status_ << std::endl;
+      exit(1);
+    }
+    status_ = armpl_spmat_hint(B_armpl_, ARMPL_SPARSE_HINT_SPMM_STRATEGY,
+                               ARMPL_SPARSE_SPMM_STRAT_OPT_PART_STRUCT);
+    if (status_ != ARMPL_STATUS_SUCCESS) {
+      std::cout << "ERROR " << status_ << std::endl;
+      exit(1);
+    }
+
+//  TODO -- this is thorwing an error -- couldn't immediately fix so come
+//   back to
+
+//    /** provide hints for the optimisation of the spmm execution */
+//    status_ = armpl_spmm_optimize(ARMPL_SPARSE_OPERATION_NOTRANS,
+//                                  ARMPL_SPARSE_OPERATION_NOTRANS,
+//                                  ARMPL_SPARSE_SCALAR_ONE,
+//                                  A_armpl_, B_armpl_,
+//                                  ARMPL_SPARSE_SCALAR_ZERO,
+//                                  C_armpl_);
+//    if (status_ != ARMPL_STATUS_SUCCESS) {
+//      std::cout << "ERROR " << status_ << std::endl;
+//      exit(1);
+//    }
   }
 
   /** Perform any required steps after calling the GEMM kernel that should

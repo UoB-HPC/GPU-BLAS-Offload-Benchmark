@@ -15,13 +15,8 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Adding kernel selection for gemv">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Providing armpl with hints">
       <change beforePath="$PROJECT_DIR$/ArmPL/sp_gemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/sp_gemm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/doGemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doGemm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/doGemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doGemv.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/helpers.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/helpers.hh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -527,7 +522,15 @@
       <option name="project" value="LOCAL" />
       <updated>1728650780575</updated>
     </task>
-    <option name="localTasksCounter" value="44" />
+    <task id="LOCAL-00044" summary="Providing armpl with hints">
+      <option name="closed" value="true" />
+      <created>1728655865948</created>
+      <option name="number" value="00044" />
+      <option name="presentableId" value="LOCAL-00044" />
+      <option name="project" value="LOCAL" />
+      <updated>1728655865948</updated>
+    </task>
+    <option name="localTasksCounter" value="45" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -545,7 +548,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="adding command line kernel selection" />
     <MESSAGE value="Adding basic sparse multiplication kernel for default CPU and GPU" />
     <MESSAGE value="Implementing cuSPARSE kernel" />
     <MESSAGE value="Trying to work out CSR malloc bug" />
@@ -570,6 +572,7 @@
     <MESSAGE value="working changes" />
     <MESSAGE value="No longer overwriting B_" />
     <MESSAGE value="Adding kernel selection for gemv" />
-    <option name="LAST_COMMIT_MESSAGE" value="Adding kernel selection for gemv" />
+    <MESSAGE value="Providing armpl with hints" />
+    <option name="LAST_COMMIT_MESSAGE" value="Providing armpl with hints" />
   </component>
 </project>

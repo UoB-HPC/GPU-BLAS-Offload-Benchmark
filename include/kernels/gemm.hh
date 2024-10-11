@@ -107,14 +107,14 @@ class gemm {
                      .time_since_epoch().count());
     std::uniform_real_distribution<double> dist(0.0, 1.0);
 
-    int edges = 1 + (int) (n_ * n_ * (1 - sparsity));
+    int edges = 1 + (uint64_t)((double)n_ * (double)n_ * (1.0 - sparsity));
 
     // Using a=0.45 and b=c=0.22 as default probabilities
     for (int i = 0; i < edges; i++) {
       while (!rMat(A_, n_, 0, n_ - 1, 0, n_ - 1, 0.45, 0.22, 0.22, &gen, dist,
-              false)) {}
+                   false)) {}
       while (!rMat(B_, n_, 0, n_ - 1, 0, n_ - 1, 0.45, 0.22, 0.22, &gen, dist,
-              false)) {}
+                   false)) {}
     }
   }
 
@@ -165,7 +165,6 @@ class gemm {
                     gen, dist, bin);
       }
     }
-    return true;
   }
 
   void toCSR_int(T* dense, int n_col, int n_row, T* vals, int* col_index,

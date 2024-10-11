@@ -32,18 +32,19 @@ namespace cpu {
         // Note that the below should be the same as the edges calculation
         // used in the initInputMatricesSparse function.  If changed here,
         // change there
-        nnz_ = 1 + (int) ((double)n_ * (double)n_ * (1.0 - sparsity_));
+        nnz_ = 1 + (uint64_t)((double)n_ * (double)n_ * (1.0 - sparsity_));
 
+//        std::cout << "\t____About to malloc()____" << std::endl;
 				A_ = (T*)malloc(sizeof(T) * n_ * n_);
 				B_ = (T*)malloc(sizeof(T) * n_ * n_);
 				C_ = (T*)malloc(sizeof(T) * n_ * n_);
 
-				initInputMatricesSparse(sparsity_);
+				initInputMatricesSparse(sparsity);
 
         toCSR_int();
 			}
 
-      int nnz_;
+      uint64_t nnz_;
 
     protected:
 

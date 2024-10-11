@@ -2,6 +2,10 @@
 
 int iters = 10;
 int upperLimit = 128;
+bool sgemm = true;
+bool dgemm = true;
+bool sp_sgemm = true;
+bool sp_dgemm = true;
 
 bool doCpu = CPU_ENABLED;
 bool doGpu = GPU_ENABLED;

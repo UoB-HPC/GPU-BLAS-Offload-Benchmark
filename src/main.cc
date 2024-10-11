@@ -1,6 +1,7 @@
 #include "../include/main.hh"
 
 int iters = 10;
+int startDim = 1;
 int upperLimit = 128;
 bool sgemm = true;
 bool dgemm = true;
@@ -115,7 +116,7 @@ int parseInt(const char* str) {
   return strlen(next) ? -1 : value;
 }
 
-void getParameters(int argc, char* argv[]) {
+void getParameters(int argc, char** argv) {
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--iterations") || !strcmp(argv[i], "-i")) {
       if (++i >= argc || (iters = parseInt(argv[i])) < 0) {

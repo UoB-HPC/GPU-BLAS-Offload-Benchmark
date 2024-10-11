@@ -267,9 +267,7 @@ class doGemm {
     if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Square x Short-and-Wide (M=K, N=16K)");
-    }
 #endif
-
     // Square x Short and Wide
     // Re-initialise offload threshold structures & previous results
     cpuGpu_always_ = cpuGpu_offloadThreshold();
@@ -295,7 +293,7 @@ class doGemm {
     }
 #endif
 
-    // Square sparse matrix - sparse matrix multiplication
+// Square sparse matrix - sparse matrix multiplication
     cpuGpu_always_ = cpuGpu_offloadThreshold();
     cpuGpu_once_ = cpuGpu_offloadThreshold();
     cpuGpu_unified_ = cpuGpu_offloadThreshold();
@@ -309,6 +307,12 @@ class doGemm {
     }
     // Close file
     csvFile.close();
+#if CPU_ENABLED && GPU_ENABLED
+    if (doCPU_ && dpGPU_) {
+      // Print offload results to stdout
+	    printOffloadThreshold("Sparse Square");
+    }
+#endif
   }
 
  private:
@@ -512,14 +516,20 @@ class doGemm {
 		const uint64_t flops = calcFlops(N, N, N);
 		std::string kernelName = getKernelName();
 
-		spGemmCpu_.initialise(N, sparsity);
-		time_checksum_gflop cpuResult = spGemmCpu_.compute();
-		cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
-
-		// Perform the GPU kernels
-
+#if CPU_ENABLED
+    if (doCPU_) {
+      spGemmCpu_.initialise(N, sparsity);
+      time_checksum_gflop cpuResult = spGemmCpu_.compute();
+      cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
+		writeLineToCsv(csvFile, "cpu", kernelName, N, N, N, probSize, iterations_,
+		               cpuResult.runtime, cpuResult.gflops);
+    }
+#endif
+#if GPU_ENABLED
+    // Perform the GPU kernels
     // - UNIFIED : data passed from host to device (and device to host) as
     //             needed
+    if (doGPU_) {
     spGemmGpu_.initialise(gpuOffloadType::unified, N, sparsity);
     time_checksum_gflop gpuResult_unified = spGemmGpu_.compute();
     gpuResult_unified.gflops =
@@ -536,13 +546,9 @@ class doGemm {
 		time_checksum_gflop gpuResult_once = spGemmGpu_.compute();
 		gpuResult_once.gflops =
 						calcGflops(flops, iterations_, gpuResult_once.runtime);
-
-
 		// ToDo -- non-default GPU operations
 
 		// Write lines to CSV file
-		writeLineToCsv(csvFile, "cpu", kernelName, N, N, N, probSize, iterations_,
-		               cpuResult.runtime, cpuResult.gflops);
 		writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, N, N, probSize,
 		               iterations_, gpuResult_once.runtime, gpuResult_once.gflops);
 		writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, N, N, probSize,
@@ -551,6 +557,10 @@ class doGemm {
 		writeLineToCsv(csvFile, "gpu_unified", kernelName, N, N, N, probSize,
 		               iterations_, gpuResult_unified.runtime,
 		               gpuResult_unified.gflops);
+
+    }
+#endif
+
 	}
 
   /** A function for calculating FLOPs performed by a GEMM.
@@ -589,7 +599,7 @@ class doGemm {
   }
 
   /** Print to stdout the offload thresholds. */
-  void printOffloadThreshold(std::string problemName) const {
+  void printOffloadThreshold(const std::string& problemName) const {
     std::vector<std::string> header = {
         "Device",  "M",          "N", "K", "Total Prob. Size (KiB)",
         "GFLOP/s", "CPU GFLOP/s"};
@@ -686,16 +696,14 @@ class doGemm {
 #if CPU_ENABLED
   /** The GEMM CPU kernel. */
   cpu::gemm_cpu<T> gemmCpu_;
+  cpu::sp_gemm_cpu<T> spGemmCpu_;
 #endif
-
-	cpu::sp_gemm_cpu<T> spGemmCpu_;
 
 #if GPU_ENABLED
   /** The GEMM GPU kernel. */
   gpu::gemm_gpu<T> gemmGpu_;
-#endif
-
 	gpu::sp_gemm_gpu<T> spGemmGpu_;
+#endif
 
   /** The point at which offloading to GPU (offload once) becomes worthwhile. */
   cpuGpu_offloadThreshold cpuGpu_once_;

@@ -34,13 +34,16 @@ class doGemm {
  public:
   doGemm(const std::string csvDir, const int iters, const int startDim,
          const int upperLimit, const bool cpuEnabled = true,
-         const bool gpuEnabled = true)
+         const bool gpuEnabled = true, const bool doDense = true,
+         const bool doSparse = true)
       : CSV_DIR(csvDir),
         iterations_(iters),
         startDimention_(startDim),
         upperLimit_(upperLimit),
         doCPU_(cpuEnabled),
-        doGPU_(gpuEnabled)
+        doGPU_(gpuEnabled),
+        doDense_(dense),
+        doSparse_(sparse),
 #if CPU_ENABLED
         ,
         gemmCpu_(iterations_),
@@ -59,27 +62,28 @@ class doGemm {
 
   /** Run all problem types and write data to CSV files. */
   void collectData() {
-    // Square Problem Sizes...
-    // Re-initialise offload threshold structures & previous results
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    prev_gpuResult_always = time_checksum_gflop();
-    prev_gpuResult_once = time_checksum_gflop();
-    prev_gpuResult_unified = time_checksum_gflop();
-    std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
-                                        "_square_square_M=N=K.csv");
-    for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-      // M = dim, N = dim, K = dim;
-      callDenseKernels(csvFile, dim, dim, dim);
-    }
-    // Close file
-    csvFile.close();
+    if (doDense_) {
+      // Square Problem Sizes...
+      // Re-initialise offload threshold structures
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      prev_gpuResult_always = time_checksum_gflop();
+      prev_gpuResult_once = time_checksum_gflop();
+      prev_gpuResult_unified = time_checksum_gflop();
+      std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
+                                          "_square_square_M=N=K.csv");
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        // M = dim, N = dim, K = dim;
+        callDenseKernels(csvFile, dim, dim, dim);
+      }
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Square x Square (M=N=K)");
-    }
+      if (doCPU_ && doGPU_) {
+        // Print offload results to stdout
+        printOffloadThreshold("Square x Square (M=N=K)");
+      }
 #endif
 
     // Rectangular Problem Sizes:
@@ -267,6 +271,7 @@ class doGemm {
     if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Square x Short-and-Wide (M=K, N=16K)");
+    }
 #endif
     // Square x Short and Wide
     // Re-initialise offload threshold structures & previous results
@@ -292,27 +297,28 @@ class doGemm {
       printOffloadThreshold("Square x Short-and-Wide (M=K=32, N)");
     }
 #endif
-
-// Square sparse matrix - sparse matrix multiplication
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                          "_sparse_square.csv");
-    if (upperLimit_ >= 32) {
-      for (int dim = 1; dim <= upperLimit_; dim++) {
-        const int N = dim;
-        callSparseKernels(csvFile, N, 0.99);
-      }
     }
-    // Close file
-    csvFile.close();
+
+    if (doSparse_) {    // Square sparse matrix - sparse matrix multiplication
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
+                            "_sparse_square.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+          callSparseKernels(csvFile, dim, 0.99);
+        }
+      }
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && dpGPU_) {
+    if (doCPU_ && doGPU_) {
       // Print offload results to stdout
 	    printOffloadThreshold("Sparse Square");
     }
 #endif
+    }
   }
 
  private:
@@ -692,6 +698,10 @@ class doGemm {
 
   /** Whether the GPU kernels should be run. */
   const bool doGPU_ = true;
+
+  /** Whether we should run dense and or sparse kernels */
+  const bool doDense_;
+  const bool doSparse_;
 
 #if CPU_ENABLED
   /** The GEMM CPU kernel. */

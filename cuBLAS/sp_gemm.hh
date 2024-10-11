@@ -26,7 +26,7 @@ class sp_gemm_gpu : public sp_gemm<T> {
   using sp_gemm<T>::C_;
   using sp_gemm<T>::offload_;
 
-	// ToDo -- No checksum for sparse yet.  Nedd to do
+	// ToDo -- No checksum for sparse yet.  Need to do
 
   /** Initialise the required data structures.
    * `offload` refers to the data offload type:
@@ -44,7 +44,7 @@ class sp_gemm_gpu : public sp_gemm<T> {
       std::cout << "INVALID DATA TYPE PASSED TO cuSPARSE" << std::endl;
       exit(1);
     }
-    n_ = n;
+    n_ = 100 * n;
 
     // Get device identifier
     cudaCheckError(cudaGetDevice(&gpuDevice_));
@@ -133,6 +133,7 @@ class sp_gemm_gpu : public sp_gemm<T> {
   /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
   void preLoopRequirements() override {
+    cusparseCheckError(cusparseSpGEMM_createDescr(&spgemmDesc_));
     switch(offload_) {
       case gpuOffloadType::always: {
         // Make matrix descriptors
@@ -212,13 +213,17 @@ class sp_gemm_gpu : public sp_gemm<T> {
         break;
       }
     }
-    cusparseCheckError(cusparseSpGEMM_createDescr(&spgemmDesc_));
   }
 
   /** Make a call to the BLAS Library Kernel. */
   void callGemm() override {
     switch(offload_) {
       case gpuOffloadType::always: {
+        if (C_mem_allocated_always_) {
+          cusparseCheckError(cusparseDestroySpMat(descrA_));
+          cusparseCheckError(cusparseDestroySpMat(descrB_));
+          cusparseCheckError(cusparseDestroySpMat(descrC_));
+        }
         cudaCheckError(cudaMemcpyAsync(A_val_dev_, A_val_, sizeof(T) *
         A_nnz_, cudaMemcpyHostToDevice, s1_));
         cudaCheckError(cudaMemcpyAsync(A_col_dev_, A_col_, sizeof(int) *
@@ -235,6 +240,7 @@ class sp_gemm_gpu : public sp_gemm<T> {
 
         cudaCheckError(cudaMemcpyAsync(C_row_dev_, C_row_, sizeof(int) * (n_
         + 1), cudaMemcpyHostToDevice, s3_));
+        cudaCheckError(cudaDeviceSynchronize());
 
         // Make matrix descriptors
         cusparseCheckError(
@@ -444,10 +450,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
   /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {
-    cusparseCheckError(cusparseSpGEMM_destroyDescr(spgemmDesc_));
-    // Destroying descriptors
-    cusparseCheckError(cusparseDestroySpMat(descrA_));
-    cusparseCheckError(cusparseDestroySpMat(descrB_));
     switch(offload_) {
       case gpuOffloadType::always: {
         break;
@@ -476,10 +478,14 @@ class sp_gemm_gpu : public sp_gemm<T> {
         cudaCheckError(cudaMemcpyAsync(C_row_, C_row_dev_, sizeof(int) *
         (n_ + 1), cudaMemcpyDeviceToHost, s3_));
         cudaCheckError(cudaDeviceSynchronize());
+
+        cusparseCheckError(cusparseDestroySpMat(descrA_));
+        cusparseCheckError(cusparseDestroySpMat(descrB_));
+        cusparseCheckError(cusparseDestroySpMat(descrC_));
+
         break;
       }
       case gpuOffloadType::unified: {
-        cusparseCheckError(cusparseDestroySpMat(descrC_));
         // Ensure all data resides on host once work has completed
         cudaCheckError(cudaMemPrefetchAsync(A_val_, sizeof(T) * A_nnz_,
                                             cudaCpuDeviceId, s1_));
@@ -503,9 +509,14 @@ class sp_gemm_gpu : public sp_gemm<T> {
                                             cudaCpuDeviceId, s3_));
         // Ensure device has finished all work.
         cudaCheckError(cudaDeviceSynchronize());
+
+        cusparseCheckError(cusparseDestroySpMat(descrA_));
+        cusparseCheckError(cusparseDestroySpMat(descrB_));
+        cusparseCheckError(cusparseDestroySpMat(descrC_));
         break;
       }
     }
+    cusparseCheckError(cusparseSpGEMM_destroyDescr(spgemmDesc_));
   }
 
   /** Do any necessary cleanup (free pointers, close library handles, etc.)

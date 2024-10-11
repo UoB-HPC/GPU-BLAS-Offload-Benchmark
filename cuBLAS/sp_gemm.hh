@@ -36,7 +36,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
   void initialise(gpuOffloadType offload, int n, float sparsity) override {
-    std::cout << "___________Initialising, problem size = " << n << std::endl;
     offload_ = offload;
 
     if (std::is_same_v<T, float>) cudaDataType_ = CUDA_R_32F;
@@ -45,13 +44,11 @@ class sp_gemm_gpu : public sp_gemm<T> {
       std::cout << "INVALID DATA TYPE PASSED TO cuSPARSE" << std::endl;
       exit(1);
     }
-    n_ = n * 20;
+    n_ = n;
 
-    std::cout << "\tGetting device" << std::endl;
     // Get device identifier
     cudaCheckError(cudaGetDevice(&gpuDevice_));
 
-    std::cout << "\tMaking streams" << std::endl;
     // Initialise 3 streams to asynchronously move data between host and device
     cudaCheckError(cudaStreamCreate(&s1_));
     cudaCheckError(cudaStreamCreate(&s2_));
@@ -62,7 +59,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
    // Work out number of edges needed to achieve target sparsity
     A_nnz_ = B_nnz_ = 1 + (int) (n_ * n_ * (1 - sparsity));
 
-    std::cout << "\tMallocing" << std::endl;
     if (offload_ == gpuOffloadType::unified) {
       cudaCheckError(cudaMallocManaged(&A_val_, sizeof(T) * A_nnz_));
       cudaCheckError(cudaMallocManaged(&A_col_, sizeof(int) * A_nnz_));
@@ -111,13 +107,11 @@ class sp_gemm_gpu : public sp_gemm<T> {
     A_ = (T*)malloc(sizeof(T) * n_ * n_);
     B_ = (T*)malloc(sizeof(T) * n_ * n_);
 
-    std::cout << "\tInitialising start matrices" << std::endl;
     initInputMatricesSparse(sparsity);
 
-    std::cout << "\tConverting to CSR" << std::endl;
-    toCSR(A_, n_, n_, A_nnz_, A_val_, A_col_, A_row_);
+    toCSR(A_, n_, n_, A_val_, A_col_, A_row_);
 
-    toCSR(B_, n_, n_, B_nnz_, B_val_, B_col_, B_row_);
+    toCSR(B_, n_, n_, B_val_, B_col_, B_row_);
 
 
 //    std::cout << "_____Matrix A_____" << std::endl;
@@ -139,7 +133,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
   /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
   void preLoopRequirements() override {
-    std::cout << "\t\tpre loop" << std::endl;
     switch(offload_) {
       case gpuOffloadType::always: {
         // Make matrix descriptors
@@ -224,7 +217,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
 
   /** Make a call to the BLAS Library Kernel. */
   void callGemm() override {
-    std::cout << "\t\tGEMM" << std::endl;
     switch(offload_) {
       case gpuOffloadType::always: {
         cudaCheckError(cudaMemcpyAsync(A_val_dev_, A_val_, sizeof(T) *
@@ -452,7 +444,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
   /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {
-    std::cout << "\t\tpost loop" << std::endl;
     cusparseCheckError(cusparseSpGEMM_destroyDescr(spgemmDesc_));
     // Destroying descriptors
     cusparseCheckError(cusparseDestroySpMat(descrA_));
@@ -520,7 +511,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
-    std::cout << "\t\tcleaning up" << std::endl;
     // Destroy the handle
     cusparseCheckError(cusparseDestroy(handle_));
 

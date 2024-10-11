@@ -33,7 +33,6 @@ namespace cpu {
         // used in the initInputMatricesSparse function.  If changed here,
         // change there
         nnz_ = 1 + (int) ((double)n_ * (double)n_ * (1.0 - sparsity_));
-//        std::cout << "nnz_ = " << nnz_ << std::endl;
 
 				A_ = (T*)malloc(sizeof(T) * n_ * n_);
 				B_ = (T*)malloc(sizeof(T) * n_ * n_);
@@ -45,6 +44,12 @@ namespace cpu {
 			}
 
       int nnz_;
+
+    protected:
+
+        T* A_vals_;
+        T* B_vals_;
+        T* C_vals_;
 
     private:
 				/** Do any necessary cleanup (free pointers, close library handles, etc.)
@@ -97,9 +102,6 @@ namespace cpu {
       int* B_col_index_;
       int* C_row_ptr_;
       int* C_col_index_;
-      T* A_vals_;
-      T* B_vals_;
-      T* C_vals_;
 
 		};
 }  // namespace cpu

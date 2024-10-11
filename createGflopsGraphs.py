@@ -372,7 +372,7 @@ for i in range(0, len(gemvFilenames)):
 
     plt.margins(x=0.01, y=0.01)
     leg = plt.legend(loc='upper left', fancybox=True, ncol = 2, fontsize=18)
-    for obj in leg.legendHandles:
+    for obj in leg.legend_handles:
         obj.set_linewidth(3.0)
         obj.set_markersize(15.0)
         obj.set_markeredgewidth(3.0)

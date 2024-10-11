@@ -527,12 +527,8 @@ class doGemm {
 
 #if CPU_ENABLED
     if (doCPU_) {
-//      std::cout << "about to initialise matrices with size = " << N <<
-//      std::endl;
       spGemmCpu_.initialise(N, sparsity);
-//      std::cout << "about to run spGEMM" << std::endl;
       time_checksum_gflop cpuResult = spGemmCpu_.compute();
-//      std::cout << "about to calculate flops" << std::endl;
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
 		writeLineToCsv(csvFile, "cpu", kernelName, N, N, N, probSize, iterations_,
 		               cpuResult.runtime, cpuResult.gflops);
@@ -543,26 +539,19 @@ class doGemm {
     // - UNIFIED : data passed from host to device (and device to host) as
     //             needed
     if (doGPU_) {
-      std::cout << "Starting with matrix of size " << N << std::endl;
-      std::cout << "\t\tUnified";
       spGemmGpu_.initialise(gpuOffloadType::unified, N, sparsity);
-      std::cout << "\tInitialised" << std::endl;
       time_checksum_gflop gpuResult_unified = spGemmGpu_.compute();
       gpuResult_unified.gflops =
       calcGflops(flops, iterations_, gpuResult_unified.runtime);
 
     // - ALWAYS: Offload to/from GPU every iteration
-      std::cout << "\t\tAlways";
       spGemmGpu_.initialise(gpuOffloadType::always, N, sparsity);
-      std::cout << "\tInitialised" << std::endl;
       time_checksum_gflop gpuResult_always = spGemmGpu_.compute();
       gpuResult_always.gflops =
             calcGflops(flops, iterations_, gpuResult_always.runtime);
 		// - ONCE : Offload to/from GPU once before all iterations and once
 		// after
-      std::cout << "\t\tOnce";
       spGemmGpu_.initialise(gpuOffloadType::once, N, sparsity);
-      std::cout << "\tInitialised" << std::endl;
 		  time_checksum_gflop gpuResult_once = spGemmGpu_.compute();
 		  gpuResult_once.gflops =
 						calcGflops(flops, iterations_, gpuResult_once.runtime);

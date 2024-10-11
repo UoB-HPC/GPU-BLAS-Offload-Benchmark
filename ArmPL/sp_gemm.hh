@@ -25,6 +25,9 @@ class sp_gemm_cpu : public sp_gemm<T> {
   using sp_gemm<T>::B_;
   using sp_gemm<T>::C_;
   using sp_gemm<T>::nnz_;
+  using sp_gemm<T>::A_vals_;
+  using sp_gemm<T>::B_vals_;
+  using sp_gemm<T>::C_vals_;
 
  private:
   /** Make call to the GEMM kernel. */
@@ -57,19 +60,18 @@ class sp_gemm_cpu : public sp_gemm<T> {
       status_ = armpl_spmm_exec_s(transA_,
                                   transB_,
                                   alpha,
-                                  *A_armpl_,
-                                  *B_armpl_,
+                                  A_armpl_,
+                                  B_armpl_,
                                   beta,
-                                  *B_armpl_);
+                                  B_armpl_);
     } else if constexpr (std::is_same_v<T, double>) {
-      std::cout << "About to execute dgemm" << std::endl;
       status_ = armpl_spmm_exec_d(transA_,
                                   transB_,
                                   alpha,
-                                  *A_armpl_,
-                                  *B_armpl_,
+                                  A_armpl_,
+                                  B_armpl_,
                                   beta,
-                                  *B_armpl_);
+                                  B_armpl_);
     } else {
       // Un-specialised class will not do any work - print error and exit.
       std::cout << "ERROR - Datatype for ArmPL CPU GEMM kernel not supported."
@@ -89,20 +91,18 @@ class sp_gemm_cpu : public sp_gemm<T> {
    * be timed. */
   void preLoopRequirements() override {
     // Need to put A_ and B_ into A_armpl_ and B_armpl_
-    // ToDo -- Error catching
     toCSR_armpl();
-//    std::cout << "toCSR_armpl() wrapped up without a problem" << std::endl;
   }
 
   /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {
-    status_ = armpl_spmat_destroy(*A_armpl_);
+    status_ = armpl_spmat_destroy(A_armpl_);
     if (status_ != ARMPL_STATUS_SUCCESS) {
       std::cout << "ERROR " << status_ << std::endl;
       exit(1);
     }
-    status_ = armpl_spmat_destroy(*B_armpl_);
+    status_ = armpl_spmat_destroy(B_armpl_);
     if (status_ != ARMPL_STATUS_SUCCESS) {
       std::cout << "ERROR " << status_ << std::endl;
       exit(1);
@@ -113,12 +113,12 @@ class sp_gemm_cpu : public sp_gemm<T> {
 //      exit(1);
 //    }
 
-//    delete [] A_armpl_row_ptr_;
-//    delete [] A_armpl_col_index_;
-//    delete [] A_vals_;
-//    delete [] B_armpl_row_ptr_;
-//    delete [] B_armpl_col_index_;
-//    delete [] B_vals_;
+    delete [] A_armpl_row_ptr_;
+    delete [] A_armpl_col_index_;
+    delete [] A_vals_;
+    delete [] B_armpl_row_ptr_;
+    delete [] B_armpl_col_index_;
+    delete [] B_vals_;
 //    delete [] C_armpl_row_ptr_;
 //    delete [] C_armpl_col_index_;
 //    delete [] C_vals_;
@@ -131,10 +131,6 @@ class sp_gemm_cpu : public sp_gemm<T> {
   /** The constant value Beta. */
   const T beta = BETA;
 
-  armpl_status_t status_;
-
-  armpl_spmat_t armpl_A, armpl_B, armpl_C;
-
   void toCSR_armpl() {
     n_armpl_ = n_;
     // ToDo -- check whether flags_ is correct!
@@ -145,49 +141,18 @@ class sp_gemm_cpu : public sp_gemm<T> {
     A_armpl_col_index_ = new armpl_int_t[nnz_];
     A_vals_ = new T[nnz_];
     A_armpl_row_ptr_[0] = 0;
-
     int nnz_encountered = 0;
-//    std::cout << "About to load A into csr" << std::endl;
+
     for (int row = 0; row < n_; row++) {
-//      std::cout << "\tRow " << (row + 1) << " = " << nnz_encountered << std::endl;
       A_armpl_row_ptr_[row + 1] = nnz_encountered;
       for (int col = 0; col < n_; col++) {
         if (A_[(row * n_) + col] != 0.0) {
-//          std::cout << "\t\tCol " << col << " = " << A_[(row * n_) + col] <<
-//          std::endl;
           A_armpl_col_index_[nnz_encountered] = col;
           A_vals_[nnz_encountered] = static_cast<T>(A_[(row * n_) + col]);
           nnz_encountered++;
-//          std::cout << "\tnnz_encountered = " << nnz_encountered << std::endl;
         }
       }
     }
-
-//    std::cout << "___A =" << std::endl << "\t\t[";
-//    for (int i = 0; i < (n_ + 1); i++) {
-//      if (i != 0) {
-//        std::cout << ", ";
-//      }
-//      std::cout << A_armpl_row_ptr_[i];
-//    }
-//    std::cout << "]" << std::endl << "\t\t[";
-//    for (int i = 0; i < nnz_; i++) {
-//      if (i != 0) {
-//        std::cout << ", ";
-//      }
-//      std::cout << A_armpl_col_index_[i];
-//    }
-//    std::cout << "]" << std::endl << "\t\t[";
-//    for (int i = 0; i < nnz_; i++) {
-//      if (i != 0) {
-//        std::cout << ", ";
-//      }
-//      std::cout << A_vals_[i];
-//    }
-//    std::cout << "]" << std::endl;
-
-
-//    std::cout << "About to load B into csr" << std::endl;
 
     // Move B to CSR
     B_armpl_row_ptr_ = new armpl_int_t[n_ + 1];
@@ -197,113 +162,20 @@ class sp_gemm_cpu : public sp_gemm<T> {
 
     nnz_encountered = 0;
     for (int row = 0; row < n_; row++) {
-//      std::cout << "\tRow " << (row + 1) << " = " << nnz_encountered <<
-//      std::endl;
       B_armpl_row_ptr_[row + 1] = nnz_encountered;
       for (int col = 0; col < n_; col++) {
         if (B_[(row * n_) + col] != 0.0) {
-//          std::cout << "\t\tCol " << col << " = " << B_[(row * n_) + col] << std::endl;
           B_armpl_col_index_[nnz_encountered] = col;
           B_vals_[nnz_encountered] = static_cast<T>(B_[(row * n_) + col]);
           nnz_encountered++;
-//          std::cout << "\tnnz_encountered = " << nnz_encountered << std::endl;
         }
       }
     }
-//    std::cout << "___B =" << std::endl << "\t\t[";
-//    for (int i = 0; i < (n_ + 1); i++) {
-//      if (i != 0) {
-//        std::cout << ", ";
-//      }
-//      std::cout << B_armpl_row_ptr_[i];
-//    }
-//    std::cout << "]" << std::endl << "\t\t[";
-//    for (int i = 0; i < nnz_; i++) {
-//      if (i != 0) {
-//        std::cout << ", ";
-//      }
-//      std::cout << B_armpl_col_index_[i];
-//    }
-//    std::cout << "]" << std::endl << "\t\t[";
-//    for (int i = 0; i < nnz_; i++) {
-//      if (i != 0) {
-//        std::cout << ", ";
-//      }
-//      std::cout << B_vals_[i];
-//    }
-//    std::cout << "]" << std::endl;
 
-
-//    // Move B to CSR
-//    C_armpl_row_ptr_ = new armpl_int_t[n_ + 1];
-//    C_armpl_col_index_ = new armpl_int_t[nnz_];
-//    C_vals_ = new T[nnz_];
-//    C_armpl_row_ptr_[0] = 0;
-//
-//    nnz_encountered = 0;
-////    std::cout << "About to load C into csr" << std::endl;
-//    for (int row = 0; row < n_; row++) {
-////      std::cout << "\tRow " << (row + 1) << " = " << nnz_encountered << std::endl;
-//      C_armpl_row_ptr_[row + 1] = nnz_encountered;
-//      for (int col = 0; col < n_; col++) {
-//        if (A_[(row * n_) + col] != 0.0) {
-//          C_armpl_col_index_[nnz_encountered] = col;
-//          C_vals_[nnz_encountered] = A_[(row * n_) + col];
-//          nnz_encountered++;
-////          std::cout << "\t\tCol " << col << " = " << C_vals_[nnz_encountered] <<
-////          std::endl;
-////          std::cout << "\tnnz_encountered = " << nnz_encountered << std::endl;
-//        }
-//      }
-//    }
-
-//    std::cout << "___C =" << std::endl << "\t\t[";
-//    for (int i = 0; i < (n_ + 1); i++) {
-//      if (i != 0) {
-//        std::cout << ", ";
-//      }
-//      std::cout << C_armpl_row_ptr_[i];
-//    }
-//    std::cout << "]" << std::endl << "\t\t[";
-//    for (int i = 0; i < nnz_; i++) {
-//      if (i != 0) {
-//        std::cout << ", ";
-//      }
-//      std::cout << C_armpl_col_index_[i];
-//    }
-//    std::cout << "]" << std::endl << "\t\t[";
-//    for (int i = 0; i < nnz_; i++) {
-//      if (i != 0) {
-//        std::cout << ", ";
-//      }
-//      std::cout << C_vals_[i];
-//    }
-//    std::cout << "]" << std::endl;
-
-
-
-//    std::cout << "Loading csr A into armpl storage formats" << std::endl;
     if constexpr (std::is_same_v<T, float>) {
-      std::cout << "\tn_armpl_ = " << n_armpl_ << std::endl;
-      std::cout << "\tA_armpl_row_ptr_ (size = " << sizeof
-      (A_armpl_row_ptr_[0]) << ") = [" << A_armpl_row_ptr_[0];
-      for (int i = 1; i < (n_ + 1); i++) {
-        std::cout << ", " << A_armpl_row_ptr_[i];
-      }
-      std::cout << "]" << std::endl << "\tA_armpl_col_index_ (size = " <<
-      sizeof(A_armpl_col_index_[0]) << ") = [" <<
-      A_armpl_col_index_[0];
-      for (int i = 1; i < nnz_; i++) {
-        std::cout << ", " << A_armpl_col_index_[i];
-      }
-      std::cout << "]" << std::endl << "\tA_vals_ (size = " << sizeof
-      (A_vals_[0]) << ") = [" << A_vals_[0];
-      for (int i = 1; i < nnz_; i++) {
-        std::cout << ", " << A_vals_[i];
-      }
-      std::cout << "]" << std::endl << "flags: " << flags_ << std::endl;
-
-      status_ = armpl_spmat_create_csr_s(A_armpl_,
+//      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
+//                nnz_, flags_);
+      status_ = armpl_spmat_create_csr_s(&A_armpl_,
                                          n_armpl_,
                                          n_armpl_,
                                          A_armpl_row_ptr_,
@@ -315,21 +187,9 @@ class sp_gemm_cpu : public sp_gemm<T> {
         exit(1);
       }
 
-//      std::cout << "Loading csr C into armpl storage formats" << std::endl;
-//      status_ = armpl_spmat_create_csr_s(C_armpl_,
-//                                         n_armpl_,
-//                                         n_armpl_,
-//                                         C_armpl_row_ptr_,
-//                                         C_armpl_col_index_,
-//                                         C_vals_,
-//                                         flags_);
-//      if (status_ != ARMPL_STATUS_SUCCESS) {
-//        std::cout << "ERROR " << status_ << std::endl;
-//        exit(1);
-//      }
-
-//      std::cout << "Loading csr B into armpl storage formats" << std::endl;
-      status_ = armpl_spmat_create_csr_s(B_armpl_,
+//      printCSR(n_armpl_, B_armpl_row_ptr_, B_armpl_col_index_, B_vals_,
+//                nnz_, flags_);
+      status_ = armpl_spmat_create_csr_s(&B_armpl_,
                                          n_armpl_,
                                          n_armpl_,
                                          B_armpl_row_ptr_,
@@ -341,28 +201,9 @@ class sp_gemm_cpu : public sp_gemm<T> {
         exit(1);
       }
     } else if constexpr (std::is_same_v<T, double>) {
-      std::cout << "\tn_armpl_ = " << n_armpl_ << std::endl;
-      std::cout << "\tA_armpl_row_ptr_ (size = " << sizeof
-      (A_armpl_row_ptr_[0]) << ") = [" << A_armpl_row_ptr_[0];
-      for (int i = 1; i < (n_ + 1); i++) {
-        std::cout << ", " << A_armpl_row_ptr_[i];
-      }
-      std::cout << "]" << std::endl << "\tA_armpl_col_index_ (size = " <<
-      sizeof(A_armpl_col_index_[0]) << ") = [" <<
-      A_armpl_col_index_[0];
-      for (int i = 1; i < nnz_; i++) {
-        std::cout << ", " << A_armpl_col_index_[i];
-      }
-      std::cout << "]" << std::endl << "\tA_vals_ (size = " << sizeof
-      (A_vals_[0]) << ") = [" << A_vals_[0];
-      for (int i = 1; i < nnz_; i++) {
-        std::cout << ", " << A_vals_[i];
-      }
-      std::cout << "]" << std::endl << "flags: " << flags_ << std::endl;
-
-
-      std::cout << "About to create CSR A (double)" << std::endl;
-      status_ = armpl_spmat_create_csr_d(A_armpl_,
+//      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
+//                nnz_, flags_
+      status_ = armpl_spmat_create_csr_d(&A_armpl_,
                                          n_armpl_,
                                          n_armpl_,
                                          A_armpl_row_ptr_,
@@ -374,22 +215,9 @@ class sp_gemm_cpu : public sp_gemm<T> {
         exit(1);
       }
 
-//      std::cout << "Loading csr C into armpl storage formats" << std::endl;
-//      status_ = armpl_spmat_create_csr_d(C_armpl_,
-//                                         n_armpl_,
-//                                         n_armpl_,
-//                                         C_armpl_row_ptr_,
-//                                         C_armpl_col_index_,
-//                                         C_vals_,
-//                                         flags_);
-//      if (status_ != ARMPL_STATUS_SUCCESS) {
-//        std::cout << "ERROR " << status_ << std::endl;
-//        exit(1);
-//      }
-
-//      std::cout << "Loading csr B into armpl storage formats" << std::endl;
-      std::cout << "About to create CSR B (double)" << std::endl;
-      status_ = armpl_spmat_create_csr_d(B_armpl_,
+//      printCSR(n_armpl_, B_armpl_row_ptr_, B_armpl_col_index_, B_vals_,
+//                nnz_, flags_);
+      status_ = armpl_spmat_create_csr_d(&B_armpl_,
                                          n_armpl_,
                                          n_armpl_,
                                          B_armpl_row_ptr_,
@@ -400,10 +228,32 @@ class sp_gemm_cpu : public sp_gemm<T> {
         std::cout << "ERROR " << status_ << std::endl;
         exit(1);
       }
+//      std::cout << "Okay, all matrices made!!" << std::endl;
     }
 
-//    std::cout << "Okay, all matrices made!!" << std::endl;
   }
+
+  void printCSR(armpl_int_t n, armpl_int_t* rp, armpl_int_t* ci, T* v,
+                armpl_int_t nz, armpl_int_t f) {
+    std::cout << "\tn = " << n << std::endl;
+    std::cout << "\trow ptr (size = " << sizeof(rp[0]) << ") = [" << rp[0];
+    for (int i = 1; i < (n + 1); i++) {
+      std::cout << ", " << rp[i];
+    }
+    std::cout << "]" << std::endl << "\tcol ind (size = " << sizeof(ci[0]) <<
+    ") = [" << ci[0];
+    for (int i = 1; i < nz; i++) {
+      std::cout << ", " << ci[i];
+    }
+    std::cout << "]" << std::endl << "\tvals (size = " << sizeof(v[0]) <<
+    ") = [" << v[0];
+    for (int i = 1; i < nz; i++) {
+      std::cout << ", " << v[i];
+    }
+    std::cout << "]" << std::endl << "\tflags = " << f << std::endl;
+  }
+
+  armpl_status_t status_;
 
   armpl_int_t flags_;
 
@@ -416,13 +266,9 @@ class sp_gemm_cpu : public sp_gemm<T> {
   armpl_int_t* C_armpl_row_ptr_;
   armpl_int_t* C_armpl_col_index_;
 
-  T* A_vals_;
-  T* B_vals_;
-  T* C_vals_;
-
-  armpl_spmat_t* A_armpl_;
-  armpl_spmat_t* B_armpl_;
-  armpl_spmat_t* C_armpl_;
+  armpl_spmat_t A_armpl_;
+  armpl_spmat_t B_armpl_;
+  armpl_spmat_t C_armpl_;
 
   armpl_sparse_hint_value transA_ = ARMPL_SPARSE_OPERATION_NOTRANS;
   armpl_sparse_hint_value transB_ = ARMPL_SPARSE_OPERATION_NOTRANS;

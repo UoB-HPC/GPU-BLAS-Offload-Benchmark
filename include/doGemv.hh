@@ -33,13 +33,16 @@ class doGemv {
  public:
   doGemv(const std::string csvDir, const int iters, const int startDim,
          const int upperLimit, const bool cpuEnabled = true,
-         const bool gpuEnabled = true)
+         const bool gpuEnabled = true, const bool doDense = true, const bool
+         doSparse = true)
       : CSV_DIR(csvDir),
         iterations_(iters),
         startDimention_(startDim),
         upperLimit_(upperLimit),
         doCPU_(cpuEnabled),
-        doGPU_(gpuEnabled)
+        doGPU_(gpuEnabled),
+        doDense_(doDense),
+        doSparse_(doSparse)
 #if CPU_ENABLED
         ,
         gemvCpu_(iterations_)
@@ -56,28 +59,29 @@ class doGemv {
 
   /** Run all problem types and write data to CSV files. */
   void collectData() {
-    // Square Problem Sizes...
-    // Re-initialise offload threshold structures & previous results
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    prev_gpuResult_always = time_checksum_gflop();
-    prev_gpuResult_once = time_checksum_gflop();
-    prev_gpuResult_unified = time_checksum_gflop();
-    std::ofstream csvFile =
-        initCSVFile(CSV_DIR + "/" + getKernelName() + "_square_vector_M=N.csv");
-    for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-      // M = dim, N = dim;
-      callKernels(csvFile, dim, dim);
-    }
-    // Close file
-    csvFile.close();
-#if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Square x Vector (M=N)");
-    }
-#endif
+    if (doDense_) {
+      // Square Problem Sizes...
+      // Re-initialise offload threshold structures & previous results
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      prev_gpuResult_always = time_checksum_gflop();
+      prev_gpuResult_once = time_checksum_gflop();
+      prev_gpuResult_unified = time_checksum_gflop();
+      std::ofstream csvFile =
+          initCSVFile(CSV_DIR + "/" + getKernelName() + "_square_vector_M=N.csv");
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        // M = dim, N = dim;
+        callKernels(csvFile, dim, dim);
+      }
+      // Close file
+      csvFile.close();
+  #if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+        // Print offload results to stdout
+        printOffloadThreshold("Square x Vector (M=N)");
+      }
+  #endif
 
     // Rectangular Problem Sizes:
     // Tall and thin x Vector
@@ -181,6 +185,7 @@ class doGemv {
       printOffloadThreshold("Short-and-Wide x Vector (M=32, N)");
     }
 #endif
+  }
   }
 
  private:
@@ -493,6 +498,10 @@ class doGemv {
 
   /** Whether the GPU kernels should be run. */
   const bool doGPU_ = true;
+
+  /** Whether sparse and or dense kernels should be run. */
+  const bool doSparse_;
+  const bool doDense_;
 
 #if CPU_ENABLED
   /** The GEMV CPU kernel. */

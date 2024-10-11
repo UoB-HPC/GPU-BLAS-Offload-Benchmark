@@ -7,6 +7,10 @@ bool doSgemm = true;
 bool doDgemm = true;
 bool doSp_sgemm = true;
 bool doSp_dgemm = true;
+bool doSgemv = true;
+bool doDgemv = true;
+bool doSp_sgemv = true;
+bool doSp_dgemv = true;
 
 bool doCpu = CPU_ENABLED;
 bool doGpu = GPU_ENABLED;
@@ -50,18 +54,18 @@ int main(int argc, char** argv) {
 
   // -------- GEMV --------
   // SGEMV Comparison
-//  std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
-//  doGemv<float> sgemv(std::string(absPath), iters, startDim, upperLimit, doCpu,
-//                      doGpu);
-//  sgemv.collectData();
-//  std::cout << "Finished!" << std::endl;
-//
-//  // DGEMV Comparison
-//  std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
-//  doGemv<double> dgemv(std::string(absPath), iters, startDim, upperLimit, doCpu,
-//                       doGpu);
-//  dgemv.collectData();
-//  std::cout << "Finished!" << std::endl;
+  std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
+  doGemv<float> sgemv(std::string(absPath), iters, startDim, upperLimit, doCpu,
+                      doGpu, doSgemv, doSp_sgemv);
+  sgemv.collectData();
+  std::cout << "Finished!" << std::endl;
+
+  // DGEMV Comparison
+  std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
+  doGemv<double> dgemv(std::string(absPath), iters, startDim, upperLimit, doCpu,
+                       doGpu, doDgemv, doSp_dgemv);
+  dgemv.collectData();
+  std::cout << "Finished!" << std::endl;
 
   free(absPath);
   return 0;
@@ -146,7 +150,8 @@ void getParameters(int argc, char** argv) {
     } else if (!strcmp(argv[i], "--no_gpu")) {
       doGpu = false;
     } else if (!strcmp(argv[i], "--kernels") || !strcmp(argv[i], "-k")) {
-      doSgemm = doDgemm = doSp_sgemm = doSp_dgemm = false;
+      doSgemm = doDgemm = doSp_sgemm = doSp_dgemm =
+      doSgemv = doDgemv = doSp_sgemv = doSp_dgemv = false;
       std::string kernelList = argv[++i];
       if (kernelList.find("sp-sgemm") != std::string::npos) {
         doSp_sgemm = true;
@@ -167,13 +172,28 @@ void getParameters(int argc, char** argv) {
         doDgemm = true;
       }
 
-	    if (!doSgemm && !doDgemm && !doSp_sgemm && !doSp_dgemm) {
-		    std::cout << "ERROR - no implemented kernels in list" << std::endl;
-		    exit(1);
-	    }
-    } else if (!strcmp(argv[i], "--output_dir") || !strcmp(argv[i], "-o")) {
-      if (++i >= argc) {
-        std::cout << "ERROR - Invalid output directory" << std::endl;
+
+      if (kernelList.find("sp-sgemv") != std::string::npos) {
+        doSp_sgemv = true;
+        if (kernelList.find("sgemv") != std::string::npos &&
+            kernelList.find("sgemv") != kernelList.find("sp-sgemv") + 3) {
+          doSgemv = true;
+        }
+      } else if (kernelList.find("sgemv") != std::string::npos) {
+        doSgemv = true;
+      }
+      if (kernelList.find("sp-dgemv") != std::string::npos) {
+        doSp_dgemv = true;
+        if (kernelList.find("dgemv") != std::string::npos &&
+            kernelList.find("dgemv") != kernelList.find("sp-dgemv") + 3) {
+          doDgemv = true;
+        }
+      } else if (kernelList.find("dgemv") != std::string::npos) {
+        doDgemv = true;
+      }
+      if (!doSgemm && !doDgemm && !doSp_sgemm && !doSp_dgemm &&
+          !doSgemv && !doDgemv && !doSp_sgemv && !doSp_dgemv) {
+        std::cout << "ERROR - no implemented kernels in list" << std::endl;
         exit(1);
       } else {
         CSV_DIR = argv[i];

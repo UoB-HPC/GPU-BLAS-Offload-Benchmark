@@ -307,7 +307,7 @@ class doGemm {
                             "_sparse_square.csv");
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-          callSparseKernels(csvFile, dim, 0.99);
+          callSparseKernels(csvFile, dim, 0.9999);
         }
       }
       // Close file

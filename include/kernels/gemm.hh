@@ -106,7 +106,7 @@ class gemm {
       while (!rMat(A_, n_, 0, n_ - 1, 0, n_ - 1, 0.45, 0.22, 0.22, &gen, dist,
               false)) {}
       while (!rMat(B_, n_, 0, n_ - 1, 0, n_ - 1, 0.45, 0.22, 0.22, &gen, dist,
-              false)){}
+              false)) {}
     }
   }
 
@@ -119,17 +119,19 @@ class gemm {
             std::uniform_real_distribution<double> dist, bool bin) {
     // If a 1x1 submatrix, then add an edge and return out
     if (x1 >= x2 && y1 >= y2) {
-      if (M[(int) (y1 * n) + x1] == 0) {
-        M[(int) (y1 * n) + x1] = (bin) ? 1.0 : (((rand() % 10000) /
-                                                 100.0) - 50.0);
-        return true;
-      } else {
+      // Needed to avoid overfloe segfaults with large problem sizes
+      uint64_t index = (((uint64_t)y1 * (uint64_t)n) + (uint64_t)x1);
+      if (abs(M[index]) > 0.1) {
         return false;
+      } else {
+        // Add 1.0 if this is a binary graph, and a random real number otherwise
+        M[index] = (bin) ? 1.0 : (((rand() % 10000) / 100.0) - 50.0);
+        return true;
       }
     } else {
       // Divide up the matrix
-      int xMidPoint = (x1 == x2) ? x1 : x1 + floor((x2 - x1) / 2);
-      int yMidPoint = (y1 == y2) ? y1 : y1 + floor((y2 - y1) / 2);
+      int xMidPoint = x1 + floor((x2 - x1) / 2);
+      int yMidPoint = y1 + floor((y2 - y1) / 2);
 
       // ToDo -- add some noise to these values between iterations
       float newA = a;
@@ -137,23 +139,25 @@ class gemm {
       float newC = c;
 
       // Work out which quarter to recurse into
-      // There are some ugly ternary operators here to avoid going out of
-      // bounds in the edge case that we are already at 1 width or 1 height
+      // There are some ugly ternary operators here to avoid going out of bounds in the edge case
+      // that we are already at 1 width or 1 height
       float randomNum = dist(*gen);
       if (randomNum < a) {
-        return rMat(M, n, x1, xMidPoint, y1, yMidPoint, newA, newB, newC,
-                    gen, dist, bin);
+        return rMat(M, n, x1, xMidPoint, y1, yMidPoint,
+                    newA, newB, newC, gen, dist, bin);
       } else if (randomNum < (a + b)) {
-        return rMat(M, n, xMidPoint, x2, y1, yMidPoint, newA, newB, newC,
-                    gen, dist, bin);
+        return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2, y1, yMidPoint,
+                    newA, newB, newC, gen, dist, bin);
       } else if (randomNum < (a + b + c)) {
-        return rMat(M, n, x1, xMidPoint,  yMidPoint, y2, newA, newB, newC, gen,
-                    dist, bin);
+        return rMat(M, n, x1, xMidPoint, ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2,
+                    newA, newB, newC, gen, dist, bin);
       } else {
-        return rMat(M, n, xMidPoint, x2, yMidPoint, y2, newA,  newB, newC,
+        return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2,
+                    ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2, newA, newB, newC,
                     gen, dist, bin);
       }
     }
+    return true;
   }
 
   void toCSR(T* dense, int n_col, int n_row, T* vals, int* col_index,

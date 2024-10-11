@@ -42,8 +42,8 @@ class doGemm {
         upperLimit_(upperLimit),
         doCPU_(cpuEnabled),
         doGPU_(gpuEnabled),
-        doDense_(dense),
-        doSparse_(sparse),
+        doDense_(doDense),
+        doSparse_(doSparse)
 #if CPU_ENABLED
         ,
         gemmCpu_(iterations_),

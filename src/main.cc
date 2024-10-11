@@ -3,10 +3,10 @@
 int iters = 10;
 int startDim = 1;
 int upperLimit = 128;
-bool sgemm = true;
-bool dgemm = true;
-bool sp_sgemm = true;
-bool sp_dgemm = true;
+bool doSgemm = true;
+bool doDgemm = true;
+bool doSp_sgemm = true;
+bool doSp_dgemm = true;
 
 bool doCpu = CPU_ENABLED;
 bool doGpu = GPU_ENABLED;
@@ -37,14 +37,14 @@ int main(int argc, char** argv) {
   // SGEMM Comparison
   std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
   doGemm<float> sgemm(std::string(absPath), iters, startDim, upperLimit, doCpu,
-                      doGpu, sgemm, sp_sgemm);
+                      doGpu, doSgemm, doSp_sgemm);
   sgemm.collectData();
   std::cout << "Finished!" << std::endl;
 
   // DGEMM Comparison
   std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
   doGemm<double> dgemm(std::string(absPath), iters, startDim, upperLimit, doCpu,
-                       doGpu, dgemm, sp_dgemm);
+                       doGpu, doDgemm, doSp_dgemm);
   dgemm.collectData();
   std::cout << "Finished!" << std::endl;
 
@@ -146,28 +146,28 @@ void getParameters(int argc, char** argv) {
     } else if (!strcmp(argv[i], "--no_gpu")) {
       doGpu = false;
     } else if (!strcmp(argv[i], "--kernels") || !strcmp(argv[i], "-k")) {
-	    sgemm = dgemm = sp_sgemm = sp_dgemm = false;
+	    doSgemm = doDgemm = doSp_sgemm = doSp_dgemm = false;
 	    std::string kernelList = argv[++i];
 	    if (kernelList.find("sp-sgemm") != std::string::npos) {
-		    sp_sgemm = true;
+		    doSp_sgemm = true;
 		    if (kernelList.find("sgemm") != std::string::npos &&
 						kernelList.find("sgemm") != kernelList.find("sp-sgemm") + 3) {
-			    sgemm = true;
+			    doSgemm = true;
 		    }
 	    } else if (kernelList.find("sgemm") != std::string::npos) {
-			    sgemm = true;
+			    doSgemm = true;
 			}
 	    if (kernelList.find("sp-dgemm") != std::string::npos) {
-		    sp_dgemm = true;
+		    doSp_dgemm = true;
 		    if (kernelList.find("dgemm") != std::string::npos &&
 		        kernelList.find("dgemm") != kernelList.find("sp-dgemm") + 3) {
-			    dgemm = true;
+			    doDgemm = true;
 		    }
 	    } else if (kernelList.find("dgemm") != std::string::npos) {
-		    dgemm = true;
+		    doDgemm = true;
 	    }
 
-	    if (!sgemm && !dgemm && !sp_sgemm && !sp_dgemm) {
+	    if (!doSgemm && !doDgemm && !doSp_sgemm && !doSp_dgemm) {
 		    std::cout << "ERROR - no implemented kernels in list" << std::endl;
 		    exit(1);
 	    }
@@ -200,6 +200,10 @@ void getParameters(int argc, char** argv) {
       std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
                    "(default: "
                 << upperLimit << ")" << std::endl;
+      std::cout << "  -k  --kernels <kernels>      Comma-separated list of "
+                   "kernels to be run.  Options are sgemm, dgemm, sp-sgemm, "
+                   "sp-dgemm (default: sgemm,dgemm,sp-gemm,sp-dgemm)" <<
+                   std::endl;
       std::cout << std::endl;
       exit(0);
     } else {

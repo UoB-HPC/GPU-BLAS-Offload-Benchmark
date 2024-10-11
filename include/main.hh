@@ -15,4 +15,4 @@ void printBenchmarkConfig(const int iters, const int upperLimit);
 int parseInt(const char* str);
 
 /** A function which parsen the runtime arguments. */
-void getParameters(int argc, char* argv[]);
+void getParameters(int argc, char** argv);

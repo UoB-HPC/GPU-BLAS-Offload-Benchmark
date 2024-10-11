@@ -146,26 +146,26 @@ void getParameters(int argc, char** argv) {
     } else if (!strcmp(argv[i], "--no_gpu")) {
       doGpu = false;
     } else if (!strcmp(argv[i], "--kernels") || !strcmp(argv[i], "-k")) {
-	    doSgemm = doDgemm = doSp_sgemm = doSp_dgemm = false;
-	    std::string kernelList = argv[++i];
-	    if (kernelList.find("sp-sgemm") != std::string::npos) {
-		    doSp_sgemm = true;
-		    if (kernelList.find("sgemm") != std::string::npos &&
-						kernelList.find("sgemm") != kernelList.find("sp-sgemm") + 3) {
-			    doSgemm = true;
-		    }
-	    } else if (kernelList.find("sgemm") != std::string::npos) {
-			    doSgemm = true;
-			}
-	    if (kernelList.find("sp-dgemm") != std::string::npos) {
-		    doSp_dgemm = true;
-		    if (kernelList.find("dgemm") != std::string::npos &&
-		        kernelList.find("dgemm") != kernelList.find("sp-dgemm") + 3) {
-			    doDgemm = true;
-		    }
-	    } else if (kernelList.find("dgemm") != std::string::npos) {
-		    doDgemm = true;
-	    }
+      doSgemm = doDgemm = doSp_sgemm = doSp_dgemm = false;
+      std::string kernelList = argv[++i];
+      if (kernelList.find("sp-sgemm") != std::string::npos) {
+        doSp_sgemm = true;
+        if (kernelList.find("sgemm") != std::string::npos &&
+            kernelList.find("sgemm") != kernelList.find("sp-sgemm") + 3) {
+          doSgemm = true;
+        }
+      } else if (kernelList.find("sgemm") != std::string::npos) {
+        doSgemm = true;
+      }
+      if (kernelList.find("sp-dgemm") != std::string::npos) {
+        doSp_dgemm = true;
+        if (kernelList.find("dgemm") != std::string::npos &&
+            kernelList.find("dgemm") != kernelList.find("sp-dgemm") + 3) {
+          doDgemm = true;
+        }
+      } else if (kernelList.find("dgemm") != std::string::npos) {
+        doDgemm = true;
+      }
 
 	    if (!doSgemm && !doDgemm && !doSp_sgemm && !doSp_dgemm) {
 		    std::cout << "ERROR - no implemented kernels in list" << std::endl;

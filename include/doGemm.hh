@@ -65,7 +65,7 @@ class doGemm {
   void collectData() {
     // ToDo -- I've hard coded false here as kernel selection was not working
     //  .  Needs to be fixed
-    if (false) {
+    if (doDense_) {
       // Square Problem Sizes...
       // Re-initialise offload threshold structures
       cpuGpu_always_ = cpuGpu_offloadThreshold();
@@ -275,13 +275,12 @@ class doGemm {
       }
 #endif
     }
-
-    if (true) {    // Square sparse matrix - sparse matrix multiplication
+    if (doSparse_) {    // Square sparse matrix - sparse matrix multiplication
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
       std::ofstream csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
-              getKernelName() + "_sparse_square.csv");
+              getKernelName() + "_sparse_square_99.csv");
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           callSparseKernels(csvFile, dim, 0.99);
@@ -290,7 +289,56 @@ class doGemm {
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
         // Print offload results to stdout
-        printOffloadThreshold("Sparse Square");
+        printOffloadThreshold("Sparse Square 0.99");
+      }
+#endif
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
+              getKernelName() + "_sparse_square_999.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+          callSparseKernels(csvFile, dim, 0.999);
+        }
+      }
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+        // Print offload results to stdout
+        printOffloadThreshold("Sparse Square 0.999");
+      }
+#endif
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
+              getKernelName() + "_sparse_square_9999.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+          callSparseKernels(csvFile, dim, 0.9999);
+        }
+      }
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+        // Print offload results to stdout
+        printOffloadThreshold("Sparse Square 0.9999");
+      }
+#endif
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
+                                          getKernelName() +
+                                          "_sparse_square_99999.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+          callSparseKernels(csvFile, dim, 0.99999);
+        }
+      }
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+        // Print offload results to stdout
+        printOffloadThreshold("Sparse Square 0.99999");
       }
 #endif
     }
@@ -484,17 +532,27 @@ class doGemm {
 
 	void callSparseKernels(std::ofstream& csvFile, const int N, const float
 	sparsity) {
+//    std::cout << "Problem size n = " << N << std::endl;
 		const double probSize = calcKib(N, N, N);
+//    std::cout << "\t\tGot problem size" << std::endl;
 		const uint64_t flops = calcFlops(N, N, N);
-		std::string kernelName = getKernelName();
+//    std::cout << "\t\tGot flops" << std::endl;
 
+		std::string kernelName = getKernelName();
+//    std::cout << "\t\tGot kernel name" << std::endl;
 #if CPU_ENABLED
+//    std::cout << "---- IN CPU_ENABLED #if ----" << std::endl;
     if (doCPU_) {
+//      std::cout << "---- IN if (doCPU_) ----" << std::endl;
+//      std::cout << "\tCPU";
       spGemmCpu_.initialise(N, sparsity);
+//      std::cout << " initialised";
       time_checksum_gflop cpuResult = spGemmCpu_.compute();
+//      std::cout << " computed";
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
-		writeLineToCsv(csvFile, "cpu", kernelName, N, N, N, probSize, iterations_,
+		  writeLineToCsv(csvFile, "cpu", kernelName, N, N, N, probSize, iterations_,
 		               cpuResult.runtime, cpuResult.gflops);
+//      std::cout << " done!" << std::endl;
     }
 #endif
 #if GPU_ENABLED
@@ -502,22 +560,34 @@ class doGemm {
     // - UNIFIED : data passed from host to device (and device to host) as
     //             needed
     if (doGPU_) {
+//      std::cout << "\tUnified";
       spGemmGpu_.initialise(gpuOffloadType::unified, N, sparsity);
+//      std::cout << " initialised";
       time_checksum_gflop gpuResult_unified = spGemmGpu_.compute();
+//      std::cout << " computed";
       gpuResult_unified.gflops =
       calcGflops(flops, iterations_, gpuResult_unified.runtime);
+//      std::cout << " done!" << std::endl;
 
     // - ALWAYS: Offload to/from GPU every iteration
+//      std::cout << "\tAlways";
       spGemmGpu_.initialise(gpuOffloadType::always, N, sparsity);
+//      std::cout << " initialised";
       time_checksum_gflop gpuResult_always = spGemmGpu_.compute();
+//      std::cout << " computed";
       gpuResult_always.gflops =
             calcGflops(flops, iterations_, gpuResult_always.runtime);
+//      std::cout << " done!" << std::endl;
 		// - ONCE : Offload to/from GPU once before all iterations and once
 		// after
+//      std::cout << "\tOnce";
       spGemmGpu_.initialise(gpuOffloadType::once, N, sparsity);
+//      std::cout << " initialised";
 		  time_checksum_gflop gpuResult_once = spGemmGpu_.compute();
+//      std::cout << " computed";
 		  gpuResult_once.gflops =
 						calcGflops(flops, iterations_, gpuResult_once.runtime);
+//      std::cout << " done!" << std::endl << std::endl;
 		// ToDo -- non-default GPU operations
 
 		// Write lines to CSV file

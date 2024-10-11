@@ -95,10 +95,11 @@ class gemv {
                      .time_since_epoch().count());
     std::uniform_real_distribution<double> dist(0.0, 1.0);
 
-    int edges = 1 + (int) (n_ * n_ * (1 - sparsity_));
+    uint64_t edges = 1 + (uint64_t)((double)n_ * (double)n_ * (1.0 -
+            sparsity_));
 
     // Using a=0.45 and b=c=0.22 as default probabilities
-    for (int i = 0; i < edges; i++) {
+    for (uint64_t i = 0; i < edges; i++) {
       while (!rMat(A_, n_, 0, n_ - 1, 0, n_ - 1, 0.45, 0.22, 0.22, &gen, dist,
                    false)) {}
     }

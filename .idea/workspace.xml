@@ -15,9 +15,14 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="working changes">
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="No longer overwriting B_">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ArmPL/sp_gemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/sp_gemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/doGemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doGemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/doGemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doGemv.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/kernels/CPU/sp_gemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/CPU/sp_gemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/kernels/gemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/gemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/kernels/gemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/gemv.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.cc" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -177,7 +182,7 @@
       <workItem from="1726828018604" duration="52619000" />
       <workItem from="1727941759103" duration="43000" />
       <workItem from="1727941814674" duration="165000" />
-      <workItem from="1727941995420" duration="3199000" />
+      <workItem from="1727941995420" duration="22747000" />
     </task>
     <task id="LOCAL-00001" summary="trivial changes">
       <option name="closed" value="true" />
@@ -507,7 +512,15 @@
       <option name="project" value="LOCAL" />
       <updated>1727942003511</updated>
     </task>
-    <option name="localTasksCounter" value="42" />
+    <task id="LOCAL-00042" summary="No longer overwriting B_">
+      <option name="closed" value="true" />
+      <created>1727949079616</created>
+      <option name="number" value="00042" />
+      <option name="presentableId" value="LOCAL-00042" />
+      <option name="project" value="LOCAL" />
+      <updated>1727949079616</updated>
+    </task>
+    <option name="localTasksCounter" value="43" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -525,7 +538,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Adding matrix type enum class" />
     <MESSAGE value="changes" />
     <MESSAGE value="adding command line kernel selection" />
     <MESSAGE value="Adding basic sparse multiplication kernel for default CPU and GPU" />
@@ -550,6 +562,7 @@
     <MESSAGE value="Rebasing" />
     <MESSAGE value="Adding AOCL files" />
     <MESSAGE value="working changes" />
-    <option name="LAST_COMMIT_MESSAGE" value="working changes" />
+    <MESSAGE value="No longer overwriting B_" />
+    <option name="LAST_COMMIT_MESSAGE" value="No longer overwriting B_" />
   </component>
 </project>

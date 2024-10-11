@@ -1,7 +1,6 @@
 #include "../include/main.hh"
 
 int iters = 10;
-int startDim = 1;
 int upperLimit = 128;
 
 bool doCpu = CPU_ENABLED;
@@ -141,6 +140,32 @@ void getParameters(int argc, char* argv[]) {
       doCpu = false;
     } else if (!strcmp(argv[i], "--no_gpu")) {
       doGpu = false;
+    } else if (!strcmp(argv[i], "--kernels") || !strcmp(argv[i], "-k")) {
+	    sgemm = dgemm = sp_sgemm = sp_dgemm = false;
+	    std::string kernelList = argv[++i];
+	    if (kernelList.find("sp-sgemm") != std::string::npos) {
+		    sp_sgemm = true;
+		    if (kernelList.find("sgemm") != std::string::npos &&
+						kernelList.find("sgemm") != kernelList.find("sp-sgemm") + 3) {
+			    sgemm = true;
+		    }
+	    } else if (kernelList.find("sgemm") != std::string::npos) {
+			    sgemm = true;
+			}
+	    if (kernelList.find("sp-dgemm") != std::string::npos) {
+		    sp_dgemm = true;
+		    if (kernelList.find("dgemm") != std::string::npos &&
+		        kernelList.find("dgemm") != kernelList.find("sp-dgemm") + 3) {
+			    dgemm = true;
+		    }
+	    } else if (kernelList.find("dgemm") != std::string::npos) {
+		    dgemm = true;
+	    }
+
+	    if (!sgemm && !dgemm && !sp_sgemm && !sp_dgemm) {
+		    std::cout << "ERROR - no implemented kernels in list" << std::endl;
+		    exit(1);
+	    }
     } else if (!strcmp(argv[i], "--output_dir") || !strcmp(argv[i], "-o")) {
       if (++i >= argc) {
         std::cout << "ERROR - Invalid output directory" << std::endl;

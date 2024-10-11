@@ -303,8 +303,8 @@ class doGemm {
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
-      csvFile = initCSVFile(std::string(CSV_DIR) + "/" + getKernelName() +
-                            "_sparse_square.csv");
+      std::ofstream csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
+              getKernelName() + "_sparse_square.csv");
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           callSparseKernels(csvFile, dim, 0.9999);

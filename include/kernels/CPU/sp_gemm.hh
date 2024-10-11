@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef CPU_ONEMKL
 #include "../gemm.hh"
 
 #include <random>

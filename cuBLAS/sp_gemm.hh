@@ -109,9 +109,9 @@ class sp_gemm_gpu : public sp_gemm<T> {
 
     initInputMatricesSparse(sparsity);
 
-    toCSR(A_, n_, n_, A_val_, A_col_, A_row_);
+    toCSR_int(A_, n_, n_, A_val_, A_col_, A_row_);
 
-    toCSR(B_, n_, n_, B_val_, B_col_, B_row_);
+    toCSR_int(B_, n_, n_, B_val_, B_col_, B_row_);
 
 
 //    std::cout << "_____Matrix A_____" << std::endl;

@@ -37,14 +37,14 @@ int main(int argc, char** argv) {
   // SGEMM Comparison
   std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
   doGemm<float> sgemm(std::string(absPath), iters, startDim, upperLimit, doCpu,
-                      doGpu);
+                      doGpu, sgemm, sp_sgemm);
   sgemm.collectData();
   std::cout << "Finished!" << std::endl;
 
   // DGEMM Comparison
   std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
   doGemm<double> dgemm(std::string(absPath), iters, startDim, upperLimit, doCpu,
-                       doGpu);
+                       doGpu, dgemm, sp_dgemm);
   dgemm.collectData();
   std::cout << "Finished!" << std::endl;
 

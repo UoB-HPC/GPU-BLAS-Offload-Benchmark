@@ -15,8 +15,9 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Providing armpl with hints">
-      <change beforePath="$PROJECT_DIR$/ArmPL/sp_gemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/sp_gemm.hh" afterDir="false" />
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Adding AOCL files">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/createGflopsGraphs.py" beforeDir="false" afterPath="$PROJECT_DIR$/createGflopsGraphs.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -177,6 +178,7 @@
       <workItem from="1727941759103" duration="43000" />
       <workItem from="1727941814674" duration="165000" />
       <workItem from="1727941995420" duration="22747000" />
+      <workItem from="1729503392250" duration="1773000" />
     </task>
     <task id="LOCAL-00001" summary="trivial changes">
       <option name="closed" value="true" />

@@ -54,7 +54,8 @@ for i in range(0, len(gemmFilenames)):
 
     # Get number of iterations performed and kernel name
     line1 = lines[0].split(',')
-    iters = int(line1[6])
+    sparsity = float(line1[6])
+    iters = int(line1[7])
     kernel = line1[1]
 
     # Get gflops (y-axis) and MNK values (x-axis) for CPU and all GPU types
@@ -143,7 +144,9 @@ for i in range(0, len(gemmFilenames)):
     elif kernel == "dgemm":
         fp = "FP64"
     y_name = "{} GFLOP/s".format(fp)        
-    title = "{}GEMM Performance for {} Problems - {} iterations per problem size".format(kernel[0].upper(), inputTypeStr, iters)
+    title = ("{}GEMM Performance for {} Problems (sparsity = {})- {} "
+             "iterations per problemize").format(kernel[0].upper(),
+                                                 inputTypeStr, sparsity, iters)
 
     # Make Graph
     fig1 = plt.figure(figsize=(28,16))

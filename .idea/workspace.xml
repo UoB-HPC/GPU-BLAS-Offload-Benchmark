@@ -16,8 +16,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Adding AOCL files">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/createGflopsGraphs.py" beforeDir="false" afterPath="$PROJECT_DIR$/createGflopsGraphs.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ArmPL/sp_gemv.hh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -550,7 +549,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Adding basic sparse multiplication kernel for default CPU and GPU" />
     <MESSAGE value="Implementing cuSPARSE kernel" />
     <MESSAGE value="Trying to work out CSR malloc bug" />
     <MESSAGE value="cuSPARSE unified memory implementation" />
@@ -575,6 +573,7 @@
     <MESSAGE value="No longer overwriting B_" />
     <MESSAGE value="Adding kernel selection for gemv" />
     <MESSAGE value="Providing armpl with hints" />
-    <option name="LAST_COMMIT_MESSAGE" value="Providing armpl with hints" />
+    <MESSAGE value="Updating createGflopsGraphs.py to show sparsity" />
+    <option name="LAST_COMMIT_MESSAGE" value="Updating createGflopsGraphs.py to show sparsity" />
   </component>
 </project>

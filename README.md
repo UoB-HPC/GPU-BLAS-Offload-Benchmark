@@ -9,6 +9,8 @@ For each supported BLAS kernel (listed below) GPU-BLOB will run `n` iterations o
 
 Each BLAS kernel is tested with a range of different problem size designs in an attempt to capture the performance differences that can occur between different problem sets when utilising the same underlying kernel. For each BLAS kernel and problem type pair, a table will be displayed which outlines the minimum problem size at which offloading to the GPU became worthwhile for **all** larger problem sizes. If for the number of iterations and maximum problem dimension this offload threshold cannot be found, the table will show `0` for each problem dimension and `N/A` for the GPU and CPU GFLOP/s.
 
+When finding the _GPU offload threshold_, the current and previous problem sizes are taken into consideration. This is so that momentary, single problem size, dips in GPU performance (due to inter-run anomalies) do not skew the calculated _offload threshold_.
+
 All computations performed by each BLAS library are done in column-major and are assumed to be functionally correct. However, a simple checksum is calculated after each CPU and GPU run for each problem size to ensure all utilised libraries are computing the same result.\
 Only when an error occurs will any checksum be displayed to the user.
 

@@ -103,7 +103,7 @@ class doGemm {
       prev_gpuResult_once = time_checksum_gflop();
       prev_gpuResult_unified = time_checksum_gflop();
       std::ofstream csvFile =
-          initCSVFile(CSV_DIR + "/" + getKernelName() + probName);
+          initCSVFile(CSV_DIR + "/" + getKernelName() + probName + ".csv");
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // Update values of m, n, k
         // m = dims[0], n = dims[1], k = dims[2]

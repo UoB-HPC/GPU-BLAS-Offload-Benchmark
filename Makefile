@@ -229,6 +229,8 @@ LDFLAGS = -lm
 
 # -------
 
+mkfile_path ?= $(patsubst %Makefile,%,$(abspath $(lastword $(MAKEFILE_LIST))))
+
 EXE = gpu-blob
 
 .PHONY: all $(EXE) clean
@@ -237,7 +239,7 @@ all: $(EXE)
 
 $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
 	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/libconsume.so
-	$(CXX) $(SRC_FILES) $(CXXFLAGS) -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS) -o $@
+	$(CXX) $(SRC_FILES) $(CXXFLAGS) -DSRC_PATH=\"${mkfile_path}\" -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS) -o $@
 
 clean:
 	rm -f $(EXE) src/Consume/libconsume.so

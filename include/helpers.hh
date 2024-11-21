@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <vector>
 
 /** Create a new csv file and initialise the column headers.
  * Returns the ofstream to the open file. */
@@ -46,4 +47,35 @@ double calcGflops(const uint64_t flops, const int iters, const double seconds) {
   return (seconds == 0.0 || seconds == INFINITY)
              ? 0.0
              : ((double)(flops * iters) / seconds) * 1e-9;
+}
+
+/** Gets all problem types from a file in include/Problems.
+ * Each problem type is parsed as a vector of strings, with each string
+ * representing one of the problem's dimensions or problem type name. */
+std::vector<std::vector<std::string>> getProblemTypes(
+    const std::string probFilename) {
+  std::ifstream probFile(probFilename);
+  std::string line;
+  std::vector<std::vector<std::string>> outVec;
+  while (std::getline(probFile, line)) {
+    // Ignore all lines that do not start with `(` and end with `)`
+    // (i.e. ignore comments and incorrect problem definitions)
+    if (!(line.front() == '(' && line.back() == ')')) continue;
+
+    std::vector<std::string> parsedLine;
+    // Remove 0th and last characters (removing the parentheses)
+    line = line.substr(1, line.length() - 2);
+    // Extract all entries from problem (substrings delimited by ',')
+    size_t commaPos = line.find(',');
+    size_t front = 0;
+    while (commaPos != std::string::npos) {
+      parsedLine.push_back(line.substr(front, (commaPos - front)));
+      front = commaPos + 1;
+      commaPos = line.find(',', front);
+    }
+    // Add final entry to parsed line
+    parsedLine.push_back(line.substr(front));
+    outVec.push_back(parsedLine);
+  }
+  return outVec;
 }

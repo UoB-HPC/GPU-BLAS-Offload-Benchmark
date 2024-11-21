@@ -1,0 +1,30 @@
+// Problem Type definition = (M,N,K,PROBLEM_NAME)
+// `DIM` = dimension will be incremented by 1 each iteration
+// `PROBLEM_NAME` will be used for GPU offload threshold tables printed to STDOUT and for CSV file names
+//
+// At least one dimension must be set to `DIM`
+// Non-DIM/u-integer dimensions must be set to a multiple of another dimension: set as `16K` for example.
+
+// Square
+(DIM,DIM,DIM,square_square_M=N=K)
+
+
+// Tall and thin x Short and wide
+(16K,16K,DIM,tall-thin_short-wide_M=N_M=16K)
+(DIM,DIM,32,tall-thin_short-wide_M=N_K=32)
+
+
+// Short and wide x Tall and thin
+(DIM,DIM,16M,short-wide_tall-thin_M=N_K=16M)
+(32,32,DIM,short-wide_tall-thin_M=N=32_K)
+
+
+// Tall and Thin x Square
+(16K,DIM,DIM,tall-thin_square_K=N_M=16K)
+(DIM,32,32,tall-thin_square_K=N=32_M)
+
+
+// Square x Short and Wide
+(DIM,16K,DIM,square_short-wide_M=K_N=16K)
+(32,DIM,32,square_short-wide_M=K=32_N)
+

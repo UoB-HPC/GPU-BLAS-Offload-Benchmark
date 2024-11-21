@@ -56,241 +56,75 @@ class doGemm {
 
   /** Run all problem types and write data to CSV files. */
   void collectData() {
-    // Square Problem Sizes...
-    // Re-initialise offload threshold structures & previous results
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    prev_gpuResult_always = time_checksum_gflop();
-    prev_gpuResult_once = time_checksum_gflop();
-    prev_gpuResult_unified = time_checksum_gflop();
-    std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
-                                        "_square_square_M=N=K.csv");
-    for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-      // M = dim, N = dim, K = dim;
-      callKernels(csvFile, dim, dim, dim);
-    }
-    // Close file
-    csvFile.close();
-#if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Square x Square (M=N=K)");
-    }
-#endif
+    auto probTypes =
+        getProblemTypes(SRC_PATH "include/Problems/gemmProblems.types");
+    // Loop over all problem types and measure performance data
+    for (size_t i = 0; i < probTypes.size(); i++) {
+      // Init needed variables
+      std::vector<std::string> pType = probTypes[i];
+      //    - int* = pointer to dimension variable
+      std::vector<int*> iteratingDims;
+      //    - int* = pointer to dimension to scale
+      //    - int = multiplicand scalar value
+      //    - int* = pointer to dimension scaled on
+      std::vector<std::tuple<int*, int, int*>> scalingDims;
+      // m = dims[0], n = dims[1], k = dims[2]
+      int dims[3] = {0, 0, 0};
 
-    // Rectangular Problem Sizes:
-    // Tall and thin x Short and wide
-    // Re-initialise offload threshold structures & previous results
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    prev_gpuResult_always = time_checksum_gflop();
-    prev_gpuResult_once = time_checksum_gflop();
-    prev_gpuResult_unified = time_checksum_gflop();
-    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
-                          "_tall-thin_short-wide_M=N_M=16K.csv");
-    int K = startDimention_;
-    int M = 16 * K;
-    int N = 16 * K;
-    while (M <= upperLimit_) {
-      callKernels(csvFile, M, N, K);
-      M += 16;
-      N += 16;
-      K++;
-    }
-    // Close file
-    csvFile.close();
-#if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, M=16K)");
-    }
-#endif
-
-    // Tall and thin x Short and wide
-    // Re-initialise offload threshold structures & previous results
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    prev_gpuResult_always = time_checksum_gflop();
-    prev_gpuResult_once = time_checksum_gflop();
-    prev_gpuResult_unified = time_checksum_gflop();
-    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
-                          "_tall-thin_short-wide_M=N_K=32.csv");
-    if (upperLimit_ >= 32) {
-      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-        // M = dim, N = dim, K = 32;
-        callKernels(csvFile, dim, dim, 32);
+      // Extract problem name
+      std::string probName = pType.back();
+      pType.erase(pType.end() - 1);
+      // Extract dimension qualities
+      for (int d = 0; d < 3; d++) {
+        std::string pTypeElem = pType[i];
+        if (pTypeElem == "DIM")
+          iteratingDims.push_back(&dims[i]);
+        else if (pTypeElem[pTypeElem.length() - 1] == 'M') {
+          int scalar = std::stoi(pTypeElem.substr(0, pTypeElem.length() - 1));
+          scalingDims.emplace_back(&dims[i], scalar, &dims[0]);
+        } else if (pTypeElem[pTypeElem.length() - 1] == 'N') {
+          int scalar = std::stoi(pTypeElem.substr(0, pTypeElem.length() - 1));
+          scalingDims.emplace_back(&dims[i], scalar, &dims[1]);
+        } else if (pTypeElem[pTypeElem.length() - 1] == 'K') {
+          int scalar = std::stoi(pTypeElem.substr(0, pTypeElem.length() - 1));
+          scalingDims.emplace_back(&dims[i], scalar, &dims[2]);
+        } else {
+          // Should be scalar value if not DIM or based on another dimension
+          dims[i] = std::stoi(pTypeElem);
+        }
       }
-    }
-    // Close file
-    csvFile.close();
-#if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, K=32)");
-    }
-#endif
 
-    // Short and wide x Tall and thin
-    // Re-initialise offload threshold structures & previous results
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    prev_gpuResult_always = time_checksum_gflop();
-    prev_gpuResult_once = time_checksum_gflop();
-    prev_gpuResult_unified = time_checksum_gflop();
-    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
-                          "_short-wide_tall-thin_M=N_K=16M.csv");
-    M = startDimention_;
-    N = startDimention_;
-    K = 16 * M;
-    while (K <= upperLimit_) {
-      callKernels(csvFile, M, N, K);
-      M++;
-      N++;
-      K += 16;
-    }
-    // Close file
-    csvFile.close();
-#if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N, K=16M)");
-    }
-#endif
-
-    // Short and wide x Tall and thin
-    // Re-initialise offload threshold structures & previous results
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    prev_gpuResult_always = time_checksum_gflop();
-    prev_gpuResult_once = time_checksum_gflop();
-    prev_gpuResult_unified = time_checksum_gflop();
-    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
-                          "_short-wide_tall-thin_M=N=32_K.csv");
-    if (upperLimit_ >= 32) {
+      // Execute Problem Type...
+      // Re-initialise offload threshold structures & previous results
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      prev_gpuResult_always = time_checksum_gflop();
+      prev_gpuResult_once = time_checksum_gflop();
+      prev_gpuResult_unified = time_checksum_gflop();
+      std::ofstream csvFile =
+          initCSVFile(CSV_DIR + "/" + getKernelName() + probName);
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-        // M = 32, N = 32, K = dim;
-        callKernels(csvFile, 32, 32, dim);
+        // Update values of m, n, k
+        // m = dims[0], n = dims[1], k = dims[2]
+        for (auto id : iteratingDims) {
+          id[0] = dim;
+        }
+        for (auto sd : scalingDims) {
+          std::get<0>(sd)[0] = std::get<1>(sd) * std::get<2>(sd)[0];
+        }
+        // Execute kernel
+        callKernels(csvFile, dims[0], dims[1], dims[2]);
       }
-    }
-    // Close file
-    csvFile.close();
+      // Close file
+      csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N=32, K)");
-    }
-#endif
-
-    // Tall and Thin x Square
-    // Re-initialise offload threshold structures & previous results
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    prev_gpuResult_always = time_checksum_gflop();
-    prev_gpuResult_once = time_checksum_gflop();
-    prev_gpuResult_unified = time_checksum_gflop();
-    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
-                          "_tall-thin_square_K=N_M=16K.csv");
-    K = startDimention_;
-    N = startDimention_;
-    M = 16 * K;
-    while (M <= upperLimit_) {
-      callKernels(csvFile, M, N, K);
-      M += 16;
-      N++;
-      K++;
-    }
-    // Close file
-    csvFile.close();
-#if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Tall-and-Thin x Square (K=N, M=16K)");
-    }
-#endif
-
-    // Tall and Thin x Square
-    // Re-initialise offload threshold structures & previous results
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    prev_gpuResult_always = time_checksum_gflop();
-    prev_gpuResult_once = time_checksum_gflop();
-    prev_gpuResult_unified = time_checksum_gflop();
-    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
-                          "_tall-thin_square_K=N=32_M.csv");
-    if (upperLimit_ >= 32) {
-      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-        // M = dim, N = 32, K = 32;
-        callKernels(csvFile, dim, 32, 32);
+      if (doCPU_ && doGPU_) {
+        // Print offload results to stdout
+        printOffloadThreshold(probName);
       }
-    }
-    // Close file
-    csvFile.close();
-#if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Tall-and-Thin x Square (M, K=N=32)");
-    }
 #endif
-
-    // Square x Short and Wide
-    // Re-initialise offload threshold structures & previous results
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    prev_gpuResult_always = time_checksum_gflop();
-    prev_gpuResult_once = time_checksum_gflop();
-    prev_gpuResult_unified = time_checksum_gflop();
-    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
-                          "_square_short-wide_M=K_N=16K.csv");
-    M = startDimention_;
-    K = startDimention_;
-    N = 16 * K;
-    while (N <= upperLimit_) {
-      callKernels(csvFile, M, N, K);
-      M++;
-      N += 16;
-      K++;
     }
-    // Close file
-    csvFile.close();
-#if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Square x Short-and-Wide (M=K, N=16K)");
-    }
-#endif
-
-    // Square x Short and Wide
-    // Re-initialise offload threshold structures & previous results
-    cpuGpu_always_ = cpuGpu_offloadThreshold();
-    cpuGpu_once_ = cpuGpu_offloadThreshold();
-    cpuGpu_unified_ = cpuGpu_offloadThreshold();
-    prev_gpuResult_always = time_checksum_gflop();
-    prev_gpuResult_once = time_checksum_gflop();
-    prev_gpuResult_unified = time_checksum_gflop();
-    csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
-                          "_square_short-wide_M=K=32_N.csv");
-    if (upperLimit_ >= 32) {
-      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-        // M = 32, N = dim, K = 32;
-        callKernels(csvFile, 32, dim, 32);
-      }
-    }
-    // Close file
-    csvFile.close();
-#if CPU_ENABLED && GPU_ENABLED
-    if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Square x Short-and-Wide (M=K=32, N)");
-    }
-#endif
   }
 
  private:

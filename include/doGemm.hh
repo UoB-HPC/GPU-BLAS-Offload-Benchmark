@@ -76,21 +76,21 @@ class doGemm {
       pType.erase(pType.end() - 1);
       // Extract dimension qualities
       for (int d = 0; d < 3; d++) {
-        std::string pTypeElem = pType[i];
+        std::string pTypeElem = pType[d];
         if (pTypeElem == "DIM")
-          iteratingDims.push_back(&dims[i]);
+          iteratingDims.push_back(&dims[d]);
         else if (pTypeElem[pTypeElem.length() - 1] == 'M') {
           int scalar = std::stoi(pTypeElem.substr(0, pTypeElem.length() - 1));
-          scalingDims.emplace_back(&dims[i], scalar, &dims[0]);
+          scalingDims.emplace_back(&dims[d], scalar, &dims[0]);
         } else if (pTypeElem[pTypeElem.length() - 1] == 'N') {
           int scalar = std::stoi(pTypeElem.substr(0, pTypeElem.length() - 1));
-          scalingDims.emplace_back(&dims[i], scalar, &dims[1]);
+          scalingDims.emplace_back(&dims[d], scalar, &dims[1]);
         } else if (pTypeElem[pTypeElem.length() - 1] == 'K') {
           int scalar = std::stoi(pTypeElem.substr(0, pTypeElem.length() - 1));
-          scalingDims.emplace_back(&dims[i], scalar, &dims[2]);
+          scalingDims.emplace_back(&dims[d], scalar, &dims[2]);
         } else {
           // Should be scalar value if not DIM or based on another dimension
-          dims[i] = std::stoi(pTypeElem);
+          dims[d] = std::stoi(pTypeElem);
         }
       }
 

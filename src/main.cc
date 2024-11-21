@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
 
   if (!doCpu && !doGpu) {
     std::cout << "Finished!" << std::endl;
-    exit(0);
+    exit(EXIT_SUCCESS);
   }
 
   // Ensure CSV file directory exists.

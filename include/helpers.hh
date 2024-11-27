@@ -77,5 +77,6 @@ std::vector<std::vector<std::string>> getProblemTypes(
     parsedLine.push_back(line.substr(front));
     outVec.push_back(parsedLine);
   }
+  probFile.close();
   return outVec;
 }

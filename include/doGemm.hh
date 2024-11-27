@@ -69,7 +69,7 @@ class doGemm {
       //    - int* = pointer to dimension scaled on
       std::vector<std::tuple<int*, int, int*>> scalingDims;
       // m = dims[0], n = dims[1], k = dims[2]
-      int dims[3] = {0, 0, 0};
+      std::array<int, 3> dims = {0, 0, 0};
 
       // Extract problem name
       std::string probName = pType.back();

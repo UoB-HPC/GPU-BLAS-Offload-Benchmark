@@ -27,6 +27,11 @@ namespace cpu {
           n_ = n;
           sparsity_ = sparsity;
 
+          // Note that the below should be the same as the edges calculation
+          // used in the initInputMatricesSparse function.  If changed here,
+          // change there
+          nnz_ = 1 + (uint64_t)((double)n_ * (double)n_ * (1.0 - sparsity_));
+
           A_ = (T*)malloc(sizeof(T) * m_ * n_);
           x_ = (T*)malloc(sizeof(T) * n_);
           y_ = (T*)malloc(sizeof(T) * m_);
@@ -34,6 +39,9 @@ namespace cpu {
           // Initialise the matrix and vectors
           initInputMatrixVectorSparse();
         }
+
+    protected:
+        uint64_t nnz_;
 
     private:
         /** Do any necessary cleanup (free pointers, close library handles, etc.)
@@ -43,5 +51,6 @@ namespace cpu {
           free(x_);
           free(y_);
         }
+
     };
 }  // namespace cpu

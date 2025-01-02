@@ -292,14 +292,14 @@ class doGemm {
         callDenseKernels(csvFile, 32, dim, 32);
       }
     }
-    // Close file
-    csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
     if (doCPU_ && doGPU_) {
       // Print offload results to stdout
       printOffloadThreshold("Square x Short-and-Wide (M=K=32, N)");
     }
 #endif
+      // Close file
+      csvFile.close();
     }
     if (doSparse_) {    // Square sparse matrix - sparse matrix multiplication
       cpuGpu_always_ = cpuGpu_offloadThreshold();
@@ -307,10 +307,8 @@ class doGemm {
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
       std::ofstream csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
               getKernelName() + "_sparse_square_99.csv");
-      if (upperLimit_ >= 32) {
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-          callSparseKernels(csvFile, dim, 0.99);
-        }
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        callSparseKernels(csvFile, dim, 0.99);
       }
       // Close file
       csvFile.close();
@@ -325,10 +323,8 @@ class doGemm {
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
       csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
               getKernelName() + "_sparse_square_999.csv");
-      if (upperLimit_ >= 32) {
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-          callSparseKernels(csvFile, dim, 0.999);
-        }
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        callSparseKernels(csvFile, dim, 0.999);
       }
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
@@ -341,10 +337,8 @@ class doGemm {
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
       csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
               getKernelName() + "_sparse_square_9999.csv");
-      if (upperLimit_ >= 32) {
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-          callSparseKernels(csvFile, dim, 0.9999);
-        }
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        callSparseKernels(csvFile, dim, 0.9999);
       }
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
@@ -358,10 +352,8 @@ class doGemm {
       csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
                                           getKernelName() +
                                           "_sparse_square_99999.csv");
-      if (upperLimit_ >= 32) {
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-          callSparseKernels(csvFile, dim, 0.99999);
-        }
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        callSparseKernels(csvFile, dim, 0.99999);
       }
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {

@@ -20,14 +20,10 @@ class sp_gemv_cpu : public sp_gemv<T> {
   using sp_gemv<T>::callConsume;
   using sp_gemv<T>::m_;
   using sp_gemv<T>::n_;
-  using sp_gemv<T>::k_;
   using sp_gemv<T>::A_;
-  using sp_gemv<T>::B_;
-  using sp_gemv<T>::C_;
+  using sp_gemv<T>::x_;
+  using sp_gemv<T>::y_;
   using sp_gemv<T>::nnz_;
-  using sp_gemv<T>::A_vals_;
-  using sp_gemv<T>::B_vals_;
-  using sp_gemv<T>::C_vals_;
 
  private:
   /** Make call to the GEMM kernel. */
@@ -50,25 +46,20 @@ class sp_gemv_cpu : public sp_gemv<T> {
      * armpl_spmat_update_[sdcz]()
      */
 
-    // Todo -- See if using armpl_spmat_hint can improve performance here.
-    //  If so, follow with optimisation functions
-
     if constexpr (std::is_same_v<T, float>) {
-      status_ = armpl_spmm_exec_s(transA_,
-                                  transB_,
+      status_ = armpl_spmv_exec_s(trans_,
                                   alpha,
                                   A_armpl_,
-                                  B_armpl_,
+                                  x_,
                                   beta,
-                                  C_armpl_);
+                                  y_);
     } else if constexpr (std::is_same_v<T, double>) {
-      status_ = armpl_spmm_exec_d(transA_,
-                                  transB_,
+      status_ = armpl_spmv_exec_d(trans_,
                                   alpha,
                                   A_armpl_,
-                                  B_armpl_,
+                                  x_,
                                   beta,
-                                  C_armpl_);
+                                  y_);
     } else {
       // Un-specialised class will not do any work - print error and exit.
       std::cout << "ERROR - Datatype for ArmPL CPU GEMM kernel not supported."
@@ -98,20 +89,8 @@ class sp_gemv_cpu : public sp_gemv<T> {
       std::cout << "ERROR " << status_ << std::endl;
       exit(1);
     }
-    status_ = armpl_spmat_hint(B_armpl_, ARMPL_SPARSE_HINT_MEMORY,
-                               ARMPL_SPARSE_MEMORY_NOALLOCS);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
 
     status_ = armpl_spmat_hint(A_armpl_, ARMPL_SPARSE_HINT_STRUCTURE,
-                               ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_hint(B_armpl_, ARMPL_SPARSE_HINT_STRUCTURE,
                                ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED);
     if (status_ != ARMPL_STATUS_SUCCESS) {
       std::cout << "ERROR " << status_ << std::endl;
@@ -125,20 +104,8 @@ class sp_gemv_cpu : public sp_gemv<T> {
       std::cout << "ERROR " << status_ << std::endl;
       exit(1);
     }
-    status_ = armpl_spmat_hint(B_armpl_, ARMPL_SPARSE_HINT_SPMM_INVOCATIONS,
-                               ARMPL_SPARSE_INVOCATIONS_MANY);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
 
     status_ = armpl_spmat_hint(A_armpl_, ARMPL_SPARSE_HINT_SPMM_OPERATION,
-                               ARMPL_SPARSE_OPERATION_NOTRANS);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_hint(B_armpl_, ARMPL_SPARSE_HINT_SPMM_OPERATION,
                                ARMPL_SPARSE_OPERATION_NOTRANS);
     if (status_ != ARMPL_STATUS_SUCCESS) {
       std::cout << "ERROR " << status_ << std::endl;
@@ -147,12 +114,6 @@ class sp_gemv_cpu : public sp_gemv<T> {
 
     // TODO -- investigate whch is better here
     status_ = armpl_spmat_hint(A_armpl_, ARMPL_SPARSE_HINT_SPMM_STRATEGY,
-                               ARMPL_SPARSE_SPMM_STRAT_OPT_PART_STRUCT);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_hint(B_armpl_, ARMPL_SPARSE_HINT_SPMM_STRATEGY,
                                ARMPL_SPARSE_SPMM_STRAT_OPT_PART_STRUCT);
     if (status_ != ARMPL_STATUS_SUCCESS) {
       std::cout << "ERROR " << status_ << std::endl;
@@ -183,27 +144,10 @@ class sp_gemv_cpu : public sp_gemv<T> {
       std::cout << "ERROR " << status_ << std::endl;
       exit(1);
     }
-    status_ = armpl_spmat_destroy(B_armpl_);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_destroy(C_armpl_);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
 
     delete [] A_armpl_row_ptr_;
     delete [] A_armpl_col_index_;
     delete [] A_vals_;
-    delete [] B_armpl_row_ptr_;
-    delete [] B_armpl_col_index_;
-    delete [] B_vals_;
-    delete [] C_armpl_row_ptr_;
-    delete [] C_armpl_col_index_;
-    delete [] C_vals_;
-
   }
 
   /** The constant value Alpha. */
@@ -235,42 +179,6 @@ class sp_gemv_cpu : public sp_gemv<T> {
       }
     }
 
-    // Move B to CSR
-    B_armpl_row_ptr_ = new armpl_int_t[n_ + 1];
-    B_armpl_col_index_ = new armpl_int_t[nnz_];
-    B_vals_ = new T[nnz_];
-    B_armpl_row_ptr_[0] = 0;
-
-    nnz_encountered = 0;
-    for (int row = 0; row < n_; row++) {
-      B_armpl_row_ptr_[row + 1] = nnz_encountered;
-      for (int col = 0; col < n_; col++) {
-        if (B_[(row * n_) + col] != 0.0) {
-          B_armpl_col_index_[nnz_encountered] = col;
-          B_vals_[nnz_encountered] = static_cast<T>(B_[(row * n_) + col]);
-          nnz_encountered++;
-        }
-      }
-    }
-
-    // Move C to CSR
-    C_armpl_row_ptr_ = new armpl_int_t[n_ + 1];
-    C_armpl_col_index_ = new armpl_int_t[nnz_];
-    C_vals_ = new T[nnz_];
-    C_armpl_row_ptr_[0] = 0;
-
-    nnz_encountered = 0;
-    for (int row = 0; row < n_; row++) {
-      C_armpl_row_ptr_[row + 1] = nnz_encountered;
-      for (int col = 0; col < n_; col++) {
-        if (B_[(row * n_) + col] != 0.0) {
-          C_armpl_col_index_[nnz_encountered] = col;
-          C_vals_[nnz_encountered] = static_cast<T>(B_[(row * n_) + col]);
-          nnz_encountered++;
-        }
-      }
-    }
-
     if constexpr (std::is_same_v<T, float>) {
 //      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
 //                nnz_, flags_);
@@ -285,34 +193,6 @@ class sp_gemv_cpu : public sp_gemv<T> {
         std::cout << "ERROR " << status_ << std::endl;
         exit(1);
       }
-
-//      printCSR(n_armpl_, B_armpl_row_ptr_, B_armpl_col_index_, B_vals_,
-//                nnz_, flags_);
-      status_ = armpl_spmat_create_csr_s(&B_armpl_,
-                                         n_armpl_,
-                                         n_armpl_,
-                                         B_armpl_row_ptr_,
-                                         B_armpl_col_index_,
-                                         B_vals_,
-                                         flags_);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-
-//      printCSR(n_armpl_, C_armpl_row_ptr_, C_armpl_col_index_, C_vals_,
-//                nnz_, flags_);
-      status_ = armpl_spmat_create_csr_s(&C_armpl_,
-                                         n_armpl_,
-                                         n_armpl_,
-                                         C_armpl_row_ptr_,
-                                         C_armpl_col_index_,
-                                         C_vals_,
-                                         flags_);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
     } else if constexpr (std::is_same_v<T, double>) {
 //      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
 //                nnz_, flags_
@@ -322,34 +202,6 @@ class sp_gemv_cpu : public sp_gemv<T> {
                                          A_armpl_row_ptr_,
                                          A_armpl_col_index_,
                                          A_vals_,
-                                         flags_);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-
-//      printCSR(n_armpl_, B_armpl_row_ptr_, B_armpl_col_index_, B_vals_,
-//                nnz_, flags_);
-      status_ = armpl_spmat_create_csr_d(&B_armpl_,
-                                         n_armpl_,
-                                         n_armpl_,
-                                         B_armpl_row_ptr_,
-                                         B_armpl_col_index_,
-                                         B_vals_,
-                                         flags_);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-
-//      printCSR(n_armpl_, C_armpl_row_ptr_, C_armpl_col_index_, C_vals_,
-//                nnz_, flags_);
-      status_ = armpl_spmat_create_csr_d(&C_armpl_,
-                                         n_armpl_,
-                                         n_armpl_,
-                                         C_armpl_row_ptr_,
-                                         C_armpl_col_index_,
-                                         C_vals_,
                                          flags_);
       if (status_ != ARMPL_STATUS_SUCCESS) {
         std::cout << "ERROR " << status_ << std::endl;
@@ -381,25 +233,20 @@ class sp_gemv_cpu : public sp_gemv<T> {
     std::cout << "]" << std::endl << "\tflags = " << f << std::endl;
   }
 
+
   armpl_status_t status_;
 
   armpl_int_t flags_;
 
   armpl_int_t n_armpl_;
 
+  T* A_vals_;
   armpl_int_t* A_armpl_row_ptr_;
   armpl_int_t* A_armpl_col_index_;
-  armpl_int_t* B_armpl_row_ptr_;
-  armpl_int_t* B_armpl_col_index_;
-  armpl_int_t* C_armpl_row_ptr_;
-  armpl_int_t* C_armpl_col_index_;
 
   armpl_spmat_t A_armpl_;
-  armpl_spmat_t B_armpl_;
-  armpl_spmat_t C_armpl_;
 
-  armpl_sparse_hint_value transA_ = ARMPL_SPARSE_OPERATION_NOTRANS;
-  armpl_sparse_hint_value transB_ = ARMPL_SPARSE_OPERATION_NOTRANS;
+  armpl_sparse_hint_value trans_ = ARMPL_SPARSE_OPERATION_NOTRANS;
 
 };
 }  // namespace cpu

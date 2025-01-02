@@ -15,8 +15,13 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Adding AOCL files">
-      <change afterPath="$PROJECT_DIR$/ArmPL/sp_gemv.hh" afterDir="false" />
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Beginning gemv ARMPL">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ArmPL/sp_gemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/sp_gemv.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cuBLAS/sp_gemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/cuBLAS/sp_gemv.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/doGemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doGemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/doGemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doGemv.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/kernels/CPU/sp_gemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/CPU/sp_gemv.hh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -178,6 +183,7 @@
       <workItem from="1727941814674" duration="165000" />
       <workItem from="1727941995420" duration="22747000" />
       <workItem from="1729503392250" duration="1773000" />
+      <workItem from="1730878516596" duration="9915000" />
     </task>
     <task id="LOCAL-00001" summary="trivial changes">
       <option name="closed" value="true" />
@@ -531,7 +537,23 @@
       <option name="project" value="LOCAL" />
       <updated>1728655865948</updated>
     </task>
-    <option name="localTasksCounter" value="45" />
+    <task id="LOCAL-00045" summary="Beginning gemv ARMPL">
+      <option name="closed" value="true" />
+      <created>1729522236773</created>
+      <option name="number" value="00045" />
+      <option name="presentableId" value="LOCAL-00045" />
+      <option name="project" value="LOCAL" />
+      <updated>1729522236773</updated>
+    </task>
+    <task id="LOCAL-00046" summary="Beginning gemv ARMPL">
+      <option name="closed" value="true" />
+      <created>1729522244950</created>
+      <option name="number" value="00046" />
+      <option name="presentableId" value="LOCAL-00046" />
+      <option name="project" value="LOCAL" />
+      <updated>1729522244950</updated>
+    </task>
+    <option name="localTasksCounter" value="47" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -549,7 +571,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Implementing cuSPARSE kernel" />
     <MESSAGE value="Trying to work out CSR malloc bug" />
     <MESSAGE value="cuSPARSE unified memory implementation" />
     <MESSAGE value="Now compiles" />
@@ -574,6 +595,7 @@
     <MESSAGE value="Adding kernel selection for gemv" />
     <MESSAGE value="Providing armpl with hints" />
     <MESSAGE value="Updating createGflopsGraphs.py to show sparsity" />
-    <option name="LAST_COMMIT_MESSAGE" value="Updating createGflopsGraphs.py to show sparsity" />
+    <MESSAGE value="Beginning gemv ARMPL" />
+    <option name="LAST_COMMIT_MESSAGE" value="Beginning gemv ARMPL" />
   </component>
 </project>

@@ -12,7 +12,7 @@
 #include "../include/utilities.hh"
 
 namespace cpu {
-/** A class for GEMM CPU BLAS kernels. */
+/** A class for GEMM CPU Sparse BLAS kernels. */
 template <typename T>
 class sp_gemm_cpu : public sp_gemm<T> {
  public:

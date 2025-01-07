@@ -3,14 +3,21 @@
 int iters = 10;
 int startDim = 1;
 int upperLimit = 128;
+// GEMM kernels
 bool doSgemm = true;
 bool doDgemm = true;
-bool doSp_sgemm = true;
-bool doSp_dgemm = true;
+// Sparse GEMM kernels
+bool doSspgemm = true;
+bool doDspgemm = true;
+// GEMV kernels
 bool doSgemv = true;
 bool doDgemv = true;
-bool doSp_sgemv = true;
-bool doSp_dgemv = true;
+// Sparse GEMV kernles
+bool doSspgemv = true;
+bool doDspgemv = true;
+// Sparse-sparse matrix multiplication kernels
+bool doSspmm = true;
+bool doDspmm = true;
 
 bool doCpu = CPU_ENABLED;
 bool doGpu = GPU_ENABLED;
@@ -39,33 +46,101 @@ int main(int argc, char** argv) {
 
   // -------- GEMM --------
   // SGEMM Comparison
-  std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
-  doGemm<float> sgemm(std::string(absPath), iters, startDim, upperLimit, doCpu,
-                      doGpu, doSgemm, doSp_sgemm);
-  sgemm.collectData();
-  std::cout << "Finished!" << std::endl;
+  if (doSgemm) {
+    std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
+    doGemm<float> sgemm(std::string(absPath), iters, startDim, upperLimit,
+                        doCpu,
+                        doGpu);
+    sgemm.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
 
   // DGEMM Comparison
-  std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
-  doGemm<double> dgemm(std::string(absPath), iters, startDim, upperLimit, doCpu,
-                       doGpu, doDgemm, doSp_dgemm);
-  dgemm.collectData();
-  std::cout << "Finished!" << std::endl;
+  if (doDgemm) {
+    std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
+    doGemm<double> dgemm(std::string(absPath), iters, startDim, upperLimit,
+                         doCpu,
+                         doGpu);
+    dgemm.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
+
+  // -------- SPGEMM --------
+  // SPGEMM Comparison
+  if (doSspgemm) {
+    std::cout << std::endl << "Comparing SSpGEMM Kernels:" << std::endl;
+    doSpgemm<float> sspgemm(std::string(absPath), iters, startDim, upperLimit,
+                            doCpu, doGpu);
+    sspgemm.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
+
+  // DGEMM Comparison
+  if (doDspgemm) {
+    std::cout << std::endl << "Comparing DSpMM Kernels:" << std::endl;
+    doSpgemm<double> dspgemm(std::string(absPath), iters, startDim, upperLimit,
+                             doCpu, doGpu);
+    dspgemm.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
+
+  // -------- SPMM --------
+  // SSPMM comparison
+  if (doSspmm) {
+    std::cout << std::endl << "Comparing SSpMM Kernels:" << std::endl;
+    doSpmm<float> sspmm(std::string(absPath), iters, startDim, upperLimit,
+                            doCpu, doGpu);
+    sspmm.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
+
+  // DSPMM Comparison
+  if (doDspmm) {
+    std::cout << std::endl << "Comparing DSpMM Kernels:" << std::endl;
+    doSpmm<double> dspmm(std::string(absPath), iters, startDim, upperLimit,
+                             doCpu, doGpu);
+    dspmm.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
 
   // -------- GEMV --------
   // SGEMV Comparison
-  std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
-  doGemv<float> sgemv(std::string(absPath), iters, startDim, upperLimit, doCpu,
-                      doGpu, doSgemv, doSp_sgemv);
-  sgemv.collectData();
-  std::cout << "Finished!" << std::endl;
+  if (doSgemv) {
+    std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
+    doGemv<float> sgemv(std::string(absPath), iters, startDim, upperLimit,
+                        doCpu, doGpu);
+    sgemv.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
 
   // DGEMV Comparison
-  std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
-  doGemv<double> dgemv(std::string(absPath), iters, startDim, upperLimit, doCpu,
-                       doGpu, doDgemv, doSp_dgemv);
-  dgemv.collectData();
-  std::cout << "Finished!" << std::endl;
+  if (doDgemv) {
+    std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
+    doGemv<double> dgemv(std::string(absPath), iters, startDim, upperLimit,
+                         doCpu, doGpu);
+    dgemv.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
+
+  // -------- SPGEMV --------
+  // SSPGEMV Comparison
+  if (doSspgemv) {
+    std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
+    doSpgemv<float> sspgemv(std::string(absPath), iters, startDim, upperLimit,
+                        doCpu, doGpu);
+    sspgemv.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
+
+  // DSPGEMV Comparison
+  if (doDgemv) {
+    std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
+    doSpgemv<double> dspgemv(std::string(absPath), iters, startDim, upperLimit,
+                         doCpu, doGpu);
+    dspgemv.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
+
 
   free(absPath);
   return 0;
@@ -150,49 +225,20 @@ void getParameters(int argc, char** argv) {
     } else if (!strcmp(argv[i], "--no_gpu")) {
       doGpu = false;
     } else if (!strcmp(argv[i], "--kernels") || !strcmp(argv[i], "-k")) {
-      doSgemm = doDgemm = doSp_sgemm = doSp_dgemm =
-      doSgemv = doDgemv = doSp_sgemv = doSp_dgemv = false;
       std::string kernelList = argv[++i];
-      if (kernelList.find("sp-sgemm") != std::string::npos) {
-        doSp_sgemm = true;
-        if (kernelList.find("sgemm") != std::string::npos &&
-            kernelList.find("sgemm") != kernelList.find("sp-sgemm") + 3) {
-          doSgemm = true;
-        }
-      } else if (kernelList.find("sgemm") != std::string::npos) {
-        doSgemm = true;
-      }
-      if (kernelList.find("sp-dgemm") != std::string::npos) {
-        doSp_dgemm = true;
-        if (kernelList.find("dgemm") != std::string::npos &&
-            kernelList.find("dgemm") != kernelList.find("sp-dgemm") + 3) {
-          doDgemm = true;
-        }
-      } else if (kernelList.find("dgemm") != std::string::npos) {
-        doDgemm = true;
-      }
+      doSgemm = (kernelList.find("sgemm") != std::string::npos);
+      doDgemm = (kernelList.find("dgemm") != std::string::npos);
+      doSspgemm = (kernelList.find("sspgemm") != std::string::npos);
+      doDspgemm = (kernelList.find("dspgemm") != std::string::npos);
+      doSspmm = (kernelList.find("sspmm") != std::string::npos);
+      doDspmm = (kernelList.find("dspmm") != std::string::npos);
+      doSgemv = (kernelList.find("sgemv") != std::string::npos);
+      doDgemv = (kernelList.find("dgemv") != std::string::npos);
+      doSspgemv = (kernelList.find("sspgemv") != std::string::npos);
+      doDspgemv = (kernelList.find("dspgemv") != std::string::npos);
 
-
-      if (kernelList.find("sp-sgemv") != std::string::npos) {
-        doSp_sgemv = true;
-        if (kernelList.find("sgemv") != std::string::npos &&
-            kernelList.find("sgemv") != kernelList.find("sp-sgemv") + 3) {
-          doSgemv = true;
-        }
-      } else if (kernelList.find("sgemv") != std::string::npos) {
-        doSgemv = true;
-      }
-      if (kernelList.find("sp-dgemv") != std::string::npos) {
-        doSp_dgemv = true;
-        if (kernelList.find("dgemv") != std::string::npos &&
-            kernelList.find("dgemv") != kernelList.find("sp-dgemv") + 3) {
-          doDgemv = true;
-        }
-      } else if (kernelList.find("dgemv") != std::string::npos) {
-        doDgemv = true;
-      }
-      if (!doSgemm && !doDgemm && !doSp_sgemm && !doSp_dgemm &&
-          !doSgemv && !doDgemv && !doSp_sgemv && !doSp_dgemv) {
+      if (!doSgemm && !doDgemm && !doSspgemm && !doDspgemm &&
+          !doSgemv && !doDgemv && !doSspgemv && !doDspgemv) {
         std::cout << "ERROR - no implemented kernels in list" << std::endl;
         exit(1);
       } else {
@@ -212,18 +258,16 @@ void getParameters(int argc, char** argv) {
           << "  -o  --output_dir             The CSV file output directory"
           << std::endl;
       std::cout << "  -i  --iterations I           Repeat each kernel I times "
-                   "(default: "
-                << iters << ")" << std::endl;
+                   "(default: " << iters << ")" << std::endl;
       std::cout << "  -s  --start_dimension S      First value of M, N, K is S "
-                   "(default: "
-                << startDim << ")" << std::endl;
+                   "(default: " << startDim << ")" << std::endl;
       std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
-                   "(default: "
-                << upperLimit << ")" << std::endl;
+                   "(default: " << upperLimit << ")" << std::endl;
       std::cout << "  -k  --kernels <kernels>      Comma-separated list of "
-                   "kernels to be run.  Options are sgemm, dgemm, sp-sgemm, "
-                   "sp-dgemm (default: sgemm,dgemm,sp-gemm,sp-dgemm)" <<
-                   std::endl;
+                   "kernels to be run.  Options are sgemm, dgemm, sspgemm, "
+                   "dspgemm, sspmm, dspmm, sgemv, dgemv, sspgemv, dspgemv "
+                   "(default: `-k sgemm,dgemm,sspgemm,dspgemm,sspmm,dspmm,"
+                   "sgemv,dgemv,sspgemv,dspgemv`)" << std::endl;
       std::cout << std::endl;
       exit(0);
     } else {

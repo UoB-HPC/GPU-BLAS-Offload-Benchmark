@@ -7,23 +7,24 @@
 #include <random>
 #include <iostream>
 
-#include "../include/kernels/GPU/sp_gemm.hh"
+#include "../include/kernels/GPU/spmm.hh"
 #include "../include/utilities.hh"
 #include "common.hh"
 
 namespace gpu {
 /** A class for sparse GEMM GPU BLAS kernels. */
 template <typename T>
-class sp_gemm_gpu : public sp_gemm<T> {
+class spmm_gpu : public spmm<T> {
  public:
-  using sp_gemm<T>::sp_gemm;
-  using sp_gemm<T>::initInputMatricesSparse;
-  using sp_gemm<T>::toCSR_int;
-  using sp_gemm<T>::n_;
-  using sp_gemm<T>::A_;
-  using sp_gemm<T>::B_;
-  using sp_gemm<T>::C_;
-  using sp_gemm<T>::offload_;
+  using spmm<T>::spmm;
+  using spmm<T>::initInputMatrices;
+  using spmm<T>::m_
+  using spmm<T>::n_;
+  using spmm<T>::k_
+  using spmm<T>::A_;
+  using spmm<T>::B_;
+  using spmm<T>::C_;
+  using spmm<T>::offload_;
 
 	// ToDo -- No checksum for sparse yet.  Need to do
 
@@ -34,7 +35,7 @@ class sp_gemm_gpu : public sp_gemm<T> {
    *  - Always:  Move data from host to device and device to host each iteration
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
-  void initialise(gpuOffloadType offload, int n, float sparsity) override {
+  void initialise(gpuOffloadType offload, int n, double sparsity) override {
     offload_ = offload;
 
     if (std::is_same_v<T, float>) cudaDataType_ = CUDA_R_32F;
@@ -43,7 +44,19 @@ class sp_gemm_gpu : public sp_gemm<T> {
       std::cout << "INVALID DATA TYPE PASSED TO cuSPARSE" << std::endl;
       exit(1);
     }
+    m_ = m;
     n_ = n;
+    k_ = k;
+
+    A_ = (T*)malloc(sizeof(T) * m_ * k_);
+    B_ = (T*)malloc(sizeof(T) * k_ * n_);
+    C_ = (T*)calloc(sizeof(T) * m_ * n_);å
+
+    /** Determine the number of nnz elements in A and B */
+    nnzA_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
+    nnzB_ = 1 + (uint64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
+
+    initInputMatrices(sparsity_);
 
     // Get device identifier
     cudaCheckError(cudaGetDevice(&gpuDevice_));
@@ -53,42 +66,37 @@ class sp_gemm_gpu : public sp_gemm<T> {
     cudaCheckError(cudaStreamCreate(&s2_));
     cudaCheckError(cudaStreamCreate(&s3_));
 
-
-
-   // Work out number of edges needed to achieve target sparsity
-    A_nnz_ = B_nnz_ = 1 + (int) (n_ * n_ * (1 - sparsity));
-
     if (offload_ == gpuOffloadType::unified) {
-      cudaCheckError(cudaMallocManaged(&A_val_, sizeof(T) * A_nnz_));
-      cudaCheckError(cudaMallocManaged(&A_col_, sizeof(int) * A_nnz_));
-      cudaCheckError(cudaMallocManaged(&A_row_, sizeof(int) * (n_ + 1)));
+      cudaCheckError(cudaMallocManaged(&A_val_, sizeof(T) * nnzA_));
+      cudaCheckError(cudaMallocManaged(&A_col_, sizeof(int) * nnzA_));
+      cudaCheckError(cudaMallocManaged(&A_row_, sizeof(int) * (m_ + 1)));
 
-      cudaCheckError(cudaMallocManaged(&B_val_, sizeof(T) * B_nnz_));
-      cudaCheckError(cudaMallocManaged(&B_col_, sizeof(int) * B_nnz_));
-      cudaCheckError(cudaMallocManaged(&B_row_, sizeof(int) * (n_ + 1)));
+      cudaCheckError(cudaMallocManaged(&B_val_, sizeof(T) * nnzB_));
+      cudaCheckError(cudaMallocManaged(&B_col_, sizeof(int) * nnzB_));
+      cudaCheckError(cudaMallocManaged(&B_row_, sizeof(int) * (k_ + 1)));
 
       cudaCheckError(cudaMallocManaged(&C_row_, sizeof(int) * (n_ + 1)));
       C_val_ = NULL;
       C_col_ = NULL;
     } else {
-      A_val_ = (T*)malloc(sizeof(T) * A_nnz_);
-      A_col_ = (int*)malloc(sizeof(int) * A_nnz_);
-      A_row_ = (int*)malloc(sizeof(int) * (n_ + 1));
+      A_val_ = (T*)malloc(sizeof(T) * nnzA_);
+      A_col_ = (int*)malloc(sizeof(int) * nnzA_);
+      A_row_ = (int*)malloc(sizeof(int) * (m_ + 1));
 
-      B_val_ = (T*)malloc(sizeof(T) * B_nnz_);
-      B_col_ = (int*)malloc(sizeof(int) * B_nnz_);
-      B_row_ = (int*)malloc(sizeof(int) * (n_ + 1));
+      B_val_ = (T*)malloc(sizeof(T) * nnzB_);
+      B_col_ = (int*)malloc(sizeof(int) * nnzB_);
+      B_row_ = (int*)malloc(sizeof(int) * (k_ + 1));
 
       C_row_ = (int*)malloc(sizeof(int) * (n_ + 1));
 
 
-      cudaCheckError(cudaMalloc((void**)&A_val_dev_, sizeof(T) * A_nnz_));
-      cudaCheckError(cudaMalloc((void**)&A_col_dev_, sizeof(int) * A_nnz_));
-      cudaCheckError(cudaMalloc((void**)&A_row_dev_, sizeof(int) * (n_ + 1)));
+      cudaCheckError(cudaMalloc((void**)&A_val_dev_, sizeof(T) * nnzA_));
+      cudaCheckError(cudaMalloc((void**)&A_col_dev_, sizeof(int) * nnzA_));
+      cudaCheckError(cudaMalloc((void**)&A_row_dev_, sizeof(int) * (m_ + 1)));
 
-      cudaCheckError(cudaMalloc((void**)&B_val_dev_, sizeof(T) * B_nnz_));
-      cudaCheckError(cudaMalloc((void**)&B_col_dev_, sizeof(int) * B_nnz_));
-      cudaCheckError(cudaMalloc((void**)&B_row_dev_, sizeof(int) * (n_ + 1)));
+      cudaCheckError(cudaMalloc((void**)&B_val_dev_, sizeof(T) * nnzB_));
+      cudaCheckError(cudaMalloc((void**)&B_col_dev_, sizeof(int) * nnzB_));
+      cudaCheckError(cudaMalloc((void**)&B_row_dev_, sizeof(int) * (k_ + 1)));
 
       cudaCheckError(cudaMalloc((void**)&C_row_dev_, sizeof(int) * (n_ + 1)));
     }
@@ -96,22 +104,6 @@ class sp_gemm_gpu : public sp_gemm<T> {
     C_mem_allocated_always_ = false;
     C_mem_allocated_once_ = false;
     C_mem_allocated_unified_ = false;
-
-		// Initialise the host matricies
-		// cusparseSpGEMM() works on CSR format only.  This helpfully makes our
-		// sparse matrix format decision for us!
-
-		// Initialise the matrices
-		// Set initial values to 0
-    A_ = (T*)malloc(sizeof(T) * n_ * n_);
-    B_ = (T*)malloc(sizeof(T) * n_ * n_);
-
-    initInputMatricesSparse(sparsity);
-
-    toCSR_int(A_, n_, n_, A_val_, A_col_, A_row_);
-
-    toCSR_int(B_, n_, n_, B_val_, B_col_, B_row_);
-
 
 //    std::cout << "_____Matrix A_____" << std::endl;
 //    printDenseMatrix(A_, n_, n_);
@@ -128,6 +120,41 @@ class sp_gemm_gpu : public sp_gemm<T> {
     cusparseCheckError(cusparseCreate(&handle_));
   }
 
+ protected:
+  void toSparseFormat() override {
+    // Load A into CSR
+    int nnz_encountered = 0;
+    for (int row = 0; row < m_; row++) {
+      A_row_[row] = nnz_encountered;
+      int nnz_row = 0;
+      for (int col = 0; col < k_; col++) {
+        if (B_[(row * k_) + col] != 0.0) {
+          nnz_row++;
+          A_col_[nnz_encountered] = col;
+          A_val_[nnz_encountered] = A_[(row * k_) + col];
+          nnz_encountered++;
+        }
+      }
+    }
+    A_row_[m_] = nnz_encountered;
+
+    // Load B into CSR
+    int nnz_encountered = 0;
+    for (int row = 0; row < k_; row++) {
+      B_row_[row] = nnz_encountered;
+      int nnz_row = 0;
+      for (int col = 0; col < n_; col++) {
+        if (B_[(row * n_) + col] != 0.0) {
+          nnz_row++;
+          B_col_[nnz_encountered] = col;
+          B_val_[nnz_encountered] = B_[(row * n_) + col];
+          nnz_encountered++;
+        }
+      }
+    }
+    B_row_[k_] = nnz_encountered;
+  }
+
  private:
   /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
@@ -137,31 +164,31 @@ class sp_gemm_gpu : public sp_gemm<T> {
       case gpuOffloadType::always: {
         // Make matrix descriptors
         cusparseCheckError(
-                cusparseCreateCsr(&descrA_, n_, n_, A_nnz_, A_row_dev_,
+                cusparseCreateCsr(&descrA_, m_, k_, nnzA_, A_row_dev_,
                                   A_col_dev_, A_val_dev_, rType_, cType_,
                                   indType_, cudaDataType_));
         cusparseCheckError(
-                cusparseCreateCsr(&descrB_, n_, n_, B_nnz_, B_row_dev_,
+                cusparseCreateCsr(&descrB_, k_, n_, nnzB_, B_row_dev_,
                                   B_col_dev_, B_val_dev_, rType_, cType_,
                                   indType_, cudaDataType_));
         cusparseCheckError(
-                cusparseCreateCsr(&descrC_, n_, n_, 0, C_row_dev_, NULL, NULL,
+                cusparseCreateCsr(&descrC_, n_, m_, 0, C_row_dev_, NULL, NULL,
                                   rType_, cType_, indType_, cudaDataType_));
         break;
       }
       case gpuOffloadType::once: {
         cudaCheckError(cudaMemcpyAsync(A_val_dev_, A_val_, sizeof(T) *
-                                       A_nnz_, cudaMemcpyHostToDevice, s1_));
+                                       nnzA_, cudaMemcpyHostToDevice, s1_));
         cudaCheckError(cudaMemcpyAsync(A_col_dev_, A_col_, sizeof(int) *
-                                       A_nnz_, cudaMemcpyHostToDevice, s1_));
-        cudaCheckError(cudaMemcpyAsync(A_row_dev_, A_row_, sizeof(int) * (n_
+                                       nnzA_, cudaMemcpyHostToDevice, s1_));
+        cudaCheckError(cudaMemcpyAsync(A_row_dev_, A_row_, sizeof(int) * (m_
                                        + 1), cudaMemcpyHostToDevice, s1_));
 
         cudaCheckError(cudaMemcpyAsync(B_val_dev_, B_val_, sizeof(T) *
-                                       B_nnz_, cudaMemcpyHostToDevice, s2_));
+                                       nnzB_, cudaMemcpyHostToDevice, s2_));
         cudaCheckError(cudaMemcpyAsync(B_col_dev_, B_col_, sizeof(int) *
-                                       B_nnz_, cudaMemcpyHostToDevice, s2_));
-        cudaCheckError(cudaMemcpyAsync(B_row_dev_, B_row_, sizeof(int) * (n_
+                                       nnzB_, cudaMemcpyHostToDevice, s2_));
+        cudaCheckError(cudaMemcpyAsync(B_row_dev_, B_row_, sizeof(int) * (k_
                                        + 1), cudaMemcpyHostToDevice, s2_));
 
         cudaCheckError(cudaMemcpyAsync(C_row_dev_, C_row_, sizeof(int) * (n_
@@ -169,45 +196,45 @@ class sp_gemm_gpu : public sp_gemm<T> {
 
         // Craete matrix descriptors
         cusparseCheckError(
-                cusparseCreateCsr(&descrA_, n_, n_, A_nnz_, A_row_dev_,
+                cusparseCreateCsr(&descrA_, m_, k_, nnzA_, A_row_dev_,
                                   A_col_dev_, A_val_dev_, rType_, cType_,
                                   indType_, cudaDataType_));
         cusparseCheckError(
-                cusparseCreateCsr(&descrB_, n_, n_, B_nnz_, B_row_dev_,
+                cusparseCreateCsr(&descrB_, k_, n_, nnzB_, B_row_dev_,
                                   B_col_dev_, B_val_dev_, rType_, cType_,
                                   indType_, cudaDataType_));
         cusparseCheckError(
-                cusparseCreateCsr(&descrC_, n_, n_, 0, C_row_dev_, NULL, NULL,
+                cusparseCreateCsr(&descrC_, n_, m_, 0, C_row_dev_, NULL, NULL,
                                   rType_, cType_, indType_, cudaDataType_));
         break;
       }
       case gpuOffloadType::unified: {
         // Prefetch memory to device
-        cudaCheckError(cudaMemPrefetchAsync(A_val_, sizeof(T) * A_nnz_,
+        cudaCheckError(cudaMemPrefetchAsync(A_val_, sizeof(T) * nnzA_,
                                             gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_col_, sizeof(int) * A_nnz_,
+        cudaCheckError(cudaMemPrefetchAsync(A_col_, sizeof(int) * nnzA_,
                                             gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_row_, sizeof(int) * (n_ + 1),
+        cudaCheckError(cudaMemPrefetchAsync(A_row_, sizeof(int) * (m_ + 1),
                                             gpuDevice_, s1_));
 
-        cudaCheckError(cudaMemPrefetchAsync(B_val_, sizeof(T) * B_nnz_,
+        cudaCheckError(cudaMemPrefetchAsync(B_val_, sizeof(T) * nnzB_,
                                             gpuDevice_, s2_));
-        cudaCheckError(cudaMemPrefetchAsync(B_col_, sizeof(int) * B_nnz_,
+        cudaCheckError(cudaMemPrefetchAsync(B_col_, sizeof(int) * nnzB_,
                                             gpuDevice_, s2_));
-        cudaCheckError(cudaMemPrefetchAsync(B_row_, sizeof(int) * (n_ + 1),
+        cudaCheckError(cudaMemPrefetchAsync(B_row_, sizeof(int) * (k_ + 1),
                                             gpuDevice_, s2_));
 
         // Make matrix descriptors
         cusparseCheckError(
-                cusparseCreateCsr(&descrA_, n_, n_, A_nnz_, A_row_, A_col_,
+                cusparseCreateCsr(&descrA_, m_, k_, nnzA_, A_row_, A_col_,
                                   A_val_, rType_, cType_, indType_,
                                   cudaDataType_));
         cusparseCheckError(
-                cusparseCreateCsr(&descrB_, n_, n_, B_nnz_, B_row_, B_col_,
+                cusparseCreateCsr(&descrB_, k_, n_, nnzB_, B_row_, B_col_,
                                   B_val_, rType_, cType_, indType_,
                                   cudaDataType_));
         cusparseCheckError(
-                cusparseCreateCsr(&descrC_, n_, n_, 0, C_row_, NULL, NULL,
+                cusparseCreateCsr(&descrC_, n_, m_, 0, C_row_, NULL, NULL,
                                   rType_, cType_, indType_, cudaDataType_));
         break;
       }
@@ -224,17 +251,17 @@ class sp_gemm_gpu : public sp_gemm<T> {
           cusparseCheckError(cusparseDestroySpMat(descrC_));
         }
         cudaCheckError(cudaMemcpyAsync(A_val_dev_, A_val_, sizeof(T) *
-        A_nnz_, cudaMemcpyHostToDevice, s1_));
+        nnzA_, cudaMemcpyHostToDevice, s1_));
         cudaCheckError(cudaMemcpyAsync(A_col_dev_, A_col_, sizeof(int) *
-        A_nnz_, cudaMemcpyHostToDevice, s1_));
-        cudaCheckError(cudaMemcpyAsync(A_row_dev_, A_row_, sizeof(int) * (n_
+        nnzA_, cudaMemcpyHostToDevice, s1_));
+        cudaCheckError(cudaMemcpyAsync(A_row_dev_, A_row_, sizeof(int) * (m_
                                        + 1), cudaMemcpyHostToDevice, s1_));
 
         cudaCheckError(cudaMemcpyAsync(B_val_dev_, B_val_, sizeof(T) *
-        B_nnz_, cudaMemcpyHostToDevice, s2_));
+        nnzB_, cudaMemcpyHostToDevice, s2_));
         cudaCheckError(cudaMemcpyAsync(B_col_dev_, B_col_, sizeof(int) *
-        B_nnz_, cudaMemcpyHostToDevice, s2_));
-        cudaCheckError(cudaMemcpyAsync(B_row_dev_, B_row_, sizeof(int) * (n_
+        nnzB_, cudaMemcpyHostToDevice, s2_));
+        cudaCheckError(cudaMemcpyAsync(B_row_dev_, B_row_, sizeof(int) * (k_
                                        + 1), cudaMemcpyHostToDevice, s2_));
 
         cudaCheckError(cudaMemcpyAsync(C_row_dev_, C_row_, sizeof(int) * (n_
@@ -243,15 +270,15 @@ class sp_gemm_gpu : public sp_gemm<T> {
 
         // Make matrix descriptors
         cusparseCheckError(
-                cusparseCreateCsr(&descrA_, n_, n_, A_nnz_, A_row_dev_,
+                cusparseCreateCsr(&descrA_, m_, k_, nnzA_, A_row_dev_,
                                   A_col_dev_, A_val_dev_, rType_, cType_,
                                   indType_, cudaDataType_));
         cusparseCheckError(
-                cusparseCreateCsr(&descrB_, n_, n_, B_nnz_, B_row_dev_,
+                cusparseCreateCsr(&descrB_, k_, n_, nnzB_, B_row_dev_,
                                   B_col_dev_, B_val_dev_, rType_, cType_,
                                   indType_, cudaDataType_));
         cusparseCheckError(
-                cusparseCreateCsr(&descrC_, n_, n_, 0, C_row_dev_, NULL, NULL,
+                cusparseCreateCsr(&descrC_, n_, m_, 0, C_row_dev_, NULL, NULL,
                                   rType_, cType_, indType_, cudaDataType_));
 
         cusparseCheckError(
@@ -282,14 +309,14 @@ class sp_gemm_gpu : public sp_gemm<T> {
 
         cusparseCheckError(
                 cusparseSpMatGetSize(descrC_, &C_num_rows_, &C_num_cols_,
-                                     &C_nnz_));
+                                     &nnzC_));
 
         if (C_mem_allocated_always_) {
           cudaCheckError(cudaFree(C_val_dev_));
           cudaCheckError(cudaFree(C_col_dev_));
         }
-        cudaCheckError(cudaMalloc(&C_val_dev_, sizeof(T) * C_nnz_));
-        cudaCheckError(cudaMalloc(&C_col_dev_, sizeof(int) * C_nnz_));
+        cudaCheckError(cudaMalloc(&C_val_dev_, sizeof(T) * nnzC_));
+        cudaCheckError(cudaMalloc(&C_col_dev_, sizeof(int) * nnzC_));
 
         cusparseCheckError(
                 cusparseCsrSetPointers(descrC_, C_row_dev_, C_col_dev_,
@@ -300,31 +327,31 @@ class sp_gemm_gpu : public sp_gemm<T> {
                                     alg_, spgemmDesc_));
 
         cudaCheckError(cudaMemcpyAsync(A_val_, A_val_dev_, sizeof(T) *
-        A_nnz_, cudaMemcpyDeviceToHost, s1_));
+        nnzA_, cudaMemcpyDeviceToHost, s1_));
         cudaCheckError(cudaMemcpyAsync(A_col_, A_col_dev_, sizeof(int) *
-        A_nnz_, cudaMemcpyDeviceToHost, s1_));
+        nnzA_, cudaMemcpyDeviceToHost, s1_));
         cudaCheckError(cudaMemcpyAsync(A_row_, A_row_dev_, sizeof(int) *
-        (n_ + 1), cudaMemcpyDeviceToHost, s1_));
+        (m_ + 1), cudaMemcpyDeviceToHost, s1_));
 
         cudaCheckError(cudaMemcpyAsync(B_val_, B_val_dev_, sizeof(T) *
-        B_nnz_, cudaMemcpyDeviceToHost, s2_));
+        nnzB_, cudaMemcpyDeviceToHost, s2_));
         cudaCheckError(cudaMemcpyAsync(B_col_, B_col_dev_, sizeof(int) *
-        B_nnz_, cudaMemcpyDeviceToHost, s2_));
+        nnzB_, cudaMemcpyDeviceToHost, s2_));
         cudaCheckError(cudaMemcpyAsync(B_row_, B_row_dev_, sizeof(int) *
-        (n_ + 1), cudaMemcpyDeviceToHost, s2_));
+        (k_ + 1), cudaMemcpyDeviceToHost, s2_));
 
         if (C_mem_allocated_always_) {
           free(C_val_);
           free(C_col_);
         }
-        C_val_ = (T*)malloc(sizeof(T) * C_nnz_);
-        C_col_ = (int*)malloc(sizeof(int) * C_nnz_);
+        C_val_ = (T*)malloc(sizeof(T) * nnzC_);
+        C_col_ = (int*)malloc(sizeof(int) * nnzC_);
         C_mem_allocated_always_ = true;
 
         cudaCheckError(cudaMemcpyAsync(C_val_, C_val_dev_, sizeof(T) *
-        C_nnz_, cudaMemcpyDeviceToHost, s3_));
+        nnzC_, cudaMemcpyDeviceToHost, s3_));
         cudaCheckError(cudaMemcpyAsync(C_col_, C_col_dev_, sizeof(int) *
-        C_nnz_, cudaMemcpyDeviceToHost, s3_));
+        nnzC_, cudaMemcpyDeviceToHost, s3_));
         cudaCheckError(cudaMemcpyAsync(C_row_, C_row_dev_, sizeof(int) *
         (n_ + 1), cudaMemcpyDeviceToHost, s3_));
         cudaCheckError(cudaDeviceSynchronize());
@@ -364,14 +391,14 @@ class sp_gemm_gpu : public sp_gemm<T> {
 
         cusparseCheckError(
                 cusparseSpMatGetSize(descrC_, &C_num_rows_, &C_num_cols_,
-                                     &C_nnz_));
+                                     &nnzC_));
 
         if (C_mem_allocated_once_) {
           cudaCheckError(cudaFree(C_val_dev_));
           cudaCheckError(cudaFree(C_col_dev_));
         }
-        cudaCheckError(cudaMalloc(&C_val_dev_, sizeof(T) * C_nnz_));
-        cudaCheckError(cudaMalloc(&C_col_dev_, sizeof(int) * C_nnz_));
+        cudaCheckError(cudaMalloc(&C_val_dev_, sizeof(T) * nnzC_));
+        cudaCheckError(cudaMalloc(&C_col_dev_, sizeof(int) * nnzC_));
         C_mem_allocated_once_ = true;
 
         cusparseCheckError(
@@ -417,15 +444,15 @@ class sp_gemm_gpu : public sp_gemm<T> {
 
         cusparseCheckError(
                 cusparseSpMatGetSize(descrC_, &C_num_rows_, &C_num_cols_,
-                                     &C_nnz_));
+                                     &nnzC_));
 
         if (C_mem_allocated_unified_) {
           cudaCheckError(cudaFree(C_val_));
           cudaCheckError(cudaFree(C_col_));
         }
 
-        cudaCheckError(cudaMallocManaged(&C_val_, sizeof(T) * C_nnz_));
-        cudaCheckError(cudaMallocManaged(&C_col_, sizeof(int) * C_nnz_));
+        cudaCheckError(cudaMallocManaged(&C_val_, sizeof(T) * nnzC_));
+        cudaCheckError(cudaMallocManaged(&C_col_, sizeof(int) * nnzC_));
         C_mem_allocated_unified_ = true;
 
         cusparseCheckError(
@@ -455,25 +482,25 @@ class sp_gemm_gpu : public sp_gemm<T> {
       }
       case gpuOffloadType::once: {
         cudaCheckError(cudaMemcpyAsync(A_val_, A_val_dev_, sizeof(T) *
-        A_nnz_, cudaMemcpyDeviceToHost, s1_));
+        nnzA_, cudaMemcpyDeviceToHost, s1_));
         cudaCheckError(cudaMemcpyAsync(A_col_, A_col_dev_, sizeof(int) *
-        A_nnz_, cudaMemcpyDeviceToHost, s1_));
+        nnzA_, cudaMemcpyDeviceToHost, s1_));
         cudaCheckError(cudaMemcpyAsync(A_row_, A_row_dev_, sizeof(int) *
-        (n_ + 1), cudaMemcpyDeviceToHost, s1_));
+        (m_ + 1), cudaMemcpyDeviceToHost, s1_));
 
         cudaCheckError(cudaMemcpyAsync(B_val_, B_val_dev_, sizeof(T) *
-        B_nnz_, cudaMemcpyDeviceToHost, s2_));
+        nnzB_, cudaMemcpyDeviceToHost, s2_));
         cudaCheckError(cudaMemcpyAsync(B_col_, B_col_dev_, sizeof(int) *
-        B_nnz_, cudaMemcpyDeviceToHost, s2_));
+        nnzB_, cudaMemcpyDeviceToHost, s2_));
         cudaCheckError(cudaMemcpyAsync(B_row_, B_row_dev_, sizeof(int) *
-        (n_ + 1), cudaMemcpyDeviceToHost, s2_));
+        (k_ + 1), cudaMemcpyDeviceToHost, s2_));
 
-        C_val_ = (T*)malloc(sizeof(T) * C_nnz_);
-        C_col_ = (int*)malloc(sizeof(int) * C_nnz_);
+        C_val_ = (T*)malloc(sizeof(T) * nnzC_);
+        C_col_ = (int*)malloc(sizeof(int) * nnzC_);
         cudaCheckError(cudaMemcpyAsync(C_val_, C_val_dev_, sizeof(T) *
-        C_nnz_, cudaMemcpyDeviceToHost, s3_));
+        nnzC_, cudaMemcpyDeviceToHost, s3_));
         cudaCheckError(cudaMemcpyAsync(C_col_, C_col_dev_, sizeof(int) *
-        C_nnz_, cudaMemcpyDeviceToHost, s3_));
+        nnzC_, cudaMemcpyDeviceToHost, s3_));
         cudaCheckError(cudaMemcpyAsync(C_row_, C_row_dev_, sizeof(int) *
         (n_ + 1), cudaMemcpyDeviceToHost, s3_));
         cudaCheckError(cudaDeviceSynchronize());
@@ -486,23 +513,23 @@ class sp_gemm_gpu : public sp_gemm<T> {
       }
       case gpuOffloadType::unified: {
         // Ensure all data resides on host once work has completed
-        cudaCheckError(cudaMemPrefetchAsync(A_val_, sizeof(T) * A_nnz_,
+        cudaCheckError(cudaMemPrefetchAsync(A_val_, sizeof(T) * nnzA_,
                                             cudaCpuDeviceId, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_col_, sizeof(int) * A_nnz_,
+        cudaCheckError(cudaMemPrefetchAsync(A_col_, sizeof(int) * nnzA_,
                                             cudaCpuDeviceId, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_row_, sizeof(int) * (n_ + 1),
+        cudaCheckError(cudaMemPrefetchAsync(A_row_, sizeof(int) * (m_ + 1),
                                             cudaCpuDeviceId, s1_));
 
-        cudaCheckError(cudaMemPrefetchAsync(B_val_, sizeof(T) * B_nnz_,
+        cudaCheckError(cudaMemPrefetchAsync(B_val_, sizeof(T) * nnzB_,
                                             cudaCpuDeviceId, s2_));
-        cudaCheckError(cudaMemPrefetchAsync(B_col_, sizeof(int) * B_nnz_,
+        cudaCheckError(cudaMemPrefetchAsync(B_col_, sizeof(int) * nnzB_,
                                             cudaCpuDeviceId, s2_));
-        cudaCheckError(cudaMemPrefetchAsync(B_row_, sizeof(int) * (n_ + 1),
+        cudaCheckError(cudaMemPrefetchAsync(B_row_, sizeof(int) * (k_ + 1),
                                             cudaCpuDeviceId, s2_));
 
-//        cudaCheckError(cudaMemPrefetchAsync(C_val_, sizeof(T) * C_nnz_,
+//        cudaCheckError(cudaMemPrefetchAsync(C_val_, sizeof(T) * nnzC_,
 //                                            cudaCpuDeviceId, s3_));
-//        cudaCheckError(cudaMemPrefetchAsync(C_col_, sizeof(int) * C_nnz_,
+//        cudaCheckError(cudaMemPrefetchAsync(C_col_, sizeof(int) * nnzC_,
 //                                            cudaCpuDeviceId, s3_));
         cudaCheckError(cudaMemPrefetchAsync(C_row_, sizeof(int) * (n_ + 1),
                                             cudaCpuDeviceId, s3_));
@@ -618,21 +645,18 @@ class sp_gemm_gpu : public sp_gemm<T> {
   int* A_row_;
   int64_t A_num_rows_;
   int64_t A_num_cols_;
-  int64_t A_nnz_;
 
   T* B_val_;
   int* B_col_;
   int* B_row_;
   int64_t B_num_rows_;
   int64_t B_num_cols_;
-  int64_t B_nnz_;
 
   T* C_val_ = NULL;
   int* C_col_ = NULL;
   int* C_row_;
   int64_t C_num_rows_;
   int64_t C_num_cols_;
-  int64_t C_nnz_;
 
   /** CSR format vectors for matrices A, B and C on the device. */
 	T* A_val_dev_;

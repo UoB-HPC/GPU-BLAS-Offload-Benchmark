@@ -5,7 +5,10 @@
 #include <string>
 
 #include "doGemm.hh"
+#include "doSpgemm.hh"
+#include "doSpmm.hh"
 #include "doGemv.hh"
+#include "doSpgemv.hh"
 #include "utilities.hh"
 
 /** A function which prints standard configuration information to stdout. */

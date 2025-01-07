@@ -1,0 +1,445 @@
+#pragma once
+#include <sstream>
+#include <type_traits>
+#include <cstdint>
+
+#include "helpers.hh"
+#include "tablePrinter.hh"
+#include "utilities.hh"
+
+#if defined CPU_ARMPL
+#include "../ArmPL/spmm.hh"
+#elif defined CPU_ONEMKL
+// Todo #include "../oneMKL/CPU/spmm.hh"
+#elif defined CPU_AOCL
+// Todo #include "../AOCL/gemm.hh"
+#elif defined CPU_NVPL
+ // Todo #include "../NVPL/gemm.hh"
+#elif defined CPU_OPENBLAS
+// Todo #include "../OpenBLAS/gemm.hh"
+#endif
+
+#if defined GPU_CUBLAS
+#include "../cuBLAS/spmm.hh"
+#elif defined GPU_ONEMKL
+// Todo #include "../oneMKL/GPU/gemm.hh"
+#elif defined GPU_ROCBLAS
+// Todo #include "../rocBLAS/gemm.hh"
+#endif
+
+/** `T` represents the type of kernel that will be run - i.e. T=float is for
+ *      SGEMM. */
+template <typename T>
+class doSpmm {
+public:
+    doSpmm(const std::string csvDir, const int iters, const int startDim,
+           const int upperLimit, const bool cpuEnabled = true,
+           const bool gpuEnabled = true)
+            : CSV_DIR(csvDir),
+              iterations_(iters),
+              startDimention_(startDim),
+              upperLimit_(upperLimit),
+              doCPU_(cpuEnabled),
+              doGPU_(gpuEnabled)
+#if CPU_ENABLED
+    ,
+        cpu_(iterations_)
+#endif
+#if GPU_ENABLED
+    ,
+        gpu_(iterations_)
+#endif
+    {
+      static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
+                    "ERROR - doSpmm can only be constructed using one of the "
+                    "following types: [float, double].");
+    }
+
+    /** Run all problem types and write data to CSV files. */
+    void collectData() {
+      // ToDo -- I've hard coded false here as kernel selection was not working
+      //  .  Needs to be fixed
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      std::ofstream csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
+                                          getKernelName() + "_sparse_square_99.csv");
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        callKernels(csvFile, dim, 0.99);
+      }
+      // Close file
+      csvFile.close();
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Sparse Square 0.99");
+    }
+#endif
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
+                            getKernelName() + "_sparse_square_999.csv");
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        callKernels(csvFile, dim, 0.999);
+      }
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Sparse Square 0.999");
+    }
+#endif
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
+                            getKernelName() + "_sparse_square_9999.csv");
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        callKernels(csvFile, dim, 0.9999);
+      }
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Sparse Square 0.9999");
+    }
+#endif
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      csvFile = initCSVFile(std::string(CSV_DIR) + "/" +
+                            getKernelName() +
+                            "_sparse_square_99999.csv");
+      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        callKernels(csvFile, dim, 0.99999);
+      }
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Sparse Square 0.99999");
+    }
+#endif
+    }
+
+private:
+        /** Ensure all CPU and GPU checksums are within the permitted limit of
+     * eachother. */
+    void checkChecksums(time_checksum_gflop cpuResult,
+                        time_checksum_gflop gpuResult_once,
+                        time_checksum_gflop gpuResult_always,
+                        time_checksum_gflop gpuResult_unified, const int M,
+                        const int N, const int K) {
+      // Ensure that each checksum difference is less than 0.1%
+      double hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
+      if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) *
+            hundredOverChecksum)) > 0.1 &&
+          ((std::fabs(cpuResult.checksum - gpuResult_always.checksum) *
+            hundredOverChecksum)) > 0.1 &&
+          ((std::fabs(cpuResult.checksum - gpuResult_unified.checksum) *
+            hundredOverChecksum)) > 0.1) {
+        std::cerr << "ERROR - " << getKernelName()
+                  << " kernel checksums do not match:\n\tInput "
+                     "dimensions: M="
+                  << M << ", N=" << N << ", K=" << K << std::endl;
+        std::cerr << std::setprecision(10)
+                  << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
+        std::cerr << std::setprecision(10)
+                  << "\tGPU (Once) Checksum = " << gpuResult_once.checksum
+                  << std::endl;
+        std::cerr << std::setprecision(10)
+                  << "\tGPU (Always) Checksum = " << gpuResult_always.checksum
+                  << std::endl;
+        std::cerr << std::setprecision(10)
+                  << "\tGPU (Unified) Checksum = " << gpuResult_unified.checksum
+                  << std::endl;
+        exit(1);
+      }
+    }
+
+    /** Check whether the offload structures need to be reset; and doing so if
+     * required.
+     *   - If CPU.gflops >= GPU.gflops for last two problem sizes, then reset
+     * offload structures as GPU may not necessarily have reached the offload
+     * threshold. */
+    void checkOffloadStructReset(time_checksum_gflop cpuResult,
+                                 time_checksum_gflop gpuResult_once,
+                                 time_checksum_gflop gpuResult_always,
+                                 time_checksum_gflop gpuResult_unified) {
+      if ((cpuGpu_once_.M != 0) && (cpuResult.gflops >= gpuResult_once.gflops) &&
+          (cpuResult.gflops >= prev_gpuResult_once.gflops)) {
+        cpuGpu_once_.cpuGflops = 0.0;
+        cpuGpu_once_.gpuGflops = 0.0;
+        cpuGpu_once_.probSize_kib = 0.0;
+        cpuGpu_once_.M = 0;
+        cpuGpu_once_.N = 0;
+        cpuGpu_once_.K = 0;
+      }
+      if ((cpuGpu_always_.M != 0) &&
+          (cpuResult.gflops >= gpuResult_always.gflops) &&
+          (cpuResult.gflops >= prev_gpuResult_always.gflops)) {
+        cpuGpu_always_.cpuGflops = 0.0;
+        cpuGpu_always_.gpuGflops = 0.0;
+        cpuGpu_always_.probSize_kib = 0.0;
+        cpuGpu_always_.M = 0;
+        cpuGpu_always_.N = 0;
+        cpuGpu_always_.K = 0;
+      }
+      if ((cpuGpu_unified_.M != 0) &&
+          (cpuResult.gflops >= gpuResult_unified.gflops) &&
+          (cpuResult.gflops >= prev_gpuResult_unified.gflops)) {
+        cpuGpu_unified_.cpuGflops = 0.0;
+        cpuGpu_unified_.gpuGflops = 0.0;
+        cpuGpu_unified_.probSize_kib = 0.0;
+        cpuGpu_unified_.M = 0;
+        cpuGpu_unified_.N = 0;
+        cpuGpu_unified_.K = 0;
+      }
+    }
+
+    /** Update the offload threshold structs if GPU.gflops > CPU.gflops. */
+    void updateOffloadStructs(time_checksum_gflop cpuResult,
+                              time_checksum_gflop gpuResult_once,
+                              time_checksum_gflop gpuResult_always,
+                              time_checksum_gflop gpuResult_unified, const int M,
+                              const int N, const int K, const double probSize) {
+      if ((cpuGpu_once_.M == 0) && cpuResult.gflops < gpuResult_once.gflops) {
+        cpuGpu_once_.cpuGflops = cpuResult.gflops;
+        cpuGpu_once_.gpuGflops = gpuResult_once.gflops;
+        cpuGpu_once_.probSize_kib = probSize;
+        cpuGpu_once_.M = M;
+        cpuGpu_once_.N = N;
+        cpuGpu_once_.K = K;
+      }
+      if ((cpuGpu_always_.M == 0) && cpuResult.gflops < gpuResult_always.gflops) {
+        cpuGpu_always_.cpuGflops = cpuResult.gflops;
+        cpuGpu_always_.gpuGflops = gpuResult_always.gflops;
+        cpuGpu_always_.probSize_kib = probSize;
+        cpuGpu_always_.M = M;
+        cpuGpu_always_.N = N;
+        cpuGpu_always_.K = K;
+      }
+      if ((cpuGpu_unified_.M == 0) &&
+          cpuResult.gflops < gpuResult_unified.gflops) {
+        cpuGpu_unified_.cpuGflops = cpuResult.gflops;
+        cpuGpu_unified_.gpuGflops = gpuResult_unified.gflops;
+        cpuGpu_unified_.probSize_kib = probSize;
+        cpuGpu_unified_.M = M;
+        cpuGpu_unified_.N = N;
+        cpuGpu_unified_.K = K;
+      }
+    }
+
+    void callKernels(std::ofstream& csvFile, const int N, const float
+    sparsity) {
+      const double probSize = calcKib(N, N, N);
+      const uint64_t flops = calcFlops(N, N, N);
+      std::string kernelName = getKernelName();
+
+#if CPU_ENABLED
+    if (doCPU_) {
+      cpu_.initialise(N, sparsity);
+      time_checksum_gflop cpuResult = cpu_.compute();
+      cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
+		  writeLineToCsv(csvFile, "cpu", kernelName, N, N, N, probSize,
+                     sparsity, iterations_, cpuResult.runtime,
+                     cpuResult.gflops);
+    }
+#endif
+#if GPU_ENABLED
+      // Perform the GPU kernels
+    // - UNIFIED : data passed from host to device (and device to host) as
+    //             needed
+    if (doGPU_) {
+      gpu_.initialise(gpuOffloadType::unified, N, sparsity);
+      time_checksum_gflop gpuResult_unified = gpu_.compute();
+      gpuResult_unified.gflops =
+      calcGflops(flops, iterations_, gpuResult_unified.runtime);
+
+    // - ALWAYS: Offload to/from GPU every iteration
+      gpu_.initialise(gpuOffloadType::always, N, sparsity);
+      time_checksum_gflop gpuResult_always = gpu_.compute();
+      gpuResult_always.gflops =
+            calcGflops(flops, iterations_, gpuResult_always.runtime);
+		// - ONCE : Offload to/from GPU once before all iterations and once
+		// after
+      gpu_.initialise(gpuOffloadType::once, N, sparsity);
+		  time_checksum_gflop gpuResult_once = gpu_.compute();
+		  gpuResult_once.gflops =
+						calcGflops(flops, iterations_, gpuResult_once.runtime);
+		// ToDo -- non-default GPU operations
+
+		// Write lines to CSV file
+		  writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, N, N, probSize,
+		                sparsity, iterations_, gpuResult_once.runtime,
+                    gpuResult_once.gflops);
+		  writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, N, N, probSize,
+		                sparsity, iterations_, gpuResult_always.runtime,
+		                gpuResult_always.gflops);
+		  writeLineToCsv(csvFile, "gpu_unified", kernelName, N, N, N, probSize,
+		                sparsity, iterations_, gpuResult_unified.runtime,
+		                gpuResult_unified.gflops);
+
+    }
+#endif
+
+    }
+
+    /** A function for calculating FLOPs performed by a GEMM.
+     * C = alpha*AB + beta*C */
+    constexpr uint64_t calcFlops(const int M, const int N, const int K) const {
+      // A * B = 2*M*N*K (FMA)
+      // alpha * AB = M*N (multiplication)
+      // beta * C = M*N (multiplication)
+      // AB + C = M*N (addition)
+      // = 2MNK + MN + MN + MN
+
+      // If beta==0; = 2MNK + MN ------- alpha*AB Always done
+      // Else; = 2MNK + 3MN
+      uint64_t scalar = (BETA != 0) ? 3 : 1;
+      return (2 * (uint64_t)M * (uint64_t)N * (uint64_t)K) +
+              (scalar * (uint64_t)M * (uint64_t)N);
+    }
+
+    /** A function for calculating the total GEMM problem size in KiB. */
+    constexpr double calcKib(const int M, const int N, const int K) const {
+      uint64_t M_ = (uint64_t)M, N_ = (uint64_t)N, K_ = (uint64_t)K;
+      uint64_t probSize = (M_ * K_) + (K_ * N_) + (M_ * N_);
+      return ((double)(probSize * (sizeof(T))) / 1024);
+    }
+
+    /** Get the name of the kernel being run. */
+    std::string getKernelName() const {
+      switch (sizeof(T)) {
+        case 4:
+          return "sgemm";
+        case 8:
+          return "dgemm";
+        default:
+          return "unknown";
+      }
+    }
+
+    /** Print to stdout the offload thresholds. */
+    void printOffloadThreshold(const std::string& problemName) const {
+      std::vector<std::string> header = {
+              "Device",  "M",          "N", "K", "Total Prob. Size (KiB)",
+              "GFLOP/s", "CPU GFLOP/s"};
+
+      std::vector<std::vector<std::string>> rows;
+      // Initialise GPU_Once row
+      std::stringstream probSize_o;
+      std::stringstream gpuGflops_o;
+      std::stringstream cpuGflops_o;
+      probSize_o << std::fixed << std::setprecision(2)
+                 << cpuGpu_once_.probSize_kib;
+      gpuGflops_o << std::fixed << std::setprecision(2) << cpuGpu_once_.gpuGflops;
+      cpuGflops_o << std::fixed << std::setprecision(2) << cpuGpu_once_.cpuGflops;
+      if (cpuGpu_once_.M == 0) {
+        // No offload threshold found
+        rows.push_back({"GPU (Offload Once)", std::to_string(0),
+                        std::to_string(0), std::to_string(0), probSize_o.str(),
+                        "N/A", "N/A"});
+      } else {
+        rows.push_back({"GPU (Offload Once)", std::to_string(cpuGpu_once_.M),
+                        std::to_string(cpuGpu_once_.N),
+                        std::to_string(cpuGpu_once_.K), probSize_o.str(),
+                        gpuGflops_o.str(), cpuGflops_o.str()});
+      }
+
+      // Initialise GPU_always row
+      std::stringstream probSize_a;
+      std::stringstream gpuGflops_a;
+      std::stringstream cpuGflops_a;
+      probSize_a << std::fixed << std::setprecision(2)
+                 << cpuGpu_always_.probSize_kib;
+      gpuGflops_a << std::fixed << std::setprecision(2)
+                  << cpuGpu_always_.gpuGflops;
+      cpuGflops_a << std::fixed << std::setprecision(2)
+                  << cpuGpu_always_.cpuGflops;
+      if (cpuGpu_always_.M == 0) {
+        // No offload threshold found
+        rows.push_back({"GPU (Offload Always)", std::to_string(0),
+                        std::to_string(0), std::to_string(0), probSize_a.str(),
+                        "N/A", "N/A"});
+      } else {
+        rows.push_back({"GPU (Offload Always)", std::to_string(cpuGpu_always_.M),
+                        std::to_string(cpuGpu_always_.N),
+                        std::to_string(cpuGpu_always_.K), probSize_a.str(),
+                        gpuGflops_a.str(), cpuGflops_a.str()});
+      }
+
+      // Initialise GPU_unified row
+      std::stringstream probSize_u;
+      std::stringstream gpuGflops_u;
+      std::stringstream cpuGflops_u;
+      probSize_u << std::fixed << std::setprecision(2)
+                 << cpuGpu_unified_.probSize_kib;
+      gpuGflops_u << std::fixed << std::setprecision(2)
+                  << cpuGpu_unified_.gpuGflops;
+      cpuGflops_u << std::fixed << std::setprecision(2)
+                  << cpuGpu_unified_.cpuGflops;
+      if (cpuGpu_unified_.M == 0) {
+        // No offload threshold found
+        rows.push_back({"GPU (Unified Memory)", std::to_string(0),
+                        std::to_string(0), std::to_string(0), probSize_u.str(),
+                        "N/A", "N/A"});
+      } else {
+        rows.push_back({"GPU (Unified Memory)", std::to_string(cpuGpu_unified_.M),
+                        std::to_string(cpuGpu_unified_.N),
+                        std::to_string(cpuGpu_unified_.K), probSize_u.str(),
+                        gpuGflops_u.str(), cpuGflops_u.str()});
+      }
+
+      // Print table
+      tablePrinter tPrinter(
+              problemName + " Problem Domian GPU Offload Thresholds:", header, rows);
+      tPrinter.print(1);
+    }
+
+    /** The output directory where CSV files should be saved to. */
+    const std::string CSV_DIR;
+
+    /** The number of iterations to perform per problem size. */
+    const int iterations_;
+
+    /** The value of the first probelm size dimention run. */
+    const int startDimention_;
+
+    /** The maximum value of the largest problem size dimention. */
+    const int upperLimit_;
+
+    /** Whether the CPU kernels should be run. */
+    const bool doCPU_ = true;
+
+    /** Whether the GPU kernels should be run. */
+    const bool doGPU_ = true;
+
+#if CPU_ENABLED
+    /** The CPU kernel. */
+  cpu::spmm_cpu<T> cpu_;
+#endif
+
+#if GPU_ENABLED
+    /** The GPU kernel. */
+	gpu::spmm_gpu<T> gpu_;
+#endif
+
+    /** The point at which offloading to GPU (offload once) becomes worthwhile. */
+    cpuGpu_offloadThreshold cpuGpu_once_;
+
+    /** The point at which offloading to GPU (offload always) becomes worthwhile.
+     */
+    cpuGpu_offloadThreshold cpuGpu_always_;
+
+    /** The point at which offloading to GPU (unified memory) becomes worthwhile.
+     */
+    cpuGpu_offloadThreshold cpuGpu_unified_;
+
+    /** The previous problem size's GPU (offload once) performance results. */
+    time_checksum_gflop prev_gpuResult_once;
+
+    /** The previous problem size's GPU (offload always) performance results. */
+    time_checksum_gflop prev_gpuResult_always;
+
+    /** The previous problem size's GPU (unified memory) performance results. */
+    time_checksum_gflop prev_gpuResult_unified;
+};

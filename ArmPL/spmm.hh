@@ -8,26 +8,177 @@
 
 #include <algorithm>
 
-#include "../include/kernels/CPU/sp_gemm.hh"
+#include "../include/kernels/CPU/spmm.hh"
 #include "../include/utilities.hh"
 
 namespace cpu {
 /** A class for GEMM CPU BLAS kernels. */
 template <typename T>
-class sp_gemm_cpu : public sp_gemm<T> {
+class spmm_cpu : public spmm<T> {
  public:
-  using sp_gemm<T>::sp_gemm;
-  using sp_gemm<T>::callConsume;
-  using sp_gemm<T>::m_;
-  using sp_gemm<T>::n_;
-  using sp_gemm<T>::k_;
-  using sp_gemm<T>::A_;
-  using sp_gemm<T>::B_;
-  using sp_gemm<T>::C_;
-  using sp_gemm<T>::nnz_;
-  using sp_gemm<T>::A_vals_;
-  using sp_gemm<T>::B_vals_;
-  using sp_gemm<T>::C_vals_;
+  using spmm<T>::spmm;
+  using spmm<T>::callConsume;
+  using spmm<T>::m_;
+  using spmm<T>::n_;
+  using spmm<T>::k_;
+  using spmm<T>::A_;
+  using spmm<T>::B_;
+  using spmm<T>::C_;
+  using spmm<T>::nnzA_;
+  using spmm<T>::nnzB_;
+
+ protected:
+  void toSparseFormat() override {
+
+    m_armpl_ = m_;
+    n_armpl_ = n_;
+    k_armpl_ = k_;
+    // ToDo -- check whether flags_ is correct!
+    flags_ = 0;
+
+    // Move A to CSR
+    A_armpl_row_ptr_ = new armpl_int_t[m_ + 1];
+    A_armpl_col_index_ = new armpl_int_t[nnzA_];
+    A_vals_ = new T[nnzA_];
+    A_armpl_row_ptr_[0] = 0;
+    int nnz_encountered = 0;
+
+    for (int row = 0; row < m_; row++) {
+      A_armpl_row_ptr_[row + 1] = nnz_encountered;
+      for (int col = 0; col < k_; col++) {
+        if (A_[(row * k_) + col] != 0.0) {
+          A_armpl_col_index_[nnz_encountered] = col;
+          A_vals_[nnz_encountered] = static_cast<T>(A_[(row * k_) + col]);
+          nnz_encountered++;
+        }
+      }
+    }
+
+    // Move B to CSR
+    B_armpl_row_ptr_ = new armpl_int_t[k_ + 1];
+    B_armpl_col_index_ = new armpl_int_t[nnz_];
+    B_vals_ = new T[nnz_];
+    B_armpl_row_ptr_[0] = 0;
+
+    nnz_encountered = 0;
+    for (int row = 0; row < k_; row++) {
+      B_armpl_row_ptr_[row + 1] = nnz_encountered;
+      for (int col = 0; col < n_; col++) {
+        if (B_[(row * n_) + col] != 0.0) {
+          B_armpl_col_index_[nnz_encountered] = col;
+          B_vals_[nnz_encountered] = static_cast<T>(B_[(row * n_) + col]);
+          nnz_encountered++;
+        }
+      }
+    }
+
+    // Move C to CSR
+    C_armpl_row_ptr_ = new armpl_int_t[n_ + 1];
+    C_armpl_col_index_ = new armpl_int_t[0];
+    C_vals_ = new T[0];
+    // ToDo Commented out below as it should be needed?
+//    C_armpl_row_ptr_[0] = 0;
+//
+//    nnz_encountered = 0;
+//    for (int row = 0; row < n_; row++) {
+//      C_armpl_row_ptr_[row + 1] = nnz_encountered;
+//      for (int col = 0; col < n_; col++) {
+//        if (B_[(row * n_) + col] != 0.0) {
+//          C_armpl_col_index_[nnz_encountered] = col;
+//          C_vals_[nnz_encountered] = static_cast<T>(B_[(row * n_) + col]);
+//          nnz_encountered++;
+//        }
+//      }
+//    }
+
+    if constexpr (std::is_same_v<T, float>) {
+//      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
+//                nnz_, flags_);
+      status_ = armpl_spmat_create_csr_s(&A_armpl_,
+                                         m_armpl_,
+                                         k_armpl_,
+                                         A_armpl_row_ptr_,
+                                         A_armpl_col_index_,
+                                         A_vals_,
+                                         flags_);
+      if (status_ != ARMPL_STATUS_SUCCESS) {
+        std::cout << "ERROR " << status_ << std::endl;
+        exit(1);
+      }
+
+//      printCSR(n_armpl_, B_armpl_row_ptr_, B_armpl_col_index_, B_vals_,
+//                nnz_, flags_);
+      status_ = armpl_spmat_create_csr_s(&B_armpl_,
+                                         k_armpl_,
+                                         n_armpl_,
+                                         B_armpl_row_ptr_,
+                                         B_armpl_col_index_,
+                                         B_vals_,
+                                         flags_);
+      if (status_ != ARMPL_STATUS_SUCCESS) {
+        std::cout << "ERROR " << status_ << std::endl;
+        exit(1);
+      }
+
+//      printCSR(n_armpl_, C_armpl_row_ptr_, C_armpl_col_index_, C_vals_,
+//                nnz_, flags_);
+      status_ = armpl_spmat_create_csr_s(&C_armpl_,
+                                         m_armpl_,
+                                         n_armpl_,
+                                         C_armpl_row_ptr_,
+                                         C_armpl_col_index_,
+                                         C_vals_,
+                                         flags_);
+      if (status_ != ARMPL_STATUS_SUCCESS) {
+        std::cout << "ERROR " << status_ << std::endl;
+        exit(1);
+      }
+    } else if constexpr (std::is_same_v<T, double>) {
+//      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
+//                nnz_, flags_
+      status_ = armpl_spmat_create_csr_d(&A_armpl_,
+                                         m_armpl_,
+                                         k_armpl_,
+                                         A_armpl_row_ptr_,
+                                         A_armpl_col_index_,
+                                         A_vals_,
+                                         flags_);
+      if (status_ != ARMPL_STATUS_SUCCESS) {
+        std::cout << "ERROR " << status_ << std::endl;
+        exit(1);
+      }
+
+//      printCSR(n_armpl_, B_armpl_row_ptr_, B_armpl_col_index_, B_vals_,
+//                nnz_, flags_);
+      status_ = armpl_spmat_create_csr_d(&B_armpl_,
+                                         k_armpl_,
+                                         n_armpl_,
+                                         B_armpl_row_ptr_,
+                                         B_armpl_col_index_,
+                                         B_vals_,
+                                         flags_);
+      if (status_ != ARMPL_STATUS_SUCCESS) {
+        std::cout << "ERROR " << status_ << std::endl;
+        exit(1);
+      }
+
+//      printCSR(n_armpl_, C_armpl_row_ptr_, C_armpl_col_index_, C_vals_,
+//                nnz_, flags_);
+      status_ = armpl_spmat_create_csr_d(&C_armpl_,
+                                         m_armpl_,
+                                         n_armpl_,
+                                         C_armpl_row_ptr_,
+                                         C_armpl_col_index_,
+                                         C_vals_,
+                                         flags_);
+      if (status_ != ARMPL_STATUS_SUCCESS) {
+        std::cout << "ERROR " << status_ << std::endl;
+        exit(1);
+      }
+
+//      std::cout << "Okay, all matrices made!!" << std::endl;
+    }
+  }
 
  private:
   /** Make call to the GEMM kernel. */
@@ -213,152 +364,6 @@ class sp_gemm_cpu : public sp_gemm<T> {
   const T beta = BETA;
 
   void toCSR_armpl() {
-    n_armpl_ = n_;
-    // ToDo -- check whether flags_ is correct!
-    flags_ = 0;
-
-    // Move A to CSR
-    A_armpl_row_ptr_ = new armpl_int_t[n_ + 1];
-    A_armpl_col_index_ = new armpl_int_t[nnz_];
-    A_vals_ = new T[nnz_];
-    A_armpl_row_ptr_[0] = 0;
-    int nnz_encountered = 0;
-
-    for (int row = 0; row < n_; row++) {
-      A_armpl_row_ptr_[row + 1] = nnz_encountered;
-      for (int col = 0; col < n_; col++) {
-        if (A_[(row * n_) + col] != 0.0) {
-          A_armpl_col_index_[nnz_encountered] = col;
-          A_vals_[nnz_encountered] = static_cast<T>(A_[(row * n_) + col]);
-          nnz_encountered++;
-        }
-      }
-    }
-
-    // Move B to CSR
-    B_armpl_row_ptr_ = new armpl_int_t[n_ + 1];
-    B_armpl_col_index_ = new armpl_int_t[nnz_];
-    B_vals_ = new T[nnz_];
-    B_armpl_row_ptr_[0] = 0;
-
-    nnz_encountered = 0;
-    for (int row = 0; row < n_; row++) {
-      B_armpl_row_ptr_[row + 1] = nnz_encountered;
-      for (int col = 0; col < n_; col++) {
-        if (B_[(row * n_) + col] != 0.0) {
-          B_armpl_col_index_[nnz_encountered] = col;
-          B_vals_[nnz_encountered] = static_cast<T>(B_[(row * n_) + col]);
-          nnz_encountered++;
-        }
-      }
-    }
-
-    // Move C to CSR
-    C_armpl_row_ptr_ = new armpl_int_t[n_ + 1];
-    C_armpl_col_index_ = new armpl_int_t[nnz_];
-    C_vals_ = new T[nnz_];
-    C_armpl_row_ptr_[0] = 0;
-
-    nnz_encountered = 0;
-    for (int row = 0; row < n_; row++) {
-      C_armpl_row_ptr_[row + 1] = nnz_encountered;
-      for (int col = 0; col < n_; col++) {
-        if (B_[(row * n_) + col] != 0.0) {
-          C_armpl_col_index_[nnz_encountered] = col;
-          C_vals_[nnz_encountered] = static_cast<T>(B_[(row * n_) + col]);
-          nnz_encountered++;
-        }
-      }
-    }
-
-    if constexpr (std::is_same_v<T, float>) {
-//      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
-//                nnz_, flags_);
-      status_ = armpl_spmat_create_csr_s(&A_armpl_,
-                                         n_armpl_,
-                                         n_armpl_,
-                                         A_armpl_row_ptr_,
-                                         A_armpl_col_index_,
-                                         A_vals_,
-                                         flags_);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-
-//      printCSR(n_armpl_, B_armpl_row_ptr_, B_armpl_col_index_, B_vals_,
-//                nnz_, flags_);
-      status_ = armpl_spmat_create_csr_s(&B_armpl_,
-                                         n_armpl_,
-                                         n_armpl_,
-                                         B_armpl_row_ptr_,
-                                         B_armpl_col_index_,
-                                         B_vals_,
-                                         flags_);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-
-//      printCSR(n_armpl_, C_armpl_row_ptr_, C_armpl_col_index_, C_vals_,
-//                nnz_, flags_);
-      status_ = armpl_spmat_create_csr_s(&C_armpl_,
-                                         n_armpl_,
-                                         n_armpl_,
-                                         C_armpl_row_ptr_,
-                                         C_armpl_col_index_,
-                                         C_vals_,
-                                         flags_);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-    } else if constexpr (std::is_same_v<T, double>) {
-//      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
-//                nnz_, flags_
-      status_ = armpl_spmat_create_csr_d(&A_armpl_,
-                                         n_armpl_,
-                                         n_armpl_,
-                                         A_armpl_row_ptr_,
-                                         A_armpl_col_index_,
-                                         A_vals_,
-                                         flags_);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-
-//      printCSR(n_armpl_, B_armpl_row_ptr_, B_armpl_col_index_, B_vals_,
-//                nnz_, flags_);
-      status_ = armpl_spmat_create_csr_d(&B_armpl_,
-                                         n_armpl_,
-                                         n_armpl_,
-                                         B_armpl_row_ptr_,
-                                         B_armpl_col_index_,
-                                         B_vals_,
-                                         flags_);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-
-//      printCSR(n_armpl_, C_armpl_row_ptr_, C_armpl_col_index_, C_vals_,
-//                nnz_, flags_);
-      status_ = armpl_spmat_create_csr_d(&C_armpl_,
-                                         n_armpl_,
-                                         n_armpl_,
-                                         C_armpl_row_ptr_,
-                                         C_armpl_col_index_,
-                                         C_vals_,
-                                         flags_);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-
-//      std::cout << "Okay, all matrices made!!" << std::endl;
-    }
-
   }
 
   void printCSR(armpl_int_t n, armpl_int_t* rp, armpl_int_t* ci, T* v,
@@ -385,7 +390,9 @@ class sp_gemm_cpu : public sp_gemm<T> {
 
   armpl_int_t flags_;
 
+  armpl_int_t m_armpl_;
   armpl_int_t n_armpl_;
+  armpl_int_t k_armpl_;
 
   armpl_int_t* A_armpl_row_ptr_;
   armpl_int_t* A_armpl_col_index_;

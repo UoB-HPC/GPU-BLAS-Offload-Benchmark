@@ -18,6 +18,7 @@ public:
   using ::spmm<T>::iterations_;
   using ::spmm<T>::nnzA_;
   using ::spmm<T>::nnzB_;
+  using ::spmm<T>::sparsity_;
   using ::spmm<T>::m_;
   using ::spmm<T>::n_;
   using ::spmm<T>::k_;
@@ -43,7 +44,7 @@ public:
     B_ = (T*)malloc(sizeof(T) * k_ * n_);
     C_ = (T*)calloc(sizeof(T) * m_ * n_);
 
-    initInputMatrices(sparsity_);
+    initInputMatrices();
   }
 
 private:
@@ -54,7 +55,5 @@ private:
     free(B_);
     free(C_);
   }
-
-  double sparsity_;
 };
 }  // namespace cpu

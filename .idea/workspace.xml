@@ -15,30 +15,18 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Getting rid of old oneMKL sparse file">
-      <change afterPath="$PROJECT_DIR$/include/doSpgemm.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/include/doSpgemv.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/include/doSpmm.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/include/kernels/CPU/spgmm.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/include/kernels/GPU/spgemm.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/include/kernels/spgemm.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/include/kernels/spgemv.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/include/kernels/spmm.hh" afterDir="false" />
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Refactoring to make individual files relate to a single kernel">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/AOCL/sp_gemm.hh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ArmPL/sp_gemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/spmm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ArmPL/sp_gemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/spgemv.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cuBLAS/sp_gemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/cuBLAS/spmm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cuBLAS/sp_gemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/cuBLAS/spgemv.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/doGemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doGemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ArmPL/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/spgemv.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cuBLAS/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/cuBLAS/spgemv.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/doGemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doGemv.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/CPU/sp_gemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/CPU/spmm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/CPU/sp_gemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/CPU/spgemv.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/GPU/sp_gemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/GPU/spmm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/GPU/sp_gemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/GPU/spgemv.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/gemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/gemm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/main.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/main.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/doSpgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpgemv.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/kernels/CPU/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/CPU/spgemv.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/kernels/CPU/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/CPU/spmm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/kernels/GPU/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/GPU/spgemv.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/kernels/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spgemv.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/kernels/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spmm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/utilities.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/utilities.hh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -578,7 +566,15 @@
       <option name="project" value="LOCAL" />
       <updated>1735823512058</updated>
     </task>
-    <option name="localTasksCounter" value="48" />
+    <task id="LOCAL-00048" summary="Refactoring to make individual files relate to a single kernel">
+      <option name="closed" value="true" />
+      <created>1736268772766</created>
+      <option name="number" value="00048" />
+      <option name="presentableId" value="LOCAL-00048" />
+      <option name="project" value="LOCAL" />
+      <updated>1736268772766</updated>
+    </task>
+    <option name="localTasksCounter" value="49" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -596,7 +592,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="cuSPARSE unified memory implementation" />
     <MESSAGE value="Now compiles" />
     <MESSAGE value="Now compiles with fewer runtime errors" />
     <MESSAGE value="Implementing other offload types - still some runtime errors" />
@@ -621,6 +616,7 @@
     <MESSAGE value="Updating createGflopsGraphs.py to show sparsity" />
     <MESSAGE value="Beginning gemv ARMPL" />
     <MESSAGE value="Getting rid of old oneMKL sparse file" />
-    <option name="LAST_COMMIT_MESSAGE" value="Getting rid of old oneMKL sparse file" />
+    <MESSAGE value="Refactoring to make individual files relate to a single kernel" />
+    <option name="LAST_COMMIT_MESSAGE" value="Refactoring to make individual files relate to a single kernel" />
   </component>
 </project>

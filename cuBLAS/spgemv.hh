@@ -7,27 +7,27 @@
 #include <random>
 #include <iostream>
 
-#include "../include/kernels/GPU/sp_gemv.hh"
+#include "../include/kernels/GPU/spgemv.hh"
 #include "../include/utilities.hh"
 #include "common.hh"
 
 namespace gpu {
 /** A class for sparse GEMM GPU BLAS kernels. */
 template <typename T>
-class sp_gemv_gpu : public sp_gemv<T> {
+class spgemv_gpu : public spgemv<T> {
  public:
-  using sp_gemv<T>::sp_gemv;
-  using sp_gemv<T>::initInputMatrixVectorSparse;
-//  using sp_gemv<T>::toCSR_int;
-  using sp_gemv<T>::m_;
-  using sp_gemv<T>::n_;
-  using sp_gemv<T>::A_;
-  using sp_gemv<T>::x_;
-  using sp_gemv<T>::y_;
-  using sp_gemv<T>::offload_;
-  using sp_gemv<T>::sparsity_;
+  using spgemv<T>::spgemv;
+  using spgemv<T>::initInputMatrixVector;
+  using spgemv<T>::nnz_;
+  using spgemv<T>::m_;
+  using spgemv<T>::n_;
+  using spgemv<T>::A_;
+  using spgemv<T>::x_;
+  using spgemv<T>::y_;
+  using spgemv<T>::offload_;
+  using spgemv<T>::sparsity_;
 
-  ~sp_gemv_gpu() {
+  ~spgemv_gpu() {
     // ToDo -- destroy the handle
 
     // Destroy streams after use
@@ -45,14 +45,15 @@ class sp_gemv_gpu : public sp_gemv<T> {
    *  - Always:  Move data from host to device and device to host each iteration
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
-  void initialise(gpuOffloadType offload, int n, float sparsity) override {
-    std::cout << std::endl << "##############################" << std::endl
-              << "\tCUSPARSE GEMV\t\tInitialising n = " << n << "\tOffload"
-              << " type = " <<
-              (((offload == gpuOffloadType::unified) ? "Unified" : (offload
-              == gpuOffloadType::always) ? "Always" : "Once"))
-              << std::endl
-              << "##############################" << std::endl;
+  void initialise(gpuOffloadType offload, int m, int n, float sparsity)
+  override {
+//    std::cout << std::endl << "##############################" << std::endl
+//              << "\tCUSPARSE GEMV\t\tInitialising n = " << n << "\tOffload"
+//              << " type = " <<
+//              (((offload == gpuOffloadType::unified) ? "Unified" : (offload
+//              == gpuOffloadType::always) ? "Always" : "Once"))
+//              << std::endl
+//              << "##############################" << std::endl;
     offload_ = offload;
 
     sparsity_ = sparsity;
@@ -83,6 +84,7 @@ class sp_gemv_gpu : public sp_gemv<T> {
       std::cout << "INVALID DATA TYPE PASSED TO cuSPARSE" << std::endl;
       exit(1);
     }
+    m_ = m;
     n_ = n;
 
     // Initialise 3 streams to asynchronously move data between host and device
@@ -93,13 +95,11 @@ class sp_gemv_gpu : public sp_gemv<T> {
     std::cout << "\tcuda streams created" << std::endl;
 
 
-   // Work out the sizes of all the vectors
-    A_nnz_ = 1 + (uint64_t)(n_ * n_ * (1 - sparsity));
-    vals_size_ = sizeof(T) * A_nnz_;
-    cols_size_ = sizeof(int) * A_nnz_;
-    rows_size_ = sizeof(int) * (n_ + 1);
+    vals_size_ = sizeof(T) * nnz_;
+    cols_size_ = sizeof(int) * nnz_;
+    rows_size_ = sizeof(int) * (m_ + 1);
     x_size_ = sizeof(T) * n_;
-    y_size_ = sizeof(T) * n_;
+    y_size_ = sizeof(T) * m_;
 
     if (offload_ == gpuOffloadType::unified) {
       // Get device identifier
@@ -141,17 +141,13 @@ class sp_gemv_gpu : public sp_gemv<T> {
 
     // Initialise the matrices
     // Set initial values to 0
-    A_ = (T*)malloc(sizeof(T) * n_ * n_);
+    A_ = (T*)malloc(sizeof(T) * m_ * n_);
 
     std::cout << "\tA_ dense array made" << std::endl;
 
-    initInputMatrixVectorSparse();git branc
+    initInputMatrixVector();
 
     std::cout << "\tinputs made" << std::endl;
-
-    toCSR_int(A_, n_, n_, A_val_, A_col_, A_row_);
-
-    std::cout << "\tA_ moved to CSR" << std::endl;
 
 //    std::cout << "_____Matrix A_____" << std::endl;
 //    printDenseMatrix(A_, n_, n_);
@@ -172,7 +168,7 @@ class sp_gemv_gpu : public sp_gemv<T> {
       case gpuOffloadType::always: {
         // Make matrix descriptor
         cusparseCheckError(
-                cusparseCreateCsr(&descrA_, n_, n_, A_nnz_, A_row_dev_,
+                cusparseCreateCsr(&descrA_, m_, n_, nnz_, A_row_dev_,
                                   A_col_dev_, A_val_dev_, rType_, cType_,
                                   indType_, cudaDataType_));
         std::cout << "\tA_ description made" << std::endl;
@@ -180,7 +176,7 @@ class sp_gemv_gpu : public sp_gemv<T> {
         cusparseCheckError(cusparseCreateDnVec(&descrx_, n_, x_dev_,
                                                cudaDataType_));
         std::cout << "\tx_ description made" << std::endl;
-        cusparseCheckError(cusparseCreateDnVec(&descry_, n_, NULL,
+        cusparseCheckError(cusparseCreateDnVec(&descry_, m_, NULL,
                                                cudaDataType_));
         std::cout << "\ty_ description made" << std::endl;
         break;
@@ -204,7 +200,7 @@ class sp_gemv_gpu : public sp_gemv<T> {
 
         // Create matrix descriptor
         cusparseCheckError(
-                cusparseCreateCsr(&descrA_, n_, n_, A_nnz_, A_row_dev_,
+                cusparseCreateCsr(&descrA_, m_, n_, nnz_, A_row_dev_,
                                   A_col_dev_, A_val_dev_, rType_, cType_,
                                   indType_, cudaDataType_));
         std::cout << "\tA_ description made" << std::endl;
@@ -212,7 +208,7 @@ class sp_gemv_gpu : public sp_gemv<T> {
         cusparseCheckError(cusparseCreateDnVec(&descrx_, n_, x_dev_,
                                                cudaDataType_));
         std::cout << "\tx_ description made" << std::endl;
-        cusparseCheckError(cusparseCreateDnVec(&descry_, n_, NULL,
+        cusparseCheckError(cusparseCreateDnVec(&descry_, m_, NULL,
                                                cudaDataType_));
         std::cout << "\ty_ description made" << std::endl;
         break;
@@ -508,16 +504,14 @@ class sp_gemv_gpu : public sp_gemv<T> {
     cudaCheckError(cudaStreamDestroy(s3_));
   }
 
-
-    void toCSR_int(T* dense, int n_col, int n_row, T* vals, int* col_index,
-             int* row_ptr) {
+    void toSparseFormat() {
       int nnz_encountered = 0;
-      for (int row = 0; row < n_row; row++) {
-        row_ptr[row] = nnz_encountered;
-        for (int col = 0; col < n_col; col++) {
-          if (dense[(row * n_) + col] != 0.0) {
-            col_index[nnz_encountered] = col;
-            vals[nnz_encountered] = dense[(row * n_) + col];
+      for (int row = 0; row < m_; row++) {
+        A_row_[row] = nnz_encountered;
+        for (int col = 0; col < n_; col++) {
+          if (A_[(row * n_) + col] != 0.0) {
+            A_col_[nnz_encountered] = col;
+            A_val_[nnz_encountered] = A_[(row * n_) + col];
             nnz_encountered++;
           }
         }
@@ -606,7 +600,7 @@ class sp_gemv_gpu : public sp_gemv<T> {
 	T* A_val_dev_;
 	int *A_col_dev_, *A_row_dev_;
   /** Metadata */
-  uint64_t A_nnz_, vals_size_, cols_size_, rows_size_;
+  uint64_t vals_size_, cols_size_, rows_size_;
 
   /**
    * ################################

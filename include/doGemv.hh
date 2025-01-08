@@ -68,7 +68,7 @@ class doGemv {
         initCSVFile(CSV_DIR + "/" + getKernelName() + "_square_vector_M=N.csv");
     for (int dim = startDimention_; dim <= upperLimit_; dim++) {
       // M = dim, N = dim;
-      callDenseKernels(csvFile, dim, dim);
+      callKernels(csvFile, dim, dim);
     }
     // Close file
     csvFile.close();
@@ -93,7 +93,7 @@ class doGemv {
     int N = startDimention_;
     int M = 16 * N;
     while (M <= upperLimit_) {
-      callDenseKernels(csvFile, M, N);
+      callKernels(csvFile, M, N);
       M += 16;
       N++;
     }
@@ -119,7 +119,7 @@ class doGemv {
     if (upperLimit_ >= 32) {
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = 32;
-        callDenseKernels(csvFile, dim, 32);
+        callKernels(csvFile, dim, 32);
       }
     }
     // Close file
@@ -144,7 +144,7 @@ class doGemv {
     M = startDimention_;
     N = 16 * M;
     while (N <= upperLimit_) {
-      callDenseKernels(csvFile, M, N);
+      callKernels(csvFile, M, N);
       M++;
       N += 16;
     }
@@ -170,7 +170,7 @@ class doGemv {
     if (upperLimit_ >= 32) {
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = 32, N = dim;
-        callDenseKernels(csvFile, 32, dim);
+        callKernels(csvFile, 32, dim);
       }
     }
     // Close file
@@ -185,7 +185,7 @@ class doGemv {
 
  private:
   /** Call the appropriate CPU and GPU GEMV kernels. */
-  void callDenseKernels(std::ofstream& csvFile, const int M, const int N) {
+  void callKernels(std::ofstream& csvFile, const int M, const int N) {
     const double probSize = calcKib(M, N);
     const uint64_t flops = calcFlops(M, N);
     std::string kernelName = getKernelName();

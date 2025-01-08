@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../gemv.hh"
+#include "../spgemv.hh"
 
 #include <random>
 #include <memory>
@@ -9,44 +9,42 @@ namespace cpu {
 
 /** An abstract class for GEMV BLAS kernels. */
     template <typename T>
-    class sp_gemv : public ::gemv<T> {
+    class spgemv : public ::spgemv<T> {
     public:
-        using ::gemv<T>::gemv;
-        using ::gemv<T>::initInputMatrixVectorSparse;
-        using ::gemv<T>::m_;
-        using ::gemv<T>::n_;
-        using ::gemv<T>::A_;
-        using ::gemv<T>::x_;
-        using ::gemv<T>::y_;
-        using ::gemv<T>::sparsity_;
+        using ::spgemv<T>::spgemv;
+        using ::spgemv<T>::initInputMatrixVector;
+        using ::spgemv<T>::m_;
+        using ::spgemv<T>::n_;
+        using ::spgemv<T>::A_;
+        using ::spgemv<T>::x_;
+        using ::spgemv<T>::y_;
+        using ::spgemv<T>::sparsity_;
+        using ::spgemv<T>::nnz_;
 
     public:
         /** Initialise the required data structures. */
-        void initialise(int n, double sparsity) {
-          m_ = n;
+        void initialise(int m, int n, double sparsity) {
+          m_ = m;
           n_ = n;
           sparsity_ = sparsity;
 
           // Note that the below should be the same as the edges calculation
           // used in the initInputMatricesSparse function.  If changed here,
           // change there
-          nnz_ = 1 + (uint64_t)((double)n_ * (double)n_ * (1.0 - sparsity_));
+          nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
 
           A_ = (T*)malloc(sizeof(T) * m_ * n_);
           x_ = (T*)malloc(sizeof(T) * n_);
           y_ = (T*)malloc(sizeof(T) * m_);
 
           // Initialise the matrix and vectors
-          initInputMatrixVectorSparse();
+          initInputMatrixVector();
         }
-
-    protected:
-        uint64_t nnz_;
 
     private:
         /** Do any necessary cleanup (free pointers, close library handles, etc.)
          * after Kernel has been called. */
-        void postCallKernelCleanup() override {
+        void postCallKernelCleanup() {
           free(A_);
           free(x_);
           free(y_);

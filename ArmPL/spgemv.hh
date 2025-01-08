@@ -8,22 +8,22 @@
 
 #include <algorithm>
 
-#include "../include/kernels/CPU/sp_gemv.hh"
+#include "../include/kernels/CPU/spgemv.hh"
 #include "../include/utilities.hh"
 
 namespace cpu {
 /** A class for GEMM CPU BLAS kernels. */
 template <typename T>
-class sp_gemv_cpu : public sp_gemv<T> {
+class spgemv_cpu : public spgemv<T> {
  public:
-  using sp_gemv<T>::sp_gemv;
-  using sp_gemv<T>::callConsume;
-  using sp_gemv<T>::m_;
-  using sp_gemv<T>::n_;
-  using sp_gemv<T>::A_;
-  using sp_gemv<T>::x_;
-  using sp_gemv<T>::y_;
-  using sp_gemv<T>::nnz_;
+  using spgemv<T>::spgemv;
+  using spgemv<T>::callConsume;
+  using spgemv<T>::m_;
+  using spgemv<T>::n_;
+  using spgemv<T>::A_;
+  using spgemv<T>::x_;
+  using spgemv<T>::y_;
+  using spgemv<T>::nnz_;
 
  private:
   /** Make call to the GEMM kernel. */
@@ -62,7 +62,7 @@ class sp_gemv_cpu : public sp_gemv<T> {
                                   y_);
     } else {
       // Un-specialised class will not do any work - print error and exit.
-      std::cout << "ERROR - Datatype for ArmPL CPU GEMM kernel not supported."
+      std::cout << "ERROR - Datatype for ArmPL CPU SPGEMM kernel not supported."
                 << std::endl;
       exit(1);
     }
@@ -156,7 +156,7 @@ class sp_gemv_cpu : public sp_gemv<T> {
   /** The constant value Beta. */
   const T beta = BETA;
 
-  void toCSR_armpl() {
+  void toSparseFormat() {
     n_armpl_ = n_;
     // ToDo -- check whether flags_ is correct!
     flags_ = 0;
@@ -168,7 +168,7 @@ class sp_gemv_cpu : public sp_gemv<T> {
     A_armpl_row_ptr_[0] = 0;
     int nnz_encountered = 0;
 
-    for (int row = 0; row < n_; row++) {
+    for (int row = 0; row < m_; row++) {
       A_armpl_row_ptr_[row + 1] = nnz_encountered;
       for (int col = 0; col < n_; col++) {
         if (A_[(row * n_) + col] != 0.0) {
@@ -183,7 +183,7 @@ class sp_gemv_cpu : public sp_gemv<T> {
 //      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
 //                nnz_, flags_);
       status_ = armpl_spmat_create_csr_s(&A_armpl_,
-                                         n_armpl_,
+                                         m_armpl_,
                                          n_armpl_,
                                          A_armpl_row_ptr_,
                                          A_armpl_col_index_,
@@ -197,7 +197,7 @@ class sp_gemv_cpu : public sp_gemv<T> {
 //      printCSR(n_armpl_, A_armpl_row_ptr_, A_armpl_col_index_, A_vals_,
 //                nnz_, flags_
       status_ = armpl_spmat_create_csr_d(&A_armpl_,
-                                         n_armpl_,
+                                         m_armpl_,
                                          n_armpl_,
                                          A_armpl_row_ptr_,
                                          A_armpl_col_index_,
@@ -239,6 +239,7 @@ class sp_gemv_cpu : public sp_gemv<T> {
   armpl_int_t flags_;
 
   armpl_int_t n_armpl_;
+  armpl_int_t m_armpl;
 
   T* A_vals_;
   armpl_int_t* A_armpl_row_ptr_;

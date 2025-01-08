@@ -4,7 +4,6 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
-#include <random>
 #include <iostream>
 
 #include "../utilities.hh"
@@ -94,7 +93,7 @@ protected:
                      false)) {}
       }
 
-      toSparseFormat()
+      toSparseFormat();
     }
 
     /** Move matrices into the sparse representation of for the given library */
@@ -102,47 +101,6 @@ protected:
 
     /** Call the external consume() function on the matrices */
     void callConsume() { consume((void*)A_, (void*)B_, (void*)C_); }/** Recursive function to populate sparse matrices */
-
-    // On first iteration, n should be x2 + 1
-    bool rMat(T* M, int n, int x1, int x2, int y1, int y2, float a, float b,
-              float c, std::default_random_engine* gen,
-              std::uniform_real_distribution<double> dist, bool bin) {
-      // If a 1x1 submatrix, then add an edge and return out
-      if (x1 >= x2 && y1 >= y2) {
-        // Needed to avoid overflow segfaults with large problem sizes
-        uint64_t index = (((uint64_t)y1 * (uint64_t)n) + (uint64_t)x1);
-        if (abs(M[index]) > 0.1) {
-          return false;
-        } else {
-          // Add 1.0 if this is a binary graph, and a random real number otherwise
-          M[index] = (bin) ? 1.0 : (((rand() % 10000) / 100.0) - 50.0);
-          return true;
-        }
-      } else {
-        // Divide up the matrix
-        int xMidPoint = x1 + floor((x2 - x1) / 2);
-        int yMidPoint = y1 + floor((y2 - y1) / 2);
-
-        // Work out which quarter to recurse into
-        // There are some ugly ternary operators here to avoid going out of bounds in the edge case
-        // that we are already at 1 width or 1 height
-        float randomNum = dist(*gen);
-        if (randomNum < a) {
-          return rMat(M, n, x1, xMidPoint, y1, yMidPoint,
-                      a, b, c, gen, dist, bin);
-        } else if (randomNum < (a + b)) {
-          return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2, y1, yMidPoint,
-                      a, b, c, gen, dist, bin);
-        } else if (randomNum < (a + b + c)) {
-          return rMat(M, n, x1, xMidPoint, ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2,
-                      a, b, c, gen, dist, bin);
-        } else {
-          return rMat(M, n, ((xMidPoint < x2) ? xMidPoint + 1 : xMidPoint), x2,
-                      ((yMidPoint < y2) ? yMidPoint + 1 : yMidPoint), y2, a,
-                      b, c, gen, dist, bin);
-        }
-      }
-    }
 
     /** The number of iterations to perform per problem size. */
     const int iterations_;
@@ -164,5 +122,7 @@ protected:
 
     /** Dense representation of output matrix C. */
     T* C_;
+
+    double sparsity_;
 
 };

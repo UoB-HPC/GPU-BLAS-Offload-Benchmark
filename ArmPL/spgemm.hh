@@ -8,31 +8,34 @@
 #include <algorithm>
 #include <iostream>
 
-#include "../include/kernels/CPU/spmm.hh"
+#include "../include/kernels/CPU/spgemm.hh"
 #include "../include/utilities.hh"
 
 namespace cpu {
-/** A class for sparse matrix-sparse matrix CPU BLAS kernels. */
-template <typename T>
-class spmm_cpu : public spmm<T> {
- public:
-  using spmm<T>::spmm;
-  using spmm<T>::callConsume;
-  using spmm<T>::m_;
-  using spmm<T>::n_;
-  using spmm<T>::k_;
-  using spmm<T>::A_;
-  using spmm<T>::B_;
-  using spmm<T>::C_;
-  using spmm<T>::nnzA_;
-  using spmm<T>::nnzB_;
+    /**
+     * a class for sparse matrix-dense matric CPU BLAS kernels
+     */
+class spgemm_cpu : public spgemm<T> {
+public:
+    using spgemm<T>::spgemm;
+    using spgemm<T>::callConsume;
+    using spgemm<T>::m_;
+    using spgemm<T>::n_;
+    using spgemm<T>::k_;
+    using spgemm<T>::A_;
+    using spgemm<T>::B_;
+    using spgemm<T>::C_;
+    using spgemm<T>::nnz_;
 
- protected:
+protected:
   void toSparseFormat() override {
 
     m_armpl_ = m_;
     n_armpl_ = n_;
     k_armpl_ = k_;
+
+    nnzA_ = nnz_;
+    nnzB_ = k_ * n_;
     // ToDo -- check whether flags_ is correct!
     flags_ = 0;
 
@@ -180,7 +183,7 @@ class spmm_cpu : public spmm<T> {
     }
   }
 
- private:
+private:
   /** Make call to the GEMM kernel. */
   void callGemm() override {
 
@@ -326,8 +329,7 @@ class spmm_cpu : public spmm<T> {
 //    }
   }
 
-  /** Perform any required steps after calling the GEMM kernel that should
-   * be timed. */
+
   void postLoopRequirements() override {
     status_ = armpl_spmat_destroy(A_armpl_);
     if (status_ != ARMPL_STATUS_SUCCESS) {
@@ -383,6 +385,9 @@ class spmm_cpu : public spmm<T> {
     std::cout << "]" << std::endl << "\tflags = " << f << std::endl;
   }
 
+  int64_t nnzA_;
+  int64_t nnzB_;
+
   armpl_status_t status_;
 
   armpl_int_t flags_;
@@ -404,7 +409,9 @@ class spmm_cpu : public spmm<T> {
 
   armpl_sparse_hint_value transA_ = ARMPL_SPARSE_OPERATION_NOTRANS;
   armpl_sparse_hint_value transB_ = ARMPL_SPARSE_OPERATION_NOTRANS;
-
 };
-}  // namespace cpu
+}
+
+
+
 #endif

@@ -12,19 +12,19 @@
 #elif defined CPU_ONEMKL
 // Todo #include "../oneMKL/CPU/spmm.hh"
 #elif defined CPU_AOCL
-// Todo #include "../AOCL/gemm.hh"
+// Todo #include "../AOCL/spmm.hh"
 #elif defined CPU_NVPL
- // Todo #include "../NVPL/gemm.hh"
+ // Todo #include "../NVPL/spmm.hh"
 #elif defined CPU_OPENBLAS
-// Todo #include "../OpenBLAS/gemm.hh"
+// Todo #include "../OpenBLAS/spmm.hh"
 #endif
 
 #if defined GPU_CUBLAS
 #include "../cuBLAS/spmm.hh"
 #elif defined GPU_ONEMKL
-// Todo #include "../oneMKL/GPU/gemm.hh"
+// Todo #include "../oneMKL/GPU/spmm.hh"
 #elif defined GPU_ROCBLAS
-// Todo #include "../rocBLAS/gemm.hh"
+// Todo #include "../rocBLAS/spmm.hh"
 #endif
 
 /** `T` represents the type of kernel that will be run - i.e. T=float is for

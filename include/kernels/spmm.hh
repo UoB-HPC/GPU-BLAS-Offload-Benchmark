@@ -76,6 +76,9 @@ protected:
       for (size_t i = 0; i < (k_ * n_); i++) {
         B_[i] = 0.0;
       }
+      for (size_t i = 0; i < (m_ * n_); i++) {
+        C_[i] = 0.0;
+      }
 
       // Random number generator objects for use in descent
       std::default_random_engine gen;

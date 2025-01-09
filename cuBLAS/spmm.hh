@@ -50,13 +50,11 @@ class spmm_gpu : public spmm<T> {
 
     A_ = (T*)malloc(sizeof(T) * m_ * k_);
     B_ = (T*)malloc(sizeof(T) * k_ * n_);
-    C_ = (T*)calloc(sizeof(T) * m_ * n_);å
+    C_ = (T*)calloc(sizeof(T) * m_ * n_);
 
     /** Determine the number of nnz elements in A and B */
     nnzA_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
     nnzB_ = 1 + (uint64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
-
-    initInputMatrices(sparsity_);
 
     // Get device identifier
     cudaCheckError(cudaGetDevice(&gpuDevice_));
@@ -118,6 +116,8 @@ class spmm_gpu : public spmm<T> {
 
     // Create a handle for cuSPARSE
     cusparseCheckError(cusparseCreate(&handle_));
+
+    initInputMatrices();
   }
 
  protected:
@@ -194,7 +194,7 @@ class spmm_gpu : public spmm<T> {
         cudaCheckError(cudaMemcpyAsync(C_row_dev_, C_row_, sizeof(int) * (n_
         + 1), cudaMemcpyHostToDevice, s3_));
 
-        // Craete matrix descriptors
+        // Create matrix descriptors
         cusparseCheckError(
                 cusparseCreateCsr(&descrA_, m_, k_, nnzA_, A_row_dev_,
                                   A_col_dev_, A_val_dev_, rType_, cType_,

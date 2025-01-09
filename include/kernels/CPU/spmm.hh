@@ -14,7 +14,6 @@ class spmm : public ::spmm<T> {
 public:
   using ::spmm<T>::spmm;
   using ::spmm<T>::initInputMatrices;
-  using ::spmm<T>::toCSR_int;
   using ::spmm<T>::iterations_;
   using ::spmm<T>::nnzA_;
   using ::spmm<T>::nnzB_;
@@ -29,7 +28,7 @@ public:
 public:
   /** Initialise the required data structures. */
   void initialise(int n, int m, int k, double sparsity,
-                          bool binary = false) {
+                  bool binary = false) {
     n_ = n;
     m_ = m;
     k_ = k;

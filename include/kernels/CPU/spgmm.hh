@@ -1,8 +1,0 @@
-//
-// Created by Alexander Cockrean on 07/01/2025.
-//
-
-#ifndef GPU_BLAS_OFFLOAD_BENCHMARK_SPGMM_HH
-#define GPU_BLAS_OFFLOAD_BENCHMARK_SPGMM_HH
-
-#endif //GPU_BLAS_OFFLOAD_BENCHMARK_SPGMM_HH

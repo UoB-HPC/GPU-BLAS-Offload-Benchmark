@@ -242,7 +242,7 @@ class spmm_gpu : public spmm<T> {
   }
 
   /** Make a call to the BLAS Library Kernel. */
-  void callGemm() override {
+  void callSpmm() override {
     switch(offload_) {
       case gpuOffloadType::always: {
         if (C_mem_allocated_always_) {

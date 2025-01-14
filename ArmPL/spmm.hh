@@ -182,7 +182,7 @@ class spmm_cpu : public spmm<T> {
 
  private:
   /** Make call to the GEMM kernel. */
-  void callGemm() override {
+  void callSpmm() override {
 
     /**
      * Flow of ARMPL Sparse LA:

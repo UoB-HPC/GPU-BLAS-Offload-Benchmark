@@ -78,8 +78,6 @@ class spgemv_cpu : public spgemv<T> {
   /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
   void preLoopRequirements() override {
-    // Need to put A_ and B_ into A_armpl_ and B_armpl_
-    toCSR_armpl();
 
     /** providing hints to ARMPL and optimizing the matrix datastructures */
     // TODO -- is noallocs best here?
@@ -162,7 +160,7 @@ class spgemv_cpu : public spgemv<T> {
     flags_ = 0;
 
     // Move A to CSR
-    A_armpl_row_ptr_ = new armpl_int_t[n_ + 1];
+    A_armpl_row_ptr_ = new armpl_int_t[m_ + 1];
     A_armpl_col_index_ = new armpl_int_t[nnz_];
     A_vals_ = new T[nnz_];
     A_armpl_row_ptr_[0] = 0;

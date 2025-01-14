@@ -15,18 +15,21 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Moving spgemv into new format">
-      <change afterPath="$PROJECT_DIR$/ArmPL/spgemm.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/cuBLAS/spgemm.hh" afterDir="false" />
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Finishing off armpl and cusparse kernels">
+      <change afterPath="$PROJECT_DIR$/oneMKL/CPU/spgemm.hh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/oneMKL/CPU/spgemv.hh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/oneMKL/CPU/spmm.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ArmPL/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/spgemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ArmPL/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/spgemv.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ArmPL/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/spmm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cuBLAS/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/cuBLAS/spgemm.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cuBLAS/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/cuBLAS/spmm.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/doSpgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpgemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/doSpgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpgemv.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/doSpmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpmm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/CPU/spgmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/CPU/spgemm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/CPU/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/CPU/spmm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/GPU/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/GPU/spgemm.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/kernels/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spgemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/kernels/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spgemv.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/kernels/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spmm.hh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -190,14 +193,6 @@
       <workItem from="1727941995420" duration="22747000" />
       <workItem from="1729503392250" duration="1773000" />
       <workItem from="1730878516596" duration="9915000" />
-    </task>
-    <task id="LOCAL-00001" summary="trivial changes">
-      <option name="closed" value="true" />
-      <created>1706261672580</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1706261672580</updated>
     </task>
     <task id="LOCAL-00002" summary="Adding sparse algorithm">
       <option name="closed" value="true" />
@@ -583,7 +578,15 @@
       <option name="project" value="LOCAL" />
       <updated>1736345071717</updated>
     </task>
-    <option name="localTasksCounter" value="50" />
+    <task id="LOCAL-00050" summary="Finishing off armpl and cusparse kernels">
+      <option name="closed" value="true" />
+      <created>1736437501127</created>
+      <option name="number" value="00050" />
+      <option name="presentableId" value="LOCAL-00050" />
+      <option name="project" value="LOCAL" />
+      <updated>1736437501127</updated>
+    </task>
+    <option name="localTasksCounter" value="51" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -601,7 +604,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Now compiles with fewer runtime errors" />
     <MESSAGE value="Implementing other offload types - still some runtime errors" />
     <MESSAGE value="All implemented and running.  No checksum at the end" />
     <MESSAGE value="All three offload types working for large problem sizes" />
@@ -626,6 +628,7 @@
     <MESSAGE value="Getting rid of old oneMKL sparse file" />
     <MESSAGE value="Refactoring to make individual files relate to a single kernel" />
     <MESSAGE value="Moving spgemv into new format" />
-    <option name="LAST_COMMIT_MESSAGE" value="Moving spgemv into new format" />
+    <MESSAGE value="Finishing off armpl and cusparse kernels" />
+    <option name="LAST_COMMIT_MESSAGE" value="Finishing off armpl and cusparse kernels" />
   </component>
 </project>

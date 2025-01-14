@@ -9,7 +9,7 @@
 #if defined CPU_ARMPL
 #include "../ArmPL/spgemm.hh"
 #elif defined CPU_ONEMKL
-// Todo #include "../oneMKL/CPU/spgemm.hh"
+#include "../oneMKL/CPU/spgemm.hh"
 #elif defined CPU_AOCL
 // Todo #include "../AOCL/spgemm.hh"
 #elif defined CPU_NVPL
@@ -38,10 +38,10 @@ public:
              const int upperlimit, const bool cpuEnabled = true,
              const bool gpuEnabled = true)
           : CSV_DIR(csvDir),
-            iterations_(iterations),
+            iterations_(iters),
             startDimention_(startDim),
-            upperLimit_(upperLimit),
-            doCPU_(cpuEnables),
+            upperLimit_(upperlimit),
+            doCPU_(cpuEnabled),
             doGPU_(gpuEnabled)
 #if CPU_ENABLED
     ,
@@ -52,7 +52,7 @@ public:
         gpu_(iterations_)
 #endif
     {
-      static_assert(std::is_same_v<T, float> || std::is_same_v<T, double>) &&
+      static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
       "ERROR - doGemm can only be constructed using one of the "
       "following types: [float, double].");
     }
@@ -313,12 +313,12 @@ private:
 // Perform CPU kernel
 #if CPU_ENABLED
       if (doCPU_) {
-      cpu_.initialise(M, N, K);
+      cpu_.initialise(M, N, K, 0.99);
       cpuResult = cpu_.compute();
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
       // Write result to CSV file
       writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize,
-                     0.0, iterations_, cpuResult.runtime, cpuResult.gflops);
+                     0.99, iterations_, cpuResult.runtime, cpuResult.gflops);
     }
 #endif
 

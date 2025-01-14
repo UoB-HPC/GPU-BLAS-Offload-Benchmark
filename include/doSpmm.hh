@@ -10,7 +10,7 @@
 #if defined CPU_ARMPL
 #include "../ArmPL/spmm.hh"
 #elif defined CPU_ONEMKL
-// Todo #include "../oneMKL/CPU/spmm.hh"
+#include "../oneMKL/CPU/spmm.hh"
 #elif defined CPU_AOCL
 // Todo #include "../AOCL/spmm.hh"
 #elif defined CPU_NVPL
@@ -236,7 +236,7 @@ private:
 
 #if CPU_ENABLED
     if (doCPU_) {
-      cpu_.initialise(N, sparsity);
+      cpu_.initialise(N, N, N, sparsity);
       time_checksum_gflop cpuResult = cpu_.compute();
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
 		  writeLineToCsv(csvFile, "cpu", kernelName, N, N, N, probSize,
@@ -249,19 +249,19 @@ private:
     // - UNIFIED : data passed from host to device (and device to host) as
     //             needed
     if (doGPU_) {
-      gpu_.initialise(gpuOffloadType::unified, N, sparsity);
+      gpu_.initialise(gpuOffloadType::unified, N, N, N, sparsity);
       time_checksum_gflop gpuResult_unified = gpu_.compute();
       gpuResult_unified.gflops =
       calcGflops(flops, iterations_, gpuResult_unified.runtime);
 
     // - ALWAYS: Offload to/from GPU every iteration
-      gpu_.initialise(gpuOffloadType::always, N, sparsity);
+      gpu_.initialise(gpuOffloadType::always, N, N, N, sparsity);
       time_checksum_gflop gpuResult_always = gpu_.compute();
       gpuResult_always.gflops =
             calcGflops(flops, iterations_, gpuResult_always.runtime);
 		// - ONCE : Offload to/from GPU once before all iterations and once
 		// after
-      gpu_.initialise(gpuOffloadType::once, N, sparsity);
+      gpu_.initialise(gpuOffloadType::once, N, N, N, sparsity);
 		  time_checksum_gflop gpuResult_once = gpu_.compute();
 		  gpuResult_once.gflops =
 						calcGflops(flops, iterations_, gpuResult_once.runtime);

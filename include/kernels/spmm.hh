@@ -1,4 +1,4 @@
-#pragma one
+#pragma once
 
 #include <algorithm>
 #include <chrono>
@@ -70,13 +70,13 @@ private:
 protected:
     /** Set up the starting matrices */
     void initInputMatrices() {
-      for (size_t i = 0; i < (m_ * k_); i++) {
+      for (int i = 0; i < (m_ * k_); i++) {
         A_[i] = 0.0;
       }
-      for (size_t i = 0; i < (k_ * n_); i++) {
+      for (int i = 0; i < (k_ * n_); i++) {
         B_[i] = 0.0;
       }
-      for (size_t i = 0; i < (m_ * n_); i++) {
+      for (int i = 0; i < (m_ * n_); i++) {
         C_[i] = 0.0;
       }
 
@@ -87,11 +87,11 @@ protected:
       std::uniform_real_distribution<double> dist(0.0, 1.0);
 
       // Using a=0.45 and b=c=0.22 as default probabilities
-      for (size_t i = 0; i < nnzA_; i++) {
+      for (int i = 0; i < nnzA_; i++) {
         while (!rMat(A_, k_, 0, k_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22, &gen, dist,
                      false)) {}
       }
-      for (size_t i = 0; i < nnzB_; i++) {
+      for (int i = 0; i < nnzB_; i++) {
         while (!rMat(B_, n_, 0, n_ - 1, 0, k_ - 1, 0.45, 0.22, 0.22, &gen, dist,
                      false)) {}
       }

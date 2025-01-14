@@ -185,7 +185,7 @@ protected:
 
 private:
   /** Make call to the GEMM kernel. */
-  void callGemm() override {
+  void callSpgemm() override {
 
     /**
      * Flow of ARMPL Sparse LA:

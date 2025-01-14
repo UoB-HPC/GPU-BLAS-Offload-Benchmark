@@ -180,7 +180,7 @@ private:
     }
   }
 
-  void callGemm() override {
+  void callSpgemm() override {
     switch(offload_) {
       case gpuOffloadType::always: {
         // Clean up old descriptors

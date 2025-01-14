@@ -72,7 +72,7 @@ private:
 protected:
     void initInputMatrixVector() {
       // Initialise matric to
-      for (size_t i = 0; i < (n_ * m_); i++) {
+      for (int i = 0; i < (n_ * m_); i++) {
         A_[i] = 0.0;
       }
 
@@ -83,7 +83,7 @@ protected:
       std::uniform_real_distribution<double> dist(0.0, 1.0);
 
       // Using a=0.45 and b=c=0.22 as default probabilities
-      for (size_t i = 0; i < nnz_; i++) {
+      for (int i = 0; i < nnz_; i++) {
         while (!rMat(A_, m_, 0, n_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22, &gen, dist,
                      false)) {}
       }

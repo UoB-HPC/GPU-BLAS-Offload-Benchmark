@@ -28,7 +28,7 @@ public:
       // perform tje SPMM calls
       preLoopRequirements();
       for (int i = 0; i < iterations_; i++) {
-        callSpmm();
+        callSpgemm();
       }
       postLoopRequirements();
 
@@ -51,8 +51,8 @@ private:
      * should be timed */
     virtual void preLoopRequirements() = 0;
 
-    /** Perform the SPMM kernel. */
-    virtual void callSpmm() = 0;
+    /** Perform the sparse GEMM kernel. */
+    virtual void callSpgemm() = 0;
 
     /** Perform any steps required after calling the SPMM kernel that should
      * be timed */
@@ -71,16 +71,16 @@ private:
 protected:
     /** Set up the starting matrices */
     void initInputMatrices() {
-      for (size_t i = 0; i < (m_ * k_); i++) {
+      for (int i = 0; i < (m_ * k_); i++) {
         A_[i] = 0.0;
       }
 
       srand(SEED);
-      for (size_t i = 0; i < (k_ * n_); i++) {
+      for (int i = 0; i < (k_ * n_); i++) {
         B_[i] = (T)((double)(rand() % 100) / 7.0);
       }
 
-      for (size_t i = 0; i < (m_ * n_); i++) {
+      for (int i = 0; i < (m_ * n_); i++) {
         C_[i] = (T)0.0;
       }
 
@@ -91,7 +91,7 @@ protected:
       std::uniform_real_distribution<double> dist(0.0, 1.0);
 
       // Using a=0.45 and b=c=0.22 as default probabilities
-      for (size_t i = 0; i < nnz_; i++) {
+      for (int i = 0; i < nnz_; i++) {
         while (!rMat(A_, k_, 0, k_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22, &gen, dist,
                      false)) {}
       }

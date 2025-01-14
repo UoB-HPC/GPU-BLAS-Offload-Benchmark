@@ -9,7 +9,7 @@
 #if defined CPU_ARMPL
 #include "../ArmPL/spgemv.hh"
 #elif defined CPU_ONEMKL
-// Todo #include "../oneMKL/CPU/spgemv.hh"
+#include "../oneMKL/CPU/spgemv.hh"
 #elif defined CPU_AOCL
 // Todo #include "../AOCL/spgemv.hh"
 #elif defined CPU_NVPL

@@ -16,6 +16,11 @@ GFLOP/s are calculated using the following Total FLOPs formulas. The compute tim
  - **GEMM** : `FLOPs = (2 * M * N * K) + (b * M * N)` where `b` is `1` if BETA=0 and `3` if BETA=/=0
  - **GEMV** : `FLOPs = (2 * M * N) + (b * M)` where `b` is `1` if BETA=0 and `3` if BETA=/=0
 
+## Citing
+Please cite GPU-BLOB via this reference:
+> F. Wilkinson, A. Cockrean, W.C. Lin, S. McIntosh-Smith and T. Deakin, "Assessing the GPU Offload Threshold of GEMM and GEMV Kernels on Modern Heterogeneous HPC Systems", _SC24-W: Workshops of the International Conference for High Performance Computing, Networking, Storage and Analysis_, Atlanta, GA, USA, 2024, pp. 1481-1495, DOI: 10.1109/SCW63240.2024.00188.
+
+
 # Build Options
 Select the compiler you wish to use. Regardless of choice, `gcc` is required in order to build the `Consume.so` external library.
 ``` bash

@@ -11,7 +11,7 @@
 #elif defined CPU_ONEMKL
 #include "../oneMKL/CPU/spgemv.hh"
 #elif defined CPU_AOCL
-// Todo #include "../AOCL/spgemv.hh"
+#include "../AOCL/spgemv.hh"
 #elif defined CPU_NVPL
 // Todo #include "../NVPL/spgemv.hh"
 #elif defined CPU_OPENBLAS
@@ -21,7 +21,7 @@
 #if defined GPU_CUBLAS
 #include "../cuBLAS/spgemv.hh"
 #elif defined GPU_ONEMKL
-// Todo #include "../oneMKL/GPU/spgemv.hh"
+#include "../oneMKL/GPU/spgemv.hh"
 #elif defined GPU_ROCBLAS
 // Todo #include "../rocBLAS/spgemv.hh"
 #endif
@@ -32,12 +32,13 @@ template <typename T>
 class doSpgemv {
 public:
     doSpgemv(const std::string csvDir, const int iters, const int startDim,
-           const int upperLimit, const bool cpuEnabled = true,
-           const bool gpuEnabled = true)
+           const int upperLimit, const double sparsity,
+           const bool cpuEnabled =true, const bool gpuEnabled = true)
             : CSV_DIR(csvDir),
               iterations_(iters),
               startDimention_(startDim),
               upperLimit_(upperLimit),
+              sparsity_(sparsity),
               doCPU_(cpuEnabled),
               doGPU_(gpuEnabled)
 #if CPU_ENABLED
@@ -68,7 +69,7 @@ public:
               initCSVFile(CSV_DIR + "/" + getKernelName() + "_square_vector_M=N.csv");
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = dim;
-        callKernels(csvFile, dim, dim);
+        callKernels(csvFile, dim, dim, sparsity_);
       }
       // Close file
       csvFile.close();
@@ -78,11 +79,115 @@ public:
         printOffloadThreshold("Square x Vector (M=N)");
       }
 #endif
+
+      // Rectangular Problem Sizes:
+      // Tall and thin x Vector
+      // Re-initialise offload threshold structures & previous results
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      prev_gpuResult_always = time_checksum_gflop();
+      prev_gpuResult_once = time_checksum_gflop();
+      prev_gpuResult_unified = time_checksum_gflop();
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
+                            "_tall-thin_vector_M=16N.csv");
+      int N = startDimention_;
+      int M = 16 * N;
+      while (M <= upperLimit_) {
+        callKernels(csvFile, M, N, sparsity_);
+        M += 16;
+        N++;
+      }
+      // Close file
+      csvFile.close();
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Tall-and-Thin x Vector (M=16N)");
+    }
+#endif
+
+      // Tall and thin x Vector
+      // Re-initialise offload threshold structures & previous results
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      prev_gpuResult_always = time_checksum_gflop();
+      prev_gpuResult_once = time_checksum_gflop();
+      prev_gpuResult_unified = time_checksum_gflop();
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
+                            "_tall-thin_vector_M_N=32.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+          // M = dim, N = 32;
+          callKernels(csvFile, dim, 32, sparsity_);
+        }
+      }
+      // Close file
+      csvFile.close();
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Tall-and-Thin x Vector (M, N=32)");
+    }
+#endif
+
+      // Short and wide x Vector
+      // Re-initialise offload threshold structures & previous results
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      prev_gpuResult_always = time_checksum_gflop();
+      prev_gpuResult_once = time_checksum_gflop();
+      prev_gpuResult_unified = time_checksum_gflop();
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
+                            "_short-wide_vector_N=16M.csv");
+      M = startDimention_;
+      N = 16 * M;
+      while (N <= upperLimit_) {
+        callKernels(csvFile, M, N, sparsity_);
+        M++;
+        N += 16;
+      }
+      // Close file
+      csvFile.close();
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Short-and-Wide x Vector (N=16M)");
+    }
+#endif
+
+      // Short and wide x Vector
+      // Re-initialise offload threshold structures & previous results
+      cpuGpu_always_ = cpuGpu_offloadThreshold();
+      cpuGpu_once_ = cpuGpu_offloadThreshold();
+      cpuGpu_unified_ = cpuGpu_offloadThreshold();
+      prev_gpuResult_always = time_checksum_gflop();
+      prev_gpuResult_once = time_checksum_gflop();
+      prev_gpuResult_unified = time_checksum_gflop();
+      csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
+                            "_short-wide_vector_M=32_N.csv");
+      if (upperLimit_ >= 32) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+          // M = 32, N = dim;
+          callKernels(csvFile, 32, dim, sparsity_);
+        }
+      }
+      // Close file
+      csvFile.close();
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+      // Print offload results to stdout
+      printOffloadThreshold("Short-and-Wide x Vector (M=32, N)");
+    }
+#endif
     }
 
 private:
     /** Call the appropriate CPU and GPU SPGEMV kernels. */
-    void callKernels(std::ofstream& csvFile, const int M, const int N) {
+    void callKernels(std::ofstream& csvFile, const int M, const int N, const
+    double SPARSITY) {
       const double probSize = calcKib(M, N);
       const uint64_t flops = calcFlops(M, N);
       std::string kernelName = getKernelName();
@@ -95,11 +200,11 @@ private:
 // Perform CPU kernel
 #if CPU_ENABLED
     if (doCPU_) {
-      cpu_.initialise(M, N);
+      cpu_.initialise(M, N, SPARSITY);
       cpuResult = cpu_.compute();
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
       // Write result to CSV file
-      writeLineToCsv(csvFile, "cpu", kernelName, M, N, 0, probSize, 0.0,
+      writeLineToCsv(csvFile, "cpu", kernelName, M, N, 0, probSize, SPARSITY,
                      iterations_, cpuResult.runtime, cpuResult.gflops);
     }
 #endif
@@ -109,33 +214,33 @@ private:
     if (doGPU_) {
       // - ONCE : Offload to/from GPU once before all iterations and once
       // after
-      gpu_.initialise(gpuOffloadType::once, M, N);
+      gpu_.initialise(gpuOffloadType::once, M, N, SPARSITY);
       gpuResult_once = gpu_.compute();
       gpuResult_once.gflops =
           calcGflops(flops, iterations_, gpuResult_once.runtime);
 
       // - ALWAYS: Offload to/from GPU every iteration
-      gpu_.initialise(gpuOffloadType::always, M, N);
+      gpu_.initialise(gpuOffloadType::always, M, N, SPARSITY);
       gpuResult_always = gpu_.compute();
       gpuResult_always.gflops =
           calcGflops(flops, iterations_, gpuResult_always.runtime);
 
       // - UNIFIED : data passed from host to device (and device to host) as
       //             needed
-      gpu_.initialise(gpuOffloadType::unified, M, N);
+      gpu_.initialise(gpuOffloadType::unified, M, N, SPARSITY);
       gpuResult_unified = gpu_.compute();
       gpuResult_unified.gflops =
           calcGflops(flops, iterations_, gpuResult_unified.runtime);
 
       // Write results to CSV file
       writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, 0, probSize,
-                     0.0, iterations_, gpuResult_once.runtime,
+                     SPARSITY, iterations_, gpuResult_once.runtime,
                      gpuResult_once.gflops);
       writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, 0,
-                     probSize, 0.0, iterations_, gpuResult_always.runtime,
+                     probSize, SPARSITY, iterations_, gpuResult_always.runtime,
                      gpuResult_always.gflops);
       writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, 0, probSize,
-                     0.0, iterations_, gpuResult_unified.runtime,
+                     SPARSITY, iterations_, gpuResult_unified.runtime,
                      gpuResult_unified.gflops);
     }
 #endif
@@ -387,6 +492,9 @@ private:
     /** The maximum value of the largest problem size dimention. */
     const int upperLimit_;
 
+    /** The sparsity value of the sparse matrix. */
+    const double sparsity_;
+
     /** Whether the CPU kernels should be run. */
     const bool doCPU_ = true;
 
@@ -395,12 +503,12 @@ private:
 
 #if CPU_ENABLED
     /** The GEMV CPU kernel. */
-  cpu::gemv_cpu<T> cpu_;
+  cpu::spgemv_cpu<T> cpu_;
 #endif
 
 #if GPU_ENABLED
     /** The GEMV GPU kernel. */
-  gpu::gemv_gpu<T> gpu_;
+  gpu::spgemv_gpu<T> gpu_;
 #endif
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */

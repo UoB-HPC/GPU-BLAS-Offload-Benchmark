@@ -24,6 +24,24 @@ class spgemv_cpu : public spgemv<T> {
   using spgemv<T>::x_;
   using spgemv<T>::y_;
   using spgemv<T>::nnz_;
+    /** Initialise the required data structures. */
+    void initialise(int m, int n, double sparsity) override {
+      m_ = m;
+      n_ = n;
+      sparsity_ = sparsity;
+
+      // Note that the below should be the same as the edges calculation
+      // used in the initInputMatricesSparse function.  If changed here,
+      // change there
+      nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
+
+      A_ = (T*)malloc(sizeof(T) * m_ * n_);
+      x_ = (T*)malloc(sizeof(T) * n_);
+      y_ = (T*)malloc(sizeof(T) * m_);
+
+      // Initialise the matrix and vectors
+      initInputMatrixVector();
+    }
 
  private:
   /** Make call to the GEMM kernel. */

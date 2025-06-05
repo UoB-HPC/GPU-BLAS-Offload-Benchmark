@@ -25,12 +25,16 @@ public:
       std::chrono::time_point<std::chrono::high_resolution_clock> startTime =
               std::chrono::high_resolution_clock::now();
 
-      // perform tje SPMM calls
+      // perform the SPMM calls
+      std::cout << "pre... ";
       preLoopRequirements();
       for (int i = 0; i < iterations_; i++) {
+        std::cout << "spGEMM... ";
         callSpgemm();
       }
+      std::cout << "post";
       postLoopRequirements();
+      std::cout << std::endl;
 
       // Stop the timer
       std::chrono::time_point<std::chrono::high_resolution_clock> endTime =
@@ -71,6 +75,7 @@ private:
 protected:
     /** Set up the starting matrices */
     void initInputMatrices() {
+      std::cout << " initialising matrices ";
       for (int i = 0; i < (m_ * k_); i++) {
         A_[i] = 0.0;
       }
@@ -89,13 +94,11 @@ protected:
       gen.seed(std::chrono::system_clock::now()
                        .time_since_epoch().count());
       std::uniform_real_distribution<double> dist(0.0, 1.0);
-
       // Using a=0.45 and b=c=0.22 as default probabilities
       for (int i = 0; i < nnz_; i++) {
-        while (!rMat(A_, k_, 0, k_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22, &gen, dist,
-                     false)) {}
+        while (!rMat(A_, k_, 0, k_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22, &gen,
+                      dist, false)) {}
       }
-
       toSparseFormat();
     }
 
@@ -109,13 +112,13 @@ protected:
     const int iterations_;
 
     /** Matrix dimension M. */
-    int m_ = 0;
+    int64_t m_ = 0;
 
     /** Matrix dimension N. */
-    int n_ = 0;
+    int64_t n_ = 0;
 
     /** Matrix dimension K. */
-    int k_ = 0;
+    int64_t k_ = 0;
 
     /** Dense representation of input matrix A. */
     T* A_;

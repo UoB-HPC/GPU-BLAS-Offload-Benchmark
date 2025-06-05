@@ -1,6 +1,7 @@
 #pragma once
 #include <sstream>
 #include <type_traits>
+#include <iostream>
 
 #include "helpers.hh"
 #include "tablePrinter.hh"
@@ -11,7 +12,7 @@
 #elif defined CPU_ONEMKL
 #include "../oneMKL/CPU/spgemm.hh"
 #elif defined CPU_AOCL
-// Todo #include "../AOCL/spgemm.hh"
+#include "../AOCL/spgemm.hh"
 #elif defined CPU_NVPL
 // Todo #include "../NVPL/spgemm.hh"
 #elif defined CPU_OPENBLAS
@@ -21,7 +22,7 @@
 #if defined GPU_CUBLAS
 #include "../cuBLAS/spgemm.hh"
 #elif defined GPU_ONEMKL
-// Todo #include "../oneMKL/GPU/spgemm.hh"
+#include "../oneMKL/GPU/spgemm.hh"
 #elif defined GPU_ROCBLAS
 // Todo #include "../rocBLAS/spgemm.hh"
 #endif
@@ -35,12 +36,13 @@ template <typename T>
 class doSpgemm {
 public:
     doSpgemm(const std::string csvDir, const int iters, const int startDim,
-             const int upperlimit, const bool cpuEnabled = true,
-             const bool gpuEnabled = true)
+             const int upperLimit, const double sparsity, const bool
+             cpuEnabled = true, const bool gpuEnabled = true)
           : CSV_DIR(csvDir),
             iterations_(iters),
             startDimention_(startDim),
-            upperLimit_(upperlimit),
+            upperLimit_(upperLimit),
+            sparsity_(sparsity),
             doCPU_(cpuEnabled),
             doGPU_(gpuEnabled)
 #if CPU_ENABLED
@@ -53,7 +55,7 @@ public:
 #endif
     {
       static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
-      "ERROR - doGemm can only be constructed using one of the "
+      "ERROR - doSpgemm can only be constructed using one of the "
       "following types: [float, double].");
     }
 
@@ -73,7 +75,7 @@ public:
                                           "_square_square_M=N=K.csv");
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = dim, K = dim;
-        callKernels(csvFile, dim, dim, dim);
+        callKernels(csvFile, dim, dim, dim, sparsity_);
       }
       // Close file
       csvFile.close();
@@ -99,7 +101,7 @@ public:
       int M = 16 * K;
       int N = 16 * K;
       while (M <= upperLimit_) {
-        callKernels(csvFile, M, N, K);
+        callKernels(csvFile, M, N, K, sparsity_);
         M += 16;
         N += 16;
         K++;
@@ -126,7 +128,7 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = dim, K = 32;
-          callKernels(csvFile, dim, dim, 32);
+          callKernels(csvFile, dim, dim, 32, sparsity_);
         }
       }
       // Close file
@@ -152,7 +154,7 @@ public:
       N = startDimention_;
       K = 16 * M;
       while (K <= upperLimit_) {
-        callKernels(csvFile, M, N, K);
+        callKernels(csvFile, M, N, K, sparsity_);
         M++;
         N++;
         K += 16;
@@ -179,7 +181,8 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = 32, K = dim;
-          callKernels(csvFile, 32, 32, dim);
+          std::cout << "Problem 32 x 32 x " << dim << std::endl;
+          callKernels(csvFile, 32, 32, dim, sparsity_);
         }
       }
       // Close file
@@ -205,7 +208,7 @@ public:
       N = startDimention_;
       M = 16 * K;
       while (M <= upperLimit_) {
-        callKernels(csvFile, M, N, K);
+        callKernels(csvFile, M, N, K, sparsity_);
         M += 16;
         N++;
         K++;
@@ -232,7 +235,7 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = 32, K = 32;
-          callKernels(csvFile, dim, 32, 32);
+          callKernels(csvFile, dim, 32, 32, sparsity_);
         }
       }
       // Close file
@@ -258,7 +261,7 @@ public:
       K = startDimention_;
       N = 16 * K;
       while (N <= upperLimit_) {
-        callKernels(csvFile, M, N, K);
+        callKernels(csvFile, M, N, K, sparsity_);
         M++;
         N += 16;
         K++;
@@ -284,7 +287,7 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = dim, K = 32;
-          callKernels(csvFile, 32, dim, 32);
+          callKernels(csvFile, 32, dim, 32, sparsity_);
         }
       }
 #if CPU_ENABLED && GPU_ENABLED
@@ -300,7 +303,7 @@ public:
 private:
     /** Call the appropriate CPU and GPU GEMM kernels. */
     void callKernels(std::ofstream& csvFile, const int M, const int N,
-                     const int K) {
+                     const int K, double SPARSITY) {
       const double probSize = calcKib(M, N, K);
       const uint64_t flops = calcFlops(M, N, K);
       std::string kernelName = getKernelName();
@@ -313,49 +316,66 @@ private:
 // Perform CPU kernel
 #if CPU_ENABLED
       if (doCPU_) {
-      cpu_.initialise(M, N, K, 0.99);
-      cpuResult = cpu_.compute();
-      cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
-      // Write result to CSV file
-      writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize,
-                     0.99, iterations_, cpuResult.runtime, cpuResult.gflops);
-    }
+        std::cout << "CPU -> " << std::endl;
+        cpu_.initialise(M, N, K, SPARSITY);
+        cpuResult = cpu_.compute();
+        cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
+        // Write result to CSV file
+        writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize,
+                       SPARSITY, iterations_, cpuResult.runtime, cpuResult
+                       .gflops);
+      }
 #endif
 
 // Perform the GPU kernels
 #if GPU_ENABLED
       if (doGPU_) {
-      // - ONCE : Offload to/from GPU once before all iterations and once
-      // after
-      gpu_.initialise(gpuOffloadType::once, M, N, K);
-      gpuResult_once = gpu_.compute();
-      gpuResult_once.gflops =
-          calcGflops(flops, iterations_, gpuResult_once.runtime);
+        // - ONCE : Offload to/from GPU once before all iterations and once
+        // after
+        std::cout << "GPU once -> ";
+        std::cout << "\tInitialise...";
+        if (M == 32 && N == 32 && K == 46) {
+          std::cout << " ABOUT TO FAIL!";
+        }
+        gpu_.initialise(gpuOffloadType::once, M, N, K, SPARSITY);
+        std::cout << "\t\tCompute... ";
+        gpuResult_once = gpu_.compute();
+        std::cout << "\t\tFlops..." << std::endl;
+        gpuResult_once.gflops =
+            calcGflops(flops, iterations_, gpuResult_once.runtime);
+        std::cout << std::endl;
+        // - ALWAYS: Offload to/from GPU every iteration
+        std::cout << "GPU always -> ";
+        std::cout << "\tInitialise..." << std::endl;
+        gpu_.initialise(gpuOffloadType::always, M, N, K, SPARSITY);
+        std::cout << "\t\tCompute... ";
+        gpuResult_always = gpu_.compute();
+        std::cout << "\t\tFlops..." << std::endl;
+        gpuResult_always.gflops =
+            calcGflops(flops, iterations_, gpuResult_always.runtime);
 
-      // - ALWAYS: Offload to/from GPU every iteration
-      gpu_.initialise(gpuOffloadType::always, M, N, K);
-      gpuResult_always = gpu_.compute();
-      gpuResult_always.gflops =
-          calcGflops(flops, iterations_, gpuResult_always.runtime);
+        // - UNIFIED : data passed from host to device (and device to host) as
+        //             needed
+        std::cout << "GPU unified -> ";
+        std::cout << "\tInitialise..." << std::endl;
+        gpu_.initialise(gpuOffloadType::unified, M, N, K, SPARSITY);
+        std::cout << "\t\tCompute... ";
+        gpuResult_unified = gpu_.compute();
+        std::cout << "\t\tFlops... " << std::endl;
+        gpuResult_unified.gflops =
+            calcGflops(flops, iterations_, gpuResult_unified.runtime);
 
-      // - UNIFIED : data passed from host to device (and device to host) as
-      //             needed
-      gpu_.initialise(gpuOffloadType::unified, M, N, K);
-      gpuResult_unified = gpu_.compute();
-      gpuResult_unified.gflops =
-          calcGflops(flops, iterations_, gpuResult_unified.runtime);
-
-      // Write results to CSV file
-      writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,
-                     0.0, iterations_, gpuResult_once.runtime,
-                     gpuResult_once.gflops);
-      writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K,
-                     probSize, 0.0, iterations_, gpuResult_always.runtime,
-                     gpuResult_always.gflops);
-      writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, K, probSize,
-                     0.0, iterations_, gpuResult_unified.runtime,
-                     gpuResult_unified.gflops);
-    }
+        // Write results to CSV file
+        writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,
+                       SPARSITY, iterations_, gpuResult_once.runtime,
+                       gpuResult_once.gflops);
+        writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K,
+                       probSize, SPARSITY, iterations_, gpuResult_always.runtime,
+                       gpuResult_always.gflops);
+        writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, K, probSize,
+                       SPARSITY, iterations_, gpuResult_unified.runtime,
+                       gpuResult_unified.gflops);
+      }
 #endif
 
 #if CPU_ENABLED && GPU_ENABLED
@@ -613,11 +633,14 @@ private:
     /** The number of iterations to perform per problem size. */
     const int iterations_;
 
-    /** The value of the first probelm size dimention run. */
+    /** The value of the first problem size dimension run. */
     const int startDimention_;
 
-    /** The maximum value of the largest problem size dimention. */
+    /** The maximum value of the largest problem size dimension. */
     const int upperLimit_;
+
+    /** The sparsity value of the sparse matrix. */
+    const double sparsity_;
 
     /** Whether the CPU kernels should be run. */
     const bool doCPU_ = true;
@@ -626,7 +649,7 @@ private:
     const bool doGPU_ = true;
 
 #if CPU_ENABLED
-    /** The GEMM CPU kernel. */
+    /** The SPGEMM CPU kernel. */
   cpu::spgemm_cpu<T> cpu_;
 #endif
 

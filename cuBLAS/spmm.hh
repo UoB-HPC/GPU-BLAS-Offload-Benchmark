@@ -18,6 +18,8 @@ class spmm_gpu : public spmm<T> {
  public:
   using spmm<T>::spmm;
   using spmm<T>::initInputMatrices;
+  using spmm<T>::nnzA_;
+  using spmm<T>::nnzB_;
   using spmm<T>::m_
   using spmm<T>::n_;
   using spmm<T>::k_
@@ -25,6 +27,7 @@ class spmm_gpu : public spmm<T> {
   using spmm<T>::B_;
   using spmm<T>::C_;
   using spmm<T>::offload_;
+  using spmm<T>::sprasity_;
 
 	// ToDo -- No checksum for sparse yet.  Need to do
 
@@ -35,8 +38,10 @@ class spmm_gpu : public spmm<T> {
    *  - Always:  Move data from host to device and device to host each iteration
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
-  void initialise(gpuOffloadType offload, int n, double sparsity) override {
+  void initialise(gpuOffloadType offload, int n, int m, int k, double sparsity)
+  override {
     offload_ = offload;
+    sparsity_ = sparsity;
 
     if (std::is_same_v<T, float>) cudaDataType_ = CUDA_R_32F;
     else if (std::is_same_v<T, double>) cudaDataType_ = CUDA_R_64F;

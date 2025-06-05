@@ -17,5 +17,5 @@ void printBenchmarkConfig(const int iters, const int upperLimit);
 /** A function to parse a string to integer. */
 int parseInt(const char* str);
 
-/** A function which parsen the runtime arguments. */
+/** A function which parses the runtime arguments. */
 void getParameters(int argc, char** argv);

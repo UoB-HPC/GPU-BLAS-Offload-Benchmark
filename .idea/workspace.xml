@@ -15,22 +15,31 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Finishing off armpl and cusparse kernels">
-      <change afterPath="$PROJECT_DIR$/oneMKL/CPU/spgemm.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/oneMKL/CPU/spgemv.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/oneMKL/CPU/spmm.hh" afterDir="false" />
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Finishing off OneMKL CPU support">
+      <change afterPath="$PROJECT_DIR$/AOCL/spgemm.hh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/AOCL/spgemv.hh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/AOCL/spmm.hh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/oneMKL/GPU/spgemm.hh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/oneMKL/GPU/spgemv.hh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ArmPL/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/spgemm.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ArmPL/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/spgemv.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ArmPL/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/spmm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cuBLAS/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/cuBLAS/spgemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cuBLAS/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/cuBLAS/spgemv.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cuBLAS/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/cuBLAS/spmm.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/doSpgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpgemm.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/doSpgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpgemv.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/doSpmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpmm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/helpers.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/helpers.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/kernels/GPU/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/GPU/spgemv.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/kernels/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spgemm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spgemv.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spmm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/main.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/main.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/utilities.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/utilities.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oneMKL/CPU/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/CPU/spgemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oneMKL/CPU/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/CPU/spgemv.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oneMKL/CPU/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/CPU/spmm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oneMKL/GPU/common.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/GPU/common.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.cc" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -113,7 +122,7 @@
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.sourceCode.C/C++&quot;,
     &quot;structure.view.defaults.are.configured&quot;: &quot;true&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
@@ -193,14 +202,10 @@
       <workItem from="1727941995420" duration="22747000" />
       <workItem from="1729503392250" duration="1773000" />
       <workItem from="1730878516596" duration="9915000" />
-    </task>
-    <task id="LOCAL-00002" summary="Adding sparse algorithm">
-      <option name="closed" value="true" />
-      <created>1706568127804</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1706568127804</updated>
+      <workItem from="1738238254258" duration="39310000" />
+      <workItem from="1739450473604" duration="26000" />
+      <workItem from="1747736781678" duration="61000" />
+      <workItem from="1747736860910" duration="36275000" />
     </task>
     <task id="LOCAL-00003" summary="Integrating algorithm with benchmark">
       <option name="closed" value="true" />
@@ -586,7 +591,15 @@
       <option name="project" value="LOCAL" />
       <updated>1736437501127</updated>
     </task>
-    <option name="localTasksCounter" value="51" />
+    <task id="LOCAL-00051" summary="Finishing off OneMKL CPU support">
+      <option name="closed" value="true" />
+      <created>1736855919103</created>
+      <option name="number" value="00051" />
+      <option name="presentableId" value="LOCAL-00051" />
+      <option name="project" value="LOCAL" />
+      <updated>1736855919103</updated>
+    </task>
+    <option name="localTasksCounter" value="52" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -604,7 +617,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Implementing other offload types - still some runtime errors" />
     <MESSAGE value="All implemented and running.  No checksum at the end" />
     <MESSAGE value="All three offload types working for large problem sizes" />
     <MESSAGE value="Removing print statements" />
@@ -629,6 +641,7 @@
     <MESSAGE value="Refactoring to make individual files relate to a single kernel" />
     <MESSAGE value="Moving spgemv into new format" />
     <MESSAGE value="Finishing off armpl and cusparse kernels" />
-    <option name="LAST_COMMIT_MESSAGE" value="Finishing off armpl and cusparse kernels" />
+    <MESSAGE value="Finishing off OneMKL CPU support" />
+    <option name="LAST_COMMIT_MESSAGE" value="Finishing off OneMKL CPU support" />
   </component>
 </project>

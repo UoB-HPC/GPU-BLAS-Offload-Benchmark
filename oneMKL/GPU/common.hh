@@ -3,8 +3,9 @@
 #ifdef GPU_ONEMKL
 
 #include <mkl.h>
-
+#include <memory>
 #include <oneapi/mkl/blas.hpp>
+#include <oneapi/mkl/spblas.hpp>
 #include <sycl/sycl.hpp>
 
 // Create an exception handler for asynchronous SYCL exceptions

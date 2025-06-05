@@ -45,7 +45,7 @@ void writeLineToCsv(std::ofstream& file, const std::string device,
 
 /** Calculate average GFLOPs. */
 double calcGflops(const uint64_t flops, const int iters, const double seconds) {
-  return (seconds == 0.0 || seconds == INFINITY)
+  return (seconds == 0.0)
              ? 0.0
              : ((double)(flops * iters) / seconds) * 1e-9;
 }

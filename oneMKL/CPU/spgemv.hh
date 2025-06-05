@@ -14,7 +14,7 @@ class spgemv_cpu : public spgemv<T> {
 public:
     using spgemv<T>::spgemv;
     using spgemv<T>::callConsume;
-    using spgemv<T>::initInputMatrices;
+    using spgemv<T>::initInputMatrixVector;
     using spgemv<T>::m_;
     using spgemv<T>::n_;
     using spgemv<T>::A_;
@@ -34,7 +34,7 @@ public:
       x_ = (T*)mkl_malloc(sizeof(T) * n_, 64);
       y_ = (T*)mkl_malloc(sizeof(T) * m_, 64);
 
-      initInputMatrices();
+      initInputMatrixVector();
     }
 
 protected:
@@ -64,7 +64,7 @@ protected:
 
 private:
 
-    void callGemv() override {
+    void callSpgemv() override {
       /**
        * sparse_status_t mkl_sparse_s_mv (
        *    const sparse_operation_t operation,
@@ -78,8 +78,8 @@ private:
       if constexpr (std::is_same_v<T, float>) {
         status_ = mkl_sparse_s_mv(operation_, alpha, A_csr_, description_, x_,
                                   beta, y_);
-      } else if constexpr (std::is_same_v<T, float>) {
-        status_ = mkl_sparse_s_mv(operation_, alpha, A_csr_, description_, x_,
+      } else if constexpr (std::is_same_v<T, double>) {
+        status_ = mkl_sparse_d_mv(operation_, alpha, A_csr_, description_, x_,
                                   beta, y_);
       }
       if (status_ != SPARSE_STATUS_SUCCESS) {
@@ -124,7 +124,7 @@ private:
       }
     }
 
-    void postKernelCleanup() override {
+    void postCallKernelCleanup() override {
       mkl_free(A_);
       mkl_free(x_);
       mkl_free(y_);
@@ -134,7 +134,9 @@ private:
 
     sparse_index_base_t indexing_ = SPARSE_INDEX_BASE_ZERO;
     sparse_operation_t operation_ = SPARSE_OPERATION_NON_TRANSPOSE;
-    sparse_matrix_type_t description_ = SPARSE_MATRIX_TYPE_GENERAL;
+    matrix_descr description_ = {SPARSE_MATRIX_TYPE_GENERAL,
+                                 SPARSE_FILL_MODE_LOWER,
+                                 SPARSE_DIAG_NON_UNIT};
 
     MKL_INT m_mkl_;
     MKL_INT n_mkl_;

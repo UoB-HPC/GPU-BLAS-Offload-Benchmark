@@ -1,6 +1,7 @@
 #pragma once
 
 #include <random>
+#include <iostream>
 
 // Define CPU related macros
 #if defined CPU_ARMPL

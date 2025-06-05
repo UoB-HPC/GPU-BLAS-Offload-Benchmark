@@ -29,6 +29,10 @@ public:
 
     void initialise(int m, int n, int k, double sparsity,
                     bool binary = false) {
+      m_ = m;
+      n_ = n;
+      k_ = k;
+
       m_mkl_ = m;
       n_mkl_ = n;
       k_mkl_ = k;

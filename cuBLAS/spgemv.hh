@@ -157,6 +157,22 @@ class spgemv_gpu : public spgemv<T> {
     std::cout << "\tInitialising done!" << std::endl;
   }
 
+protected:
+
+    void toSparseFormat() override {
+      int nnz_encountered = 0;
+      for (int row = 0; row < m_; row++) {
+        A_row_[row] = nnz_encountered;
+        for (int col = 0; col < n_; col++) {
+          if (A_[(row * n_) + col] != 0.0) {
+            A_col_[nnz_encountered] = col;
+            A_val_[nnz_encountered] = A_[(row * n_) + col];
+            nnz_encountered++;
+          }
+        }
+      }
+		};
+
  private:
   /** Perform any required steps before calling the GEMM kernel that should
    * be timed. */
@@ -503,20 +519,6 @@ class spgemv_gpu : public spgemv<T> {
     cudaCheckError(cudaStreamDestroy(s2_));
     cudaCheckError(cudaStreamDestroy(s3_));
   }
-
-    void toSparseFormat() {
-      int nnz_encountered = 0;
-      for (int row = 0; row < m_; row++) {
-        A_row_[row] = nnz_encountered;
-        for (int col = 0; col < n_; col++) {
-          if (A_[(row * n_) + col] != 0.0) {
-            A_col_[nnz_encountered] = col;
-            A_val_[nnz_encountered] = A_[(row * n_) + col];
-            nnz_encountered++;
-          }
-        }
-      }
-		};
 
   // ToDo -- the two following functons are useful for debugging.  I'm
   //  keeping them in to that end, though they are not used by the benchmark

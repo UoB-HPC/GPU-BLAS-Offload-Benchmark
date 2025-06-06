@@ -51,6 +51,7 @@ public:
         gpu_(iterations_)
 #endif
     {
+      print_ = true;
       static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
                     "ERROR - doSpmm can only be constructed using one of the "
                     "following types: [float, double].");
@@ -58,9 +59,6 @@ public:
 
     /** Run all problem types and write data to CSV files. */
     void collectData() {
-      // ToDo -- I've hard coded false here as kernel selection was not working
-      //  .  Needs to be fixed
-
       // Square Problem Sizes...
       // Re-initialise offload threshold structures
       cpuGpu_always_ = cpuGpu_offloadThreshold();
@@ -72,6 +70,7 @@ public:
       std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                                           "_square_square_M=N=K.csv");
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        if (print_) std::cout << dim << " x " << dim << ":" << std::endl;
         // M = dim, N = dim, K = dim;
         callKernels(csvFile, dim, dim, dim, sparsity_);
       }
@@ -412,50 +411,66 @@ private:
       std::string kernelName = getKernelName();
 
 #if CPU_ENABLED
-    if (doCPU_) {
-      cpu_.initialise(N, M, K, sparsity);
-      time_checksum_gflop cpuResult = cpu_.compute();
-      cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
-		  writeLineToCsv(csvFile, "cpu", kernelName, N, M, K, probSize,
-                     sparsity, iterations_, cpuResult.runtime,
-                     cpuResult.gflops);
-    }
+      if (doCPU_) {
+        if (print_) std::cout << "\tCPU ->\t\tInitialise";
+        cpu_.initialise(N, M, K, sparsity);
+        if (print_) std::cout << std::endl << "\t\t\tCompute";
+        time_checksum_gflop cpuResult = cpu_.compute();
+        if (print_) std::cout << std::endl << "\t\t\tCalculate";
+        cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
+        writeLineToCsv(csvFile, "cpu", kernelName, N, M, K, probSize,
+                       sparsity, iterations_, cpuResult.runtime,
+                       cpuResult.gflops);
+        if (print_) std::cout << std::endl;
+      }
 #endif
 #if GPU_ENABLED
       // Perform the GPU kernels
-    // - UNIFIED : data passed from host to device (and device to host) as
-    //             needed
-    if (doGPU_) {
-      gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity);
-      time_checksum_gflop gpuResult_unified = gpu_.compute();
-      gpuResult_unified.gflops =
-      calcGflops(flops, iterations_, gpuResult_unified.runtime);
+      // - UNIFIED : data passed from host to device (and device to host) as
+      //             needed
+      if (doGPU_) {
+        if (print_) std::cout << "\tUnified ->\tInitialise";
+        gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity);
+        if (print_) std::cout << std::endl << "\t\t\tCompute";
+        time_checksum_gflop gpuResult_unified = gpu_.compute();
+        if (print_) std::cout << std::endl << "\t\t\tCalculate";
+        gpuResult_unified.gflops =
+        calcGflops(flops, iterations_, gpuResult_unified.runtime);
+        if (print_) std::cout << std::endl;
 
-    // - ALWAYS: Offload to/from GPU every iteration
-      gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity);
-      time_checksum_gflop gpuResult_always = gpu_.compute();
-      gpuResult_always.gflops =
-            calcGflops(flops, iterations_, gpuResult_always.runtime);
-		// - ONCE : Offload to/from GPU once before all iterations and once
-		// after
-      gpu_.initialise(gpuOffloadType::once, N, M, K, sparsity);
-		  time_checksum_gflop gpuResult_once = gpu_.compute();
-		  gpuResult_once.gflops =
-						calcGflops(flops, iterations_, gpuResult_once.runtime);
-		// ToDo -- non-default GPU operations
+      // - ALWAYS: Offload to/from GPU every iteration
+        if (print_) std::cout << "\tAlways ->\tInitialise";
+        gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity);
+        if (print_) std::cout << std::endl << "\t\t\tCompute";
+        time_checksum_gflop gpuResult_always = gpu_.compute();
+        if (print_) std::cout << std::endl << "\t\t\tCalculate";
+        gpuResult_always.gflops =
+              calcGflops(flops, iterations_, gpuResult_always.runtime);
+        if (print_) std::cout << std::endl;
+      // - ONCE : Offload to/from GPU once before all iterations and once
+      // after
+        if (print_) std::cout << "\tOnce ->\t\tInitialise";
+        gpu_.initialise(gpuOffloadType::once, N, M, K, sparsity);
+        if (print_) std::cout << std::endl << "\t\t\tCompute";
+        time_checksum_gflop gpuResult_once = gpu_.compute();
+        if (print_) std::cout << std::endl << "\t\t\tCalculate";
+        gpuResult_once.gflops =
+              calcGflops(flops, iterations_, gpuResult_once.runtime);
+        if (print_) std::cout << std::endl;
+      // ToDo -- non-default GPU operations
 
-		// Write lines to CSV file
-		  writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, M, K, probSize,
-		                sparsity, iterations_, gpuResult_once.runtime,
-                    gpuResult_once.gflops);
-		  writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, M, K,
-                     probSize, sparsity, iterations_, gpuResult_always.runtime,
-		                 gpuResult_always.gflops);
-		  writeLineToCsv(csvFile, "gpu_unified", kernelName, N, M, K, probSize,
-		                 sparsity, iterations_, gpuResult_unified.runtime,
-		                 gpuResult_unified.gflops);
+      // Write lines to CSV file
+        writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, M, K, probSize,
+                      sparsity, iterations_, gpuResult_once.runtime,
+                      gpuResult_once.gflops);
+        writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, M, K,
+                       probSize, sparsity, iterations_, gpuResult_always.runtime,
+                       gpuResult_always.gflops);
+        writeLineToCsv(csvFile, "gpu_unified", kernelName, N, M, K, probSize,
+                       sparsity, iterations_, gpuResult_unified.runtime,
+                       gpuResult_unified.gflops);
 
-    }
+      }
 #endif
 
     }
@@ -602,6 +617,8 @@ private:
     /** The GPU kernel. */
 	gpu::spmm_gpu<T> gpu_;
 #endif
+
+    bool print_;
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */
     cpuGpu_offloadThreshold cpuGpu_once_;

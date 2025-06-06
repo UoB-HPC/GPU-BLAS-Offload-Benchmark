@@ -21,20 +21,21 @@ public:
     /** Call the kernel n times.  Returns the time elapsed for all n calls
      * in seconds */
     time_checksum_gflop compute() {
+      bool print_ = false;
       // Start the timer
       std::chrono::time_point<std::chrono::high_resolution_clock> startTime =
               std::chrono::high_resolution_clock::now();
 
       // perform the SPMM calls
-      std::cout << "pre... ";
+      if (print_) std::cout << "pre... ";
       preLoopRequirements();
       for (int i = 0; i < iterations_; i++) {
-        std::cout << "spGEMM... ";
+        if (print_) std::cout << "spGEMM... ";
         callSpgemm();
       }
-      std::cout << "post";
+      if (print_) std::cout << "post";
       postLoopRequirements();
-      std::cout << std::endl;
+      if (print_) std::cout << std::endl;
 
       // Stop the timer
       std::chrono::time_point<std::chrono::high_resolution_clock> endTime =
@@ -75,7 +76,8 @@ private:
 protected:
     /** Set up the starting matrices */
     void initInputMatrices() {
-      std::cout << " initialising matrices ";
+      bool print_ = false;
+      if (print_) std::cout << " initialising matrices ";
       for (int i = 0; i < (m_ * k_); i++) {
         A_[i] = 0.0;
       }

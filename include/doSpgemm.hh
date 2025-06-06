@@ -54,6 +54,7 @@ public:
         gpu_(iterations_)
 #endif
     {
+      print_ = false;
       static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
       "ERROR - doSpgemm can only be constructed using one of the "
       "following types: [float, double].");
@@ -181,7 +182,7 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = 32, K = dim;
-          std::cout << "Problem 32 x 32 x " << dim << std::endl;
+          if (print_) std::cout << "Problem 32 x 32 x " << dim << std::endl;
           callKernels(csvFile, 32, 32, dim, sparsity_);
         }
       }
@@ -316,7 +317,9 @@ private:
 // Perform CPU kernel
 #if CPU_ENABLED
       if (doCPU_) {
-        std::cout << "CPU -> " << std::endl;
+        if (print_) {
+          std::cout << "CPU -> " << std::endl;
+        }
         cpu_.initialise(M, N, K, SPARSITY);
         cpuResult = cpu_.compute();
         cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
@@ -324,6 +327,9 @@ private:
         writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize,
                        SPARSITY, iterations_, cpuResult.runtime, cpuResult
                        .gflops);
+        if (print_) {
+          std::cout << "\tCPU DONE" << std::endl;
+        }
       }
 #endif
 
@@ -332,36 +338,36 @@ private:
       if (doGPU_) {
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
-        std::cout << "GPU once -> ";
-        std::cout << "\tInitialise...";
-        if (M == 32 && N == 32 && K == 46) {
-          std::cout << " ABOUT TO FAIL!";
+        if (print_) {
+          std::cout << "GPU once -> ";
+          std::cout << "\tInitialise...";
         }
         gpu_.initialise(gpuOffloadType::once, M, N, K, SPARSITY);
-        std::cout << "\t\tCompute... ";
+        if (print_) std::cout << "\t\tCompute... ";
         gpuResult_once = gpu_.compute();
-        std::cout << "\t\tFlops..." << std::endl;
+        if (print_) std::cout << "\t\tFlops..." << std::endl;
         gpuResult_once.gflops =
             calcGflops(flops, iterations_, gpuResult_once.runtime);
-        std::cout << std::endl;
+        if (print_) std::cout << std::endl;
+
         // - ALWAYS: Offload to/from GPU every iteration
-        std::cout << "GPU always -> ";
-        std::cout << "\tInitialise..." << std::endl;
+        if (print_) std::cout << "GPU always -> ";
+        if (print_) std::cout << "\tInitialise...";
         gpu_.initialise(gpuOffloadType::always, M, N, K, SPARSITY);
-        std::cout << "\t\tCompute... ";
+        if (print_) std::cout << "\t\tCompute... ";
         gpuResult_always = gpu_.compute();
-        std::cout << "\t\tFlops..." << std::endl;
+        if (print_) std::cout << "\t\tFlops..." << std::endl;
         gpuResult_always.gflops =
             calcGflops(flops, iterations_, gpuResult_always.runtime);
 
         // - UNIFIED : data passed from host to device (and device to host) as
         //             needed
-        std::cout << "GPU unified -> ";
-        std::cout << "\tInitialise..." << std::endl;
+        if (print_) std::cout << "GPU unified -> ";
+        if (print_) std::cout << "\tInitialise...";
         gpu_.initialise(gpuOffloadType::unified, M, N, K, SPARSITY);
-        std::cout << "\t\tCompute... ";
+        if (print_) std::cout << "\t\tCompute... ";
         gpuResult_unified = gpu_.compute();
-        std::cout << "\t\tFlops... " << std::endl;
+        if (print_) std::cout << "\t\tFlops... " << std::endl;
         gpuResult_unified.gflops =
             calcGflops(flops, iterations_, gpuResult_unified.runtime);
 
@@ -657,6 +663,7 @@ private:
     /** The GEMM GPU kernel. */
   gpu::spgemm_gpu<T> gpu_;
 #endif
+    bool print_;
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */
     cpuGpu_offloadThreshold cpuGpu_once_;

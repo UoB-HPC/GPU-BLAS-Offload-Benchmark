@@ -26,6 +26,7 @@ public:
     using spmm<T>::sparsity_;
     using spmm<T>::nnzA_;
     using spmm<T>::nnzB_;
+    using spmm<T>::nnzC_;
 
     void initialise(int m, int n, int k, double sparsity,
                     bool binary = false) {

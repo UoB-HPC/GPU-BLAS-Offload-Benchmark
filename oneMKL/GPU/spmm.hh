@@ -33,6 +33,7 @@ public:
 
     void initialise(gpuOffloadType offload, int m, int n, int k,
                     double sparsity, bool binary = false) override {
+      std::cout << ".. checking already init";
       if (!alreadyInitialised_) {
         alreadyInitialised_ = true;
         // Perform set-up which doesn't need to happen every problem size change.
@@ -45,6 +46,7 @@ public:
         gpuQueue_ = sycl::queue(myGpu_, exception_handler);
       }
 
+      std::cout << ".. setting metadata";
       offload_ = offload;
       sparsity_ = sparsity;
       m_ = m;
@@ -65,12 +67,14 @@ public:
                                          (int64_t)(2.0 * std::max(nnzA_, nnzB_))));
 
       if (offload_ == gpuOffloadType::unified) {
+        std::cout <<".. unified malloc";
         A_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * k_, gpuQueue_);
         A_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnzA_, gpuQueue_);
         A_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnzA_,
                                                 gpuQueue_);
         A_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (m_ + 1),
                                                 gpuQueue_);
+        gpuQueue_.wait_and_throw();
 
         B_ = (T*)sycl::malloc_shared(sizeof(T) * k_ * n_, gpuQueue_);
         B_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnzB_, gpuQueue_);
@@ -78,6 +82,7 @@ public:
                                                 gpuQueue_);
         B_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (k_ + 1),
                                                 gpuQueue_);
+        gpuQueue_.wait_and_throw();
 
         C_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * n_, gpuQueue_);
         C_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (m_ + 1),
@@ -87,14 +92,17 @@ public:
                                                 gpuQueue_);
         C_vals_ = (T*)sycl::malloc_shared(sizeof(T) * estimated_nnzC_,
                                           gpuQueue_);
+        gpuQueue_.wait_and_throw();
 
       } else {
+        std::cout << ".. host malloc";
         A_ = (T*)sycl::malloc_host(sizeof(T) * m_ * k_, gpuQueue_);
         A_vals_ = (T*)sycl::malloc_host(sizeof(T) * nnzA_, gpuQueue_);
         A_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * nnzA_,
                                               gpuQueue_);
         A_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (m_ + 1),
                                               gpuQueue_);
+        gpuQueue_.wait_and_throw();
 
         B_ = (T*)sycl::malloc_host(sizeof(T) * k_ * n_, gpuQueue_);
         B_vals_ = (T*)sycl::malloc_host(sizeof(T) * nnzB_, gpuQueue_);
@@ -102,19 +110,26 @@ public:
                                               gpuQueue_);
         B_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (k_ + 1),
                                               gpuQueue_);
+        gpuQueue_.wait_and_throw();
 
         C_ = (T*)sycl::malloc_host(sizeof(T) * m_ * n_, gpuQueue_);
         C_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (m_ + 1),
                                               gpuQueue_);
+        gpuQueue_.wait_and_throw();
       }
 
+      std::cout << ".. initialising input matrices";
       initInputMatrices();
+      gpuQueue_.wait_and_throw();
+      std::cout << ".. DONE";
     }
 
 protected:
     void toSparseFormat() override {
       int64_t nnz_encountered = 0;
 
+      std::cout << ".. to sparse A";
+      // Convert A to CSR format
       A_rows_[0] = 0;
       for (int64_t row = 0; row < m_; row++) {
         for (int64_t col = 0; col < k_; col++) {
@@ -127,6 +142,15 @@ protected:
         A_rows_[row + 1] = nnz_encountered;
       }
 
+      // Verify A conversion
+      if (nnz_encountered != nnzA_) {
+        std::cerr << "Warning: A matrix has " << nnz_encountered
+                  << " non-zeros, expected " << nnzA_ << std::endl;
+        nnzA_ = nnz_encountered;  // Update to actual count
+      }
+
+      std::cout << " B";
+      // Convert B to CSR format
       nnz_encountered = 0;
       B_rows_[0] = 0;
       for (int64_t row = 0; row < k_; row++) {
@@ -140,9 +164,22 @@ protected:
         B_rows_[row + 1] = nnz_encountered;
       }
 
+      // Verify B conversion
+      if (nnz_encountered != nnzB_) {
+        std::cerr << "Warning: B matrix has " << nnz_encountered
+                  << " non-zeros, expected " << nnzB_ << std::endl;
+        nnzB_ = nnz_encountered;  // Update to actual count
+      }
+
+      std::cout << "and C";
       // Initialize C_rows_ for CSR format
       for (int64_t i = 0; i <= m_; i++) {
         C_rows_[i] = 0;
+      }
+
+      // Ensure synchronization for unified memory
+      if (offload_ == gpuOffloadType::unified) {
+        gpuQueue_.wait();
       }
     }
 
@@ -183,16 +220,20 @@ private:
           break;
         }
         case gpuOffloadType::unified: {
-          // Initialize all matrix handles
+          // Initialize matrix handles for A and B only
           oneapi::mkl::sparse::init_matrix_handle(&A_device_);
           oneapi::mkl::sparse::init_matrix_handle(&B_device_);
-          oneapi::mkl::sparse::init_matrix_handle(&C_device_);
+          // C_device_ will be initialized in callSpmm after we know its structure
 
           // Set CSR data for A and B
           oneapi::mkl::sparse::set_csr_data(gpuQueue_, A_device_, m_, k_, index_,
                                             A_rows_, A_cols_, A_vals_);
           oneapi::mkl::sparse::set_csr_data(gpuQueue_, B_device_, k_, n_, index_,
                                             B_rows_, B_cols_, B_vals_);
+
+          // Sort matrices to ensure they're in proper format
+          oneapi::mkl::sparse::sort_matrix(gpuQueue_, A_device_);
+          oneapi::mkl::sparse::sort_matrix(gpuQueue_, B_device_);
 
           // Wait to ensure data is set
           gpuQueue_.wait_and_throw();
@@ -219,16 +260,29 @@ private:
           void* temp_buffer = nullptr;
           std::vector<sycl::event> dependencies;
 
+          // Initialize C matrix handle for this iteration
+          oneapi::mkl::sparse::init_matrix_handle(&C_device_);
+
+          // Step 4: Set CSR data for C with pre-allocated arrays
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_, index_,
+                                            C_rows_, C_cols_, C_vals_);
+
           // Step 1: Work estimation to get buffer size
           request_ = oneapi::mkl::sparse::matmat_request::get_work_estimation_buf_size;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
-                                                     C_device_, request_, description_,
-                                                     &temp_buffer_size, temp_buffer,
+            auto event = oneapi::mkl::sparse::matmat(gpuQueue_,
+                                                     A_device_,
+                                                     B_device_,
+                                                     C_device_,
+                                                     request_,
+                                                     description_,
+                                                     &temp_buffer_size,
+                                                     temp_buffer,
                                                      dependencies);
             event.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Work estimation buffer size: " << e.what() << std::endl;
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
             throw;
           }
 
@@ -273,10 +327,6 @@ private:
           if (temp_buffer_size > 0) {
             temp_buffer = sycl::malloc_shared(temp_buffer_size, gpuQueue_);
           }
-
-          // Step 4: Set CSR data for C with pre-allocated arrays
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_, index_,
-                                            C_rows_, C_cols_, C_vals_);
 
           // Step 5: Compute
           request_ = oneapi::mkl::sparse::matmat_request::compute;

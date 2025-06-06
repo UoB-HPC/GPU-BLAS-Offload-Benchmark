@@ -293,8 +293,8 @@ private:
           gpuQueue_.wait_and_throw();
 
           // Do computation
-          request_ = oneapi::mkl::sparse::matmat_request
-                  ::get_work_estimation_buf_size;
+          request_ = oneapi::mkl::sparse::matmat_request::get_work_estimation_buf_size;
+          sycl::buffer<int64_t, 1> work_size_buffer(&device_temp_buffer_1_size_, sycl::range<1>(1));
           try {
             oneapi::mkl::sparse::matmat(gpuQueue_,
                                         A_device_,
@@ -302,8 +302,8 @@ private:
                                         C_device_,
                                         request_,
                                         description_,
-                                        device_temp_buffer_1_size_,
-                                        device_temp_buffer_1_);
+                                        &work_size_buffer,
+                                        nullptr);
           } catch (sycl::exception const& e) {
             std::cout << "ERROR - Caught synchronous SYCL exception during "
                          "SPMM (Always):\n"
@@ -311,26 +311,36 @@ private:
                       << "OpenCL status: " << e.code().value() << std::endl;
           }
 
-          request_ = oneapi::mkl::sparse::matmat_request
-                  ::get_work_estimation_buf_size;
-          try {
-            oneapi::mkl::sparse::matmat(gpuQueue_,
-                                        A_device_,
-                                        B_device_,
-                                        C_device_,
-                                        request_,
-                                        description_,
-                                        device_temp_buffer_2_size_,
-                                        device_temp_buffer_2_);
-          } catch (sycl::exception const& e) {
-            std::cout << "ERROR - Caught synchronous SYCL exception during "
-                         "SPMM (always):\n"
-                      << e.what() << std::endl
-                      << "OpenCL status: " << e.code().value() << std::endl;
+          request_ = oneapi::mkl::sparse::matmat_request::work_estimation;
+          // Allocate work buffer if needed
+          if (device_temp_buffer_1_size_ > 0) {
+            sycl::buffer<char, 1> work_buffer((char*)device_temp_buffer_1_,
+                                             sycl::range<1>(device_temp_buffer_1_size_));
+            try {
+              oneapi::mkl::sparse::matmat(gpuQueue_,
+                                          A_device_,
+                                          B_device_,
+                                          C_device_,
+                                          request_,
+                                          description_,
+                                          nullptr,
+                                          &work_buffer);
+            } catch (sycl::exception const& e) {
+              std::cout << "ERROR - Caught synchronous SYCL exception during "
+                           "SPMM (always):\n"
+                        << e.what() << std::endl
+                        << "OpenCL status: " << e.code().value() << std::endl;
+            }
           }
 
-          request_ = oneapi::mkl::sparse::matmat_request
-                  ::get_work_estimation_buf_size;
+          request_ = oneapi::mkl::sparse::matmat_request::compute;
+          // Need to allocate memory for C values and columns first
+          // Get the number of non-zeros in C from C_rows_
+          nnzC_ = 0; // This will be set after computation
+
+          // Compute step might need allocation of C arrays
+          // This is handled by the library
+
           try {
             oneapi::mkl::sparse::matmat(gpuQueue_,
                                         A_device_,
@@ -338,8 +348,8 @@ private:
                                         C_device_,
                                         request_,
                                         description_,
-                                        NULL,
-                                        NULL);
+                                        nullptr,
+                                        nullptr);
           } catch (sycl::exception const& e) {
             std::cout << "ERROR - Caught synchronous SYCL exception during "
                          "SPMM (Always):\n"
@@ -380,8 +390,8 @@ private:
           /**
            * STEP 2 -- Work estimation
            */
-          request_ = oneapi::mkl::sparse::matmat_request
-                  ::get_work_estimation_buf_size;
+          request_ = oneapi::mkl::sparse::matmat_request::get_work_estimation_buf_size;
+          sycl::buffer<int64_t, 1> work_size_buffer_once(&device_temp_buffer_1_size_, sycl::range<1>(1));
           try {
             oneapi::mkl::sparse::matmat(gpuQueue_,
                                         A_device_,
@@ -389,8 +399,8 @@ private:
                                         C_device_,
                                         request_,
                                         description_,
-                                        device_temp_buffer_1_size_,
-                                        device_temp_buffer_1_);
+                                        &work_size_buffer_once,
+                                        nullptr);
           } catch (sycl::exception const& e) {
             std::cout << "ERROR - Caught synchronous SYCL exception during "
                          "SPMM (Once):\n"
@@ -398,11 +408,9 @@ private:
                       << "OpenCL status: " << e.code().value() << std::endl;
           }
 
-          /**
-           * STEP 3 -- Compute
-           */
-          request_ = oneapi::mkl::sparse::matmat_request
-                  ::get_work_estimation_buf_size;
+          // Get compute buffer size
+          request_ = oneapi::mkl::sparse::matmat_request::get_compute_buf_size;
+          sycl::buffer<int64_t, 1> compute_size_buffer(&device_temp_buffer_2_size_, sycl::range<1>(1));
           try {
             oneapi::mkl::sparse::matmat(gpuQueue_,
                                         A_device_,
@@ -410,8 +418,8 @@ private:
                                         C_device_,
                                         request_,
                                         description_,
-                                        device_temp_buffer_2_size_,
-                                        device_temp_buffer_2_);
+                                        &compute_size_buffer,
+                                        nullptr);
           } catch (sycl::exception const& e) {
             std::cout << "ERROR - Caught synchronous SYCL exception during "
                          "SPMM (Once):\n"
@@ -419,25 +427,26 @@ private:
                       << "OpenCL status: " << e.code().value() << std::endl;
           }
 
-          /**
-           * STEP 4 -- Finalisation
-           */
-          request_ = oneapi::mkl::sparse::matmat_request
-                  ::get_work_estimation_buf_size;
-          try {
-            oneapi::mkl::sparse::matmat(gpuQueue_,
-                                        A_device_,
-                                        B_device_,
-                                        C_device_,
-                                        request_,
-                                        description_,
-                                        NULL,
-                                        NULL);
-          } catch (sycl::exception const& e) {
-            std::cout << "ERROR - Caught synchronous SYCL exception during "
-                         "SPMM (Once):\n"
-                      << e.what() << std::endl
-                      << "OpenCL status: " << e.code().value() << std::endl;
+          // Perform actual computation
+          request_ = oneapi::mkl::sparse::matmat_request::compute;
+          if (device_temp_buffer_2_size_ > 0) {
+            sycl::buffer<char, 1> compute_buffer((char*)device_temp_buffer_2_,
+                                                sycl::range<1>(device_temp_buffer_2_size_));
+            try {
+              oneapi::mkl::sparse::matmat(gpuQueue_,
+                                          A_device_,
+                                          B_device_,
+                                          C_device_,
+                                          request_,
+                                          description_,
+                                          nullptr,
+                                          &compute_buffer);
+            } catch (sycl::exception const& e) {
+              std::cout << "ERROR - Caught synchronous SYCL exception during "
+                           "SPMM (Once):\n"
+                        << e.what() << std::endl
+                        << "OpenCL status: " << e.code().value() << std::endl;
+            }
           }
 
           /**

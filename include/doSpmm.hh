@@ -421,7 +421,7 @@ private:
         writeLineToCsv(csvFile, "cpu", kernelName, N, M, K, probSize,
                        sparsity, iterations_, cpuResult.runtime,
                        cpuResult.gflops);
-        if (print_) std::cout << std::endl;
+        if (print_) std::cout << ".. DONE" << std::endl;
       }
 #endif
 #if GPU_ENABLED
@@ -436,7 +436,7 @@ private:
         if (print_) std::cout << std::endl << "\t\t\tCalculate";
         gpuResult_unified.gflops =
         calcGflops(flops, iterations_, gpuResult_unified.runtime);
-        if (print_) std::cout << std::endl;
+        if (print_) std::cout << ".. DONE" << std::endl;
 
       // - ALWAYS: Offload to/from GPU every iteration
         if (print_) std::cout << "\tAlways ->\tInitialise";
@@ -446,7 +446,7 @@ private:
         if (print_) std::cout << std::endl << "\t\t\tCalculate";
         gpuResult_always.gflops =
               calcGflops(flops, iterations_, gpuResult_always.runtime);
-        if (print_) std::cout << std::endl;
+        if (print_) std::cout << ".. DONE" << std::endl;
       // - ONCE : Offload to/from GPU once before all iterations and once
       // after
         if (print_) std::cout << "\tOnce ->\t\tInitialise";
@@ -456,7 +456,7 @@ private:
         if (print_) std::cout << std::endl << "\t\t\tCalculate";
         gpuResult_once.gflops =
               calcGflops(flops, iterations_, gpuResult_once.runtime);
-        if (print_) std::cout << std::endl;
+        if (print_) std::cout << ".. DONE" << std::endl;
       // ToDo -- non-default GPU operations
 
       // Write lines to CSV file

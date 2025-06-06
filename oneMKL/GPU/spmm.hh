@@ -171,7 +171,7 @@ protected:
         nnzB_ = nnz_encountered;  // Update to actual count
       }
 
-      std::cout << "and C";
+      std::cout << " and C";
       // Initialize C_rows_ for CSR format
       for (int64_t i = 0; i <= m_; i++) {
         C_rows_[i] = 0;
@@ -261,13 +261,13 @@ private:
           std::vector<sycl::event> dependencies;
 
           // Initialize C matrix handle for this iteration
-          oneapi::mkl::sparse::init_matrix_handle(&C_device_);
+          if (!C_device_) oneapi::mkl::sparse::init_matrix_handle(&C_device_);
 
-          // Step 4: Set CSR data for C with pre-allocated arrays
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_, index_,
-                                            C_rows_, C_cols_, C_vals_);
+          // Step 1: Set CSR data structure for C with pre-allocated arrays
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_,
+                                            index_, C_rows_, C_cols_, C_vals_);
 
-          // Step 1: Work estimation to get buffer size
+          // Step 2: Work estimation to get buffer size
           request_ = oneapi::mkl::sparse::matmat_request::get_work_estimation_buf_size;
           try {
             auto event = oneapi::mkl::sparse::matmat(gpuQueue_,
@@ -281,7 +281,8 @@ private:
                                                      dependencies);
             event.wait();
           } catch (sycl::exception const& e) {
-            std::cerr << "ERROR - Work estimation buffer size: " << e.what() << std::endl;
+            std::cerr << "ERROR - Work estimation buffer size: " << e.what()
+            << std::endl;
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
             throw;
           }
@@ -291,13 +292,14 @@ private:
             temp_buffer = sycl::malloc_shared(temp_buffer_size, gpuQueue_);
           }
 
-          // Step 2: Work estimation
+          // Step 3: Work estimation
           request_ = oneapi::mkl::sparse::matmat_request::work_estimation;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
-                                                     C_device_, request_, description_,
-                                                     &temp_buffer_size, temp_buffer,
-                                                     dependencies);
+            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
+                                                     B_device_, C_device_,
+                                                     request_, description_,
+                                                     &temp_buffer_size,
+                                                     temp_buffer, dependencies);
             event.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Work estimation: " << e.what() << std::endl;
@@ -305,16 +307,18 @@ private:
             throw;
           }
 
-          // Step 3: Get compute buffer size
+          // Step 4: Get compute buffer size
           request_ = oneapi::mkl::sparse::matmat_request::get_compute_buf_size;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
-                                                     C_device_, request_, description_,
-                                                     &temp_buffer_size, temp_buffer,
-                                                     dependencies);
+            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
+                                                     B_device_, C_device_,
+                                                     request_, description_,
+                                                     &temp_buffer_size,
+                                                     temp_buffer, dependencies);
             event.wait();
           } catch (sycl::exception const& e) {
-            std::cerr << "ERROR - Get compute buffer size: " << e.what() << std::endl;
+            std::cerr << "ERROR - Get compute buffer size: " << e.what()
+            << std::endl;
             if (temp_buffer) sycl::free(temp_buffer, gpuQueue_);
             throw;
           }
@@ -328,13 +332,19 @@ private:
             temp_buffer = sycl::malloc_shared(temp_buffer_size, gpuQueue_);
           }
 
+
+          // Step 4.5: Re-set CSR data structure for C with pre-allocated arrays
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_,
+                                            index_, C_rows_, C_cols_, C_vals_);
+
           // Step 5: Compute
           request_ = oneapi::mkl::sparse::matmat_request::compute;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
-                                                     C_device_, request_, description_,
-                                                     &temp_buffer_size, temp_buffer,
-                                                     dependencies);
+            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
+                                                     B_device_, C_device_,
+                                                     request_, description_,
+                                                     &temp_buffer_size,
+                                                     temp_buffer, dependencies);
             event.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Compute: " << e.what() << std::endl;
@@ -363,7 +373,8 @@ private:
           }
 
           // Release C handle - it needs to be recreated each iteration
-          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
+          if (C_device_) oneapi::mkl::sparse::release_matrix_handle(gpuQueue_,
+                                                                    &C_device_);
           break;
         }
       }

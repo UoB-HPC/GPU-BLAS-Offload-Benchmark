@@ -323,7 +323,7 @@ private:
                                         device_temp_buffer_2_);
           } catch (sycl::exception const& e) {
             std::cout << "ERROR - Caught synchronous SYCL exception during "
-                         "SPMM (Always):\n"
+                         "SPMM (always):\n"
                       << e.what() << std::endl
                       << "OpenCL status: " << e.code().value() << std::endl;
           }

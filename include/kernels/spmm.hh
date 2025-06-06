@@ -22,11 +22,14 @@ public:
       std::chrono::time_point<std::chrono::high_resolution_clock> startTime =
               std::chrono::high_resolution_clock::now();
 
-      // perform tje SPMM calls
+      // perform the SPMM calls
+      std::cout << ".. pre";
       preLoopRequirements();
       for (int i = 0; i < iterations_; i++) {
+        std::cout << ".. SPMM";
         callSpmm();
       }
+      std::cout << ".. post";
       postLoopRequirements();
 
       // Stop the timer
@@ -36,8 +39,10 @@ public:
 
       double checksum = calcChecksum();
 
+      std::cout << ".. cleanup";
       postCallKernelCleanup();
 
+      std::cout << ".. DONE";
       return {time_s.count(), checksum, 0.0};
     }
 

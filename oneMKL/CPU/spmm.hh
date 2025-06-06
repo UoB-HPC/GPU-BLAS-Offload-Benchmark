@@ -50,7 +50,7 @@ public:
       B_ = (T*)mkl_malloc(sizeof(T) * k_ * n_, 64);
       C_ = (T*)mkl_malloc(sizeof(T) * m_ * n_, 64);
 
-      std:cout << ".. initialising matrices";
+      std::cout << ".. initialising matrices";
       initInputMatrices();
       std::cout << ".. DONE";
     }

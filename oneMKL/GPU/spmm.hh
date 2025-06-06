@@ -25,6 +25,7 @@ public:
     using spmm<T>::sparsity_;
 
     ~spmm_gpu() {
+      deallocateTempBuffers();
       if (descriptor_initialized_) {
         oneapi::mkl::sparse::release_matmat_descr(&description_);
         descriptor_initialized_ = false;
@@ -645,26 +646,71 @@ private:
     }
 
     void postCallKernelCleanup() override {
-      // Free all allocated memory
-      sycl::free(A_, gpuQueue_);
-      sycl::free(A_vals_, gpuQueue_);
-      sycl::free(A_cols_, gpuQueue_);
-      sycl::free(A_rows_, gpuQueue_);
-      sycl::free(B_, gpuQueue_);
-      sycl::free(B_vals_, gpuQueue_);
-      sycl::free(B_cols_, gpuQueue_);
-      sycl::free(B_rows_, gpuQueue_);
-      sycl::free(C_, gpuQueue_);
-      sycl::free(C_rows_, gpuQueue_);
+      switch(offload_) {
+        case gpuOffloadType::always: {
+          // Clean up temporary buffers after each iteration for 'always' mode
+          deallocateTempBuffers();
+          break;
+        }
+        case gpuOffloadType::once: {
+          // Release matrix handles and delete buffers
+          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
+          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_device_);
 
-      // These should already be null, but double-check
-      if (C_vals_) {
-        sycl::free(C_vals_, gpuQueue_);
-        C_vals_ = nullptr;
+          delete A_vals_device_;
+          delete A_cols_device_;
+          delete A_rows_device_;
+          delete B_vals_device_;
+          delete B_cols_device_;
+          delete B_rows_device_;
+          delete C_rows_device_;
+
+          // Note: C_vals_device_ and C_cols_device_ might not be allocated
+          if (C_vals_device_) delete C_vals_device_;
+          if (C_cols_device_) delete C_cols_device_;
+
+          // Clean up temporary buffers
+          deallocateTempBuffers();
+          break;
+        }
+        case gpuOffloadType::unified: {
+          // Release A and B handles
+          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
+          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_device_);
+
+          // Ensure C arrays are freed if they haven't been already
+          if (C_vals_) {
+              sycl::free(C_vals_, gpuQueue_);
+              C_vals_ = nullptr;
+          }
+          if (C_cols_) {
+              sycl::free(C_cols_, gpuQueue_);
+              C_cols_ = nullptr;
+          }
+          break;
+        }
       }
-      if (C_cols_) {
-        sycl::free(C_cols_, gpuQueue_);
-        C_cols_ = nullptr;
+    }
+
+    void allocateTempBuffers() {
+      if (device_temp_buffer_1_size_ > 0 && device_temp_buffer_1_ == nullptr) {
+        device_temp_buffer_1_ = sycl::malloc_device(device_temp_buffer_1_size_, gpuQueue_);
+      }
+      if (device_temp_buffer_2_size_ > 0 && device_temp_buffer_2_ == nullptr) {
+        device_temp_buffer_2_ = sycl::malloc_device(device_temp_buffer_2_size_, gpuQueue_);
+      }
+    }
+
+    void deallocateTempBuffers() {
+      if (device_temp_buffer_1_ != nullptr) {
+        sycl::free(device_temp_buffer_1_, gpuQueue_);
+        device_temp_buffer_1_ = nullptr;
+        device_temp_buffer_1_size_ = 0;
+      }
+      if (device_temp_buffer_2_ != nullptr) {
+        sycl::free(device_temp_buffer_2_, gpuQueue_);
+        device_temp_buffer_2_ = nullptr;
+        device_temp_buffer_2_size_ = 0;
       }
     }
 
@@ -712,6 +758,11 @@ private:
     sycl::buffer<T, 1>* C_vals_device_ = nullptr;
     sycl::buffer<int64_t, 1>* C_cols_device_ = nullptr;
     sycl::buffer<int64_t, 1>* C_rows_device_ = nullptr;
+
+    int64_t device_temp_buffer_1_size_ = 0;
+    void* device_temp_buffer_1_ = nullptr;
+    int64_t device_temp_buffer_2_size_ = 0;
+    void* device_temp_buffer_2_ = nullptr;
 
     const T alpha = ALPHA;
     const T beta = BETA;

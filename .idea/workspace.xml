@@ -15,30 +15,14 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Finishing off OneMKL CPU support">
-      <change afterPath="$PROJECT_DIR$/AOCL/spgemm.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/AOCL/spgemv.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/AOCL/spmm.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/oneMKL/GPU/spgemm.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/oneMKL/GPU/spgemv.hh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" afterDir="false" />
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Debugging onemkl">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ArmPL/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/ArmPL/spgemv.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cuBLAS/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/cuBLAS/spgemv.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cuBLAS/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/cuBLAS/spmm.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/doSpgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpgemm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/doSpgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpgemv.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/doSpmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpmm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/helpers.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/helpers.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/GPU/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/GPU/spgemv.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/kernels/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spgemm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/main.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/main.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/utilities.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/utilities.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oneMKL/CPU/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/CPU/spgemm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oneMKL/CPU/spgemv.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/CPU/spgemv.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/oneMKL/CPU/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/CPU/spmm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oneMKL/GPU/common.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/GPU/common.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oneMKL/GPU/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/GPU/spgemm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.cc" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.cc" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -105,28 +89,28 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;C/C++ File.main.cc.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;cf.advertisement.text.has.clang-format&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;sparse&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/no22498/Documents/GPU-BLAS-Offload-Benchmark&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.sourceCode.C/C++&quot;,
-    &quot;structure.view.defaults.are.configured&quot;: &quot;true&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "C/C++ File.main.cc.executor": "Run",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.advertisement.text.has.clang-format": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "sparse",
+    "last_opened_file_path": "/Users/no22498/Documents/GPU-BLAS-Offload-Benchmark",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "reference.settingsdialog.project.grazie",
+    "structure.view.defaults.are.configured": "true",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/CSV_Results" />
@@ -205,15 +189,7 @@
       <workItem from="1738238254258" duration="39310000" />
       <workItem from="1739450473604" duration="26000" />
       <workItem from="1747736781678" duration="61000" />
-      <workItem from="1747736860910" duration="36275000" />
-    </task>
-    <task id="LOCAL-00003" summary="Integrating algorithm with benchmark">
-      <option name="closed" value="true" />
-      <created>1706881882900</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1706881882900</updated>
+      <workItem from="1747736860910" duration="55615000" />
     </task>
     <task id="LOCAL-00004" summary="Adding commandline options to select only sparse or dense kernels">
       <option name="closed" value="true" />
@@ -599,7 +575,15 @@
       <option name="project" value="LOCAL" />
       <updated>1736855919103</updated>
     </task>
-    <option name="localTasksCounter" value="52" />
+    <task id="LOCAL-00052" summary="Debugging onemkl">
+      <option name="closed" value="true" />
+      <created>1749114455274</created>
+      <option name="number" value="00052" />
+      <option name="presentableId" value="LOCAL-00052" />
+      <option name="project" value="LOCAL" />
+      <updated>1749114455275</updated>
+    </task>
+    <option name="localTasksCounter" value="53" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -617,7 +601,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="All implemented and running.  No checksum at the end" />
     <MESSAGE value="All three offload types working for large problem sizes" />
     <MESSAGE value="Removing print statements" />
     <MESSAGE value="Superficial changes" />
@@ -642,6 +625,7 @@
     <MESSAGE value="Moving spgemv into new format" />
     <MESSAGE value="Finishing off armpl and cusparse kernels" />
     <MESSAGE value="Finishing off OneMKL CPU support" />
-    <option name="LAST_COMMIT_MESSAGE" value="Finishing off OneMKL CPU support" />
+    <MESSAGE value="Debugging onemkl" />
+    <option name="LAST_COMMIT_MESSAGE" value="Debugging onemkl" />
   </component>
 </project>

@@ -15,7 +15,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Debugging onemkl -- now seems to be running SPMM BUT SLOWWWWW">
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Debugging onemkl">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" afterDir="false" />
     </list>
@@ -183,15 +183,7 @@
       <workItem from="1738238254258" duration="39310000" />
       <workItem from="1739450473604" duration="26000" />
       <workItem from="1747736781678" duration="61000" />
-      <workItem from="1747736860910" duration="65264000" />
-    </task>
-    <task id="LOCAL-00009" summary="changes">
-      <option name="closed" value="true" />
-      <created>1709368112577</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
-      <option name="project" value="LOCAL" />
-      <updated>1709368112577</updated>
+      <workItem from="1747736860910" duration="66266000" />
     </task>
     <task id="LOCAL-00010" summary="changes">
       <option name="closed" value="true" />
@@ -577,7 +569,15 @@
       <option name="project" value="LOCAL" />
       <updated>1749222039569</updated>
     </task>
-    <option name="localTasksCounter" value="58" />
+    <task id="LOCAL-00058" summary="Debugging onemkl">
+      <option name="closed" value="true" />
+      <created>1749222185024</created>
+      <option name="number" value="00058" />
+      <option name="presentableId" value="LOCAL-00058" />
+      <option name="project" value="LOCAL" />
+      <updated>1749222185024</updated>
+    </task>
+    <option name="localTasksCounter" value="59" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -617,9 +617,9 @@
     <MESSAGE value="Moving spgemv into new format" />
     <MESSAGE value="Finishing off armpl and cusparse kernels" />
     <MESSAGE value="Finishing off OneMKL CPU support" />
-    <MESSAGE value="Debugging onemkl" />
     <MESSAGE value="Debugging onemkl -- now seems to be running SPMM" />
     <MESSAGE value="Debugging onemkl -- now seems to be running SPMM BUT SLOWWWWW" />
-    <option name="LAST_COMMIT_MESSAGE" value="Debugging onemkl -- now seems to be running SPMM BUT SLOWWWWW" />
+    <MESSAGE value="Debugging onemkl" />
+    <option name="LAST_COMMIT_MESSAGE" value="Debugging onemkl" />
   </component>
 </project>

@@ -520,6 +520,13 @@ private:
           // Initialize C matrix handle for this iteration
           oneapi::mkl::sparse::init_matrix_handle(&C_device_);
 
+          // IMPORTANT: Set initial CSR data for C with row pointers only
+          // This is required before the first matmat call
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_,
+                                            index_, C_rows_,
+                                            (int64_t*)nullptr,  // No column indices yet
+                                            (T*)nullptr);       // No values yet
+
           // Step 1: Work estimation to determine C structure
           // First, get the work estimation buffer size
           request_ = oneapi::mkl::sparse::matmat_request::get_work_estimation_buf_size;
@@ -562,26 +569,26 @@ private:
             throw;
           }
 
-          // Step 3: Query the number of non-zeros in C
-          // This is implementation-specific - you may need to query the handle
-          // or use a different API call to get the expected nnzC
-          // For now, we'll use a conservative estimate
-          int64_t expected_nnzC = std::min((int64_t)(m_ * n_),
-                                          (int64_t)(1.5 * (nnzA_ + nnzB_)));
+          // Step 3: After work estimation, get the actual number of non-zeros
+          // The work estimation should have populated C_rows_ with the correct values
+          gpuQueue_.wait();
+          nnzC_ = C_rows_[m_];  // Get actual nnz from the last element of row pointer
 
-          // Allocate C arrays based on expected size
+          // Allocate C arrays based on actual size
           if (C_vals_ != nullptr) {
             sycl::free(C_vals_, gpuQueue_);
           }
           if (C_cols_ != nullptr) {
             sycl::free(C_cols_, gpuQueue_);
           }
-          C_vals_ = (T*)sycl::malloc_shared(sizeof(T) * expected_nnzC, gpuQueue_);
-          C_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * expected_nnzC,
-                                                  gpuQueue_);
-          gpuQueue_.wait();
 
-          // Step 4: Set CSR data for C with newly allocated arrays
+          if (nnzC_ > 0) {
+            C_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnzC_, gpuQueue_);
+            C_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnzC_, gpuQueue_);
+            gpuQueue_.wait();
+          }
+
+          // Step 4: Update CSR data for C with newly allocated arrays
           oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_,
                                             index_, C_rows_, C_cols_, C_vals_);
 
@@ -631,16 +638,12 @@ private:
           request_ = oneapi::mkl::sparse::matmat_request::finalize;
           try {
             auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
-                                                     C_device_, request_, description_,
-                                                     nullptr, nullptr, dependencies);
+                                                 C_device_, request_, description_,
+                                                 nullptr, nullptr, dependencies);
             event.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Finalize: " << e.what() << std::endl;
           }
-
-          // Get actual nnzC
-          gpuQueue_.wait();
-          nnzC_ = C_rows_[m_];
 
           // Clean up temporary buffer
           if (temp_buffer) {
@@ -659,7 +662,6 @@ private:
             sycl::free(C_cols_, gpuQueue_);
             C_cols_ = nullptr;
           }
-
           break;
         }
       }

@@ -314,8 +314,13 @@ private:
           request_ = oneapi::mkl::sparse::matmat_request::work_estimation;
           // Allocate work buffer if needed
           if (device_temp_buffer_1_size_ > 0) {
-            sycl::buffer<char, 1> work_buffer((char*)device_temp_buffer_1_,
-                                             sycl::range<1>(device_temp_buffer_1_size_));
+            // First allocate the device memory if not already done
+            if (device_temp_buffer_1_ == nullptr) {
+              device_temp_buffer_1_ = sycl::malloc_device(device_temp_buffer_1_size_, gpuQueue_);
+            }
+
+            sycl::buffer<std::uint8_t, 1> work_buffer((std::uint8_t*)device_temp_buffer_1_,
+                                                      sycl::range<1>(device_temp_buffer_1_size_));
             try {
               oneapi::mkl::sparse::matmat(gpuQueue_,
                                           A_device_,
@@ -408,6 +413,31 @@ private:
                       << "OpenCL status: " << e.code().value() << std::endl;
           }
 
+          // Allocate and perform work estimation
+          if (device_temp_buffer_1_size_ > 0) {
+            if (device_temp_buffer_1_ == nullptr) {
+              device_temp_buffer_1_ = sycl::malloc_device(device_temp_buffer_1_size_, gpuQueue_);
+            }
+
+            request_ = oneapi::mkl::sparse::matmat_request::work_estimation;
+            sycl::buffer<std::uint8_t, 1> work_est_buffer((std::uint8_t*)device_temp_buffer_1_,
+                                                          sycl::range<1>(device_temp_buffer_1_size_));
+            try {
+              oneapi::mkl::sparse::matmat(gpuQueue_,
+                                          A_device_,
+                                          B_device_,
+                                          C_device_,
+                                          request_,
+                                          description_,
+                                          nullptr,
+                                          &work_est_buffer);
+            } catch (sycl::exception const& e) {
+              std::cout << "ERROR - Caught synchronous SYCL exception during "
+                           "SPMM work estimation (Once):\n"
+                        << e.what() << std::endl
+                        << "OpenCL status: " << e.code().value() << std::endl;
+            }
+
           // Get compute buffer size
           request_ = oneapi::mkl::sparse::matmat_request::get_compute_buf_size;
           sycl::buffer<int64_t, 1> compute_size_buffer(&device_temp_buffer_2_size_, sycl::range<1>(1));
@@ -430,8 +460,13 @@ private:
           // Perform actual computation
           request_ = oneapi::mkl::sparse::matmat_request::compute;
           if (device_temp_buffer_2_size_ > 0) {
-            sycl::buffer<char, 1> compute_buffer((char*)device_temp_buffer_2_,
-                                                sycl::range<1>(device_temp_buffer_2_size_));
+            // First allocate the device memory if not already done
+            if (device_temp_buffer_2_ == nullptr) {
+              device_temp_buffer_2_ = sycl::malloc_device(device_temp_buffer_2_size_, gpuQueue_);
+            }
+
+            sycl::buffer<std::uint8_t, 1> compute_buffer((std::uint8_t*)device_temp_buffer_2_,
+                                                        sycl::range<1>(device_temp_buffer_2_size_));
             try {
               oneapi::mkl::sparse::matmat(gpuQueue_,
                                           A_device_,
@@ -447,6 +482,24 @@ private:
                         << e.what() << std::endl
                         << "OpenCL status: " << e.code().value() << std::endl;
             }
+          }
+
+          // Finalize the computation
+          request_ = oneapi::mkl::sparse::matmat_request::finalize;
+          try {
+            oneapi::mkl::sparse::matmat(gpuQueue_,
+                                        A_device_,
+                                        B_device_,
+                                        C_device_,
+                                        request_,
+                                        description_,
+                                        nullptr,
+                                        nullptr);
+          } catch (sycl::exception const& e) {
+            std::cout << "ERROR - Caught synchronous SYCL exception during "
+                         "SPMM finalize (Once):\n"
+                      << e.what() << std::endl
+                      << "OpenCL status: " << e.code().value() << std::endl;
           }
 
           /**

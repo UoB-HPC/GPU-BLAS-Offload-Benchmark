@@ -15,7 +15,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Debugging onemkl -- unified now working?">
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Debugging onemkl">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" afterDir="false" />
     </list>
@@ -183,15 +183,7 @@
       <workItem from="1738238254258" duration="39310000" />
       <workItem from="1739450473604" duration="26000" />
       <workItem from="1747736781678" duration="61000" />
-      <workItem from="1747736860910" duration="72999000" />
-    </task>
-    <task id="LOCAL-00017" summary="cuSPARSE unified memory implementation">
-      <option name="closed" value="true" />
-      <created>1710853559721</created>
-      <option name="number" value="00017" />
-      <option name="presentableId" value="LOCAL-00017" />
-      <option name="project" value="LOCAL" />
-      <updated>1710853559721</updated>
+      <workItem from="1747736860910" duration="73815000" />
     </task>
     <task id="LOCAL-00018" summary="Now compiles">
       <option name="closed" value="true" />
@@ -577,7 +569,15 @@
       <option name="project" value="LOCAL" />
       <updated>1749302760970</updated>
     </task>
-    <option name="localTasksCounter" value="66" />
+    <task id="LOCAL-00066" summary="Debugging onemkl">
+      <option name="closed" value="true" />
+      <created>1749304062687</created>
+      <option name="number" value="00066" />
+      <option name="presentableId" value="LOCAL-00066" />
+      <option name="project" value="LOCAL" />
+      <updated>1749304062687</updated>
+    </task>
+    <option name="localTasksCounter" value="67" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -618,8 +618,8 @@
     <MESSAGE value="Finishing off OneMKL CPU support" />
     <MESSAGE value="Debugging onemkl -- now seems to be running SPMM" />
     <MESSAGE value="Debugging onemkl -- now seems to be running SPMM BUT SLOWWWWW" />
-    <MESSAGE value="Debugging onemkl" />
     <MESSAGE value="Debugging onemkl -- unified now working?" />
-    <option name="LAST_COMMIT_MESSAGE" value="Debugging onemkl -- unified now working?" />
+    <MESSAGE value="Debugging onemkl" />
+    <option name="LAST_COMMIT_MESSAGE" value="Debugging onemkl" />
   </component>
 </project>

@@ -89,52 +89,72 @@ public:
         gpuQueue_ = sycl::queue(myGpu_, exception_handler);
 
         // Initialize all pointers to nullptr
-        A_ = nullptr; A_vals_ = nullptr; A_cols_ = nullptr; A_rows_ = nullptr;
-        B_ = nullptr; B_vals_ = nullptr; B_cols_ = nullptr; B_rows_ = nullptr;
-        C_ = nullptr; C_vals_ = nullptr; C_cols_ = nullptr; C_rows_ = nullptr;
+        A_ = nullptr;
+        A_vals_ = nullptr;
+        A_cols_ = nullptr;
+        A_rows_ = nullptr;
 
-        A_vals_device_ = nullptr; A_cols_device_ = nullptr; A_rows_device_ = nullptr;
-        B_vals_device_ = nullptr; B_cols_device_ = nullptr; B_rows_device_ = nullptr;
-        C_vals_device_ = nullptr; C_cols_device_ = nullptr; C_rows_device_ = nullptr;
+        B_ = nullptr;
+        B_vals_ = nullptr;
+        B_cols_ = nullptr;
+        B_rows_ = nullptr;
 
-        A_device_ = nullptr; B_device_ = nullptr; C_device_ = nullptr;
-        device_temp_buffer_1_ = nullptr; device_temp_buffer_2_ = nullptr;
+        C_ = nullptr;
+        C_vals_ = nullptr;
+        C_cols_ = nullptr;
+        C_rows_ = nullptr;
+
+        A_vals_device_ = nullptr;
+        A_cols_device_ = nullptr;
+        A_rows_device_ = nullptr;
+
+        B_vals_device_ = nullptr;
+        B_cols_device_ = nullptr;
+        B_rows_device_ = nullptr;
+
+        C_vals_device_ = nullptr;
+        C_cols_device_ = nullptr;
+        C_rows_device_ = nullptr;
+
+        A_device_ = nullptr;
+        B_device_ = nullptr;
+        C_device_ = nullptr;
+
+        device_temp_buffer_1_ = nullptr;
+        device_temp_buffer_2_ = nullptr;
       }
 
-      // If re-initializing with different parameters, clean up previous allocations
-      if (A_ != nullptr || B_ != nullptr || C_ != nullptr) {
-        // Clean up previous allocations
-        if (offload_ == gpuOffloadType::unified) {
-          if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
-          if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
-          if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
-          if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
+      // Clean up previous allocations
+      if (offload_ == gpuOffloadType::unified) {
+        if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
+        if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
+        if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
+        if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
 
-          if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
-          if (B_vals_) { sycl::free(B_vals_, gpuQueue_); B_vals_ = nullptr; }
-          if (B_cols_) { sycl::free(B_cols_, gpuQueue_); B_cols_ = nullptr; }
-          if (B_rows_) { sycl::free(B_rows_, gpuQueue_); B_rows_ = nullptr; }
+        if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
+        if (B_vals_) { sycl::free(B_vals_, gpuQueue_); B_vals_ = nullptr; }
+        if (B_cols_) { sycl::free(B_cols_, gpuQueue_); B_cols_ = nullptr; }
+        if (B_rows_) { sycl::free(B_rows_, gpuQueue_); B_rows_ = nullptr; }
 
-          if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
-          if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
-          if (C_vals_) { sycl::free(C_vals_, gpuQueue_); C_vals_ = nullptr; }
-          if (C_cols_) { sycl::free(C_cols_, gpuQueue_); C_cols_ = nullptr; }
-        } else {
-          if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
-          if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
-          if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
-          if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
+        if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
+        if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
+        if (C_vals_) { sycl::free(C_vals_, gpuQueue_); C_vals_ = nullptr; }
+        if (C_cols_) { sycl::free(C_cols_, gpuQueue_); C_cols_ = nullptr; }
+      } else {
+        if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
+        if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
+        if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
+        if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
 
-          if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
-          if (B_vals_) { sycl::free(B_vals_, gpuQueue_); B_vals_ = nullptr; }
-          if (B_cols_) { sycl::free(B_cols_, gpuQueue_); B_cols_ = nullptr; }
-          if (B_rows_) { sycl::free(B_rows_, gpuQueue_); B_rows_ = nullptr; }
+        if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
+        if (B_vals_) { sycl::free(B_vals_, gpuQueue_); B_vals_ = nullptr; }
+        if (B_cols_) { sycl::free(B_cols_, gpuQueue_); B_cols_ = nullptr; }
+        if (B_rows_) { sycl::free(B_rows_, gpuQueue_); B_rows_ = nullptr; }
 
-          if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
-          if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
-        }
-        gpuQueue_.wait_and_throw();
+        if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
+        if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
       }
+      gpuQueue_.wait_and_throw();
 
       std::cout << ".. setting metadata";
       offload_ = offload;
@@ -339,16 +359,10 @@ private:
                                                         sycl::range<1>(m_ + 1));
 
           oneapi::mkl::sparse::init_matrix_handle(&A_device_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_,
-                                            A_device_,
-                                            m_,
-                                            k_,
-                                            index_,
-                                            *A_rows_device_,
-                                            *A_cols_device_,
-                                            *A_vals_device_);
-          oneapi::mkl::sparse::sort_matrix(gpuQueue_,
-                                           A_device_);
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, A_device_, m_, k_,
+                                            index_, *A_rows_device_,
+                                            *A_cols_device_, *A_vals_device_);
+          oneapi::mkl::sparse::sort_matrix(gpuQueue_, A_device_);
 
           B_vals_device_ = new sycl::buffer<T, 1>(B_vals_,
                                                   sycl::range<1>(nnzB_));
@@ -358,29 +372,18 @@ private:
                                                         sycl::range<1>(k_ + 1));
 
           oneapi::mkl::sparse::init_matrix_handle(&B_device_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_,
-                                            B_device_,
-                                            k_,
-                                            n_,
-                                            index_,
-                                            *B_rows_device_,
-                                            *B_cols_device_,
-                                            *B_vals_device_);
-          oneapi::mkl::sparse::sort_matrix(gpuQueue_,
-                                           B_device_);
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, B_device_, k_, n_,
+                                            index_, *B_rows_device_,
+                                            *B_cols_device_, *B_vals_device_);
+          oneapi::mkl::sparse::sort_matrix(gpuQueue_, B_device_);
 
           C_rows_device_ = new sycl::buffer<int64_t, 1>(C_rows_,
                                                         sycl::range<1>(m_ + 1));
 
           oneapi::mkl::sparse::init_matrix_handle(&C_device_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_,
-                                            C_device_,
-                                            m_,
-                                            n_,
-                                            index_,
-                                            *C_rows_device_,
-                                            *C_cols_device_,
-                                            *C_vals_device_);
+
+          // Don't set CSR data for C yet - let the library handle allocation
+
           gpuQueue_.wait_and_throw();
 
           // Do computation

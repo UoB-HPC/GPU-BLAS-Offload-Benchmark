@@ -25,15 +25,57 @@ public:
     using spmm<T>::sparsity_;
 
     ~spmm_gpu() {
+      // Clean up temporary buffers first
       deallocateTempBuffers();
+
+      // Release descriptor if initialized
       if (descriptor_initialized_) {
         oneapi::mkl::sparse::release_matmat_descr(&description_);
         descriptor_initialized_ = false;
       }
+
+      // Clean up allocated memory based on offload type
+      if (alreadyInitialised_) {
+        if (offload_ == gpuOffloadType::unified) {
+            // Free all unified memory allocations
+          if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
+          if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
+          if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
+          if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
+
+          if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
+          if (B_vals_) { sycl::free(B_vals_, gpuQueue_); B_vals_ = nullptr; }
+          if (B_cols_) { sycl::free(B_cols_, gpuQueue_); B_cols_ = nullptr; }
+          if (B_rows_) { sycl::free(B_rows_, gpuQueue_); B_rows_ = nullptr; }
+
+          if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
+          if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
+          // C_vals_ and C_cols_ should already be nullptr from callSpmm cleanup
+          if (C_vals_) { sycl::free(C_vals_, gpuQueue_); C_vals_ = nullptr; }
+          if (C_cols_) { sycl::free(C_cols_, gpuQueue_); C_cols_ = nullptr; }
+        } else {
+          // For host memory allocations (always and once modes)
+          if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
+          if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
+          if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
+          if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
+
+          if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
+          if (B_vals_) { sycl::free(B_vals_, gpuQueue_); B_vals_ = nullptr; }
+          if (B_cols_) { sycl::free(B_cols_, gpuQueue_); B_cols_ = nullptr; }
+          if (B_rows_) { sycl::free(B_rows_, gpuQueue_); B_rows_ = nullptr; }
+
+          if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
+          if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
+        }
+
+        // Wait for all operations to complete before destroying the queue
+        gpuQueue_.wait_and_throw();
+      }
     }
 
     void initialise(gpuOffloadType offload, int m, int n, int k,
-                    double sparsity, bool binary = false) override {
+                double sparsity, bool binary = false) override {
       std::cout << ".. checking already init";
       if (!alreadyInitialised_) {
         alreadyInitialised_ = true;
@@ -45,6 +87,53 @@ public:
           std::terminate();
         }
         gpuQueue_ = sycl::queue(myGpu_, exception_handler);
+
+        // Initialize all pointers to nullptr
+        A_ = nullptr; A_vals_ = nullptr; A_cols_ = nullptr; A_rows_ = nullptr;
+        B_ = nullptr; B_vals_ = nullptr; B_cols_ = nullptr; B_rows_ = nullptr;
+        C_ = nullptr; C_vals_ = nullptr; C_cols_ = nullptr; C_rows_ = nullptr;
+
+        A_vals_device_ = nullptr; A_cols_device_ = nullptr; A_rows_device_ = nullptr;
+        B_vals_device_ = nullptr; B_cols_device_ = nullptr; B_rows_device_ = nullptr;
+        C_vals_device_ = nullptr; C_cols_device_ = nullptr; C_rows_device_ = nullptr;
+
+        A_device_ = nullptr; B_device_ = nullptr; C_device_ = nullptr;
+        device_temp_buffer_1_ = nullptr; device_temp_buffer_2_ = nullptr;
+      }
+
+      // If re-initializing with different parameters, clean up previous allocations
+      if (A_ != nullptr || B_ != nullptr || C_ != nullptr) {
+        // Clean up previous allocations
+        if (offload_ == gpuOffloadType::unified) {
+          if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
+          if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
+          if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
+          if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
+
+          if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
+          if (B_vals_) { sycl::free(B_vals_, gpuQueue_); B_vals_ = nullptr; }
+          if (B_cols_) { sycl::free(B_cols_, gpuQueue_); B_cols_ = nullptr; }
+          if (B_rows_) { sycl::free(B_rows_, gpuQueue_); B_rows_ = nullptr; }
+
+          if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
+          if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
+          if (C_vals_) { sycl::free(C_vals_, gpuQueue_); C_vals_ = nullptr; }
+          if (C_cols_) { sycl::free(C_cols_, gpuQueue_); C_cols_ = nullptr; }
+        } else {
+          if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
+          if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
+          if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
+          if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
+
+          if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
+          if (B_vals_) { sycl::free(B_vals_, gpuQueue_); B_vals_ = nullptr; }
+          if (B_cols_) { sycl::free(B_cols_, gpuQueue_); B_cols_ = nullptr; }
+          if (B_rows_) { sycl::free(B_rows_, gpuQueue_); B_rows_ = nullptr; }
+
+          if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
+          if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
+        }
+        gpuQueue_.wait_and_throw();
       }
 
       std::cout << ".. setting metadata";
@@ -88,7 +177,6 @@ public:
         C_cols_ = nullptr;
         C_vals_ = nullptr;
         gpuQueue_.wait_and_throw();
-
       } else {
         std::cout << ".. host malloc";
         A_ = (T*)sycl::malloc_host(sizeof(T) * m_ * k_, gpuQueue_);
@@ -110,6 +198,9 @@ public:
         C_ = (T*)sycl::malloc_host(sizeof(T) * m_ * n_, gpuQueue_);
         C_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (m_ + 1),
                                               gpuQueue_);
+        // Initialize C array pointers to nullptr
+        C_cols_ = nullptr;
+        C_vals_ = nullptr;
         gpuQueue_.wait_and_throw();
       }
 
@@ -520,12 +611,29 @@ private:
           // Initialize C matrix handle for this iteration
           oneapi::mkl::sparse::init_matrix_handle(&C_device_);
 
-          // IMPORTANT: Set initial CSR data for C with row pointers only
-          // This is required before the first matmat call
+          // Pre-allocate C arrays with conservative estimate
+          // For sparse matrix multiplication, the result can have at most min(m*n, nnzA*nnzB) non-zeros
+          // We use a conservative estimate to ensure we have enough space
+          int64_t max_nnzC = std::min((int64_t)(m_ * n_),
+                                      std::min((int64_t)(nnzA_ * nnzB_),
+                                               (int64_t)(2.0 * (nnzA_ + nnzB_))));
+
+          // Free previous allocations if they exist
+          if (C_vals_ != nullptr) {
+            sycl::free(C_vals_, gpuQueue_);
+          }
+          if (C_cols_ != nullptr) {
+            sycl::free(C_cols_, gpuQueue_);
+          }
+
+          // Allocate C arrays
+          C_vals_ = (T*)sycl::malloc_shared(sizeof(T) * max_nnzC, gpuQueue_);
+          C_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * max_nnzC, gpuQueue_);
+          gpuQueue_.wait();
+
+          // Set CSR data for C with pre-allocated arrays
           oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_,
-                                            index_, C_rows_,
-                                            (int64_t*)nullptr,  // No column indices yet
-                                            (T*)nullptr);       // No values yet
+                                            index_, C_rows_, C_cols_, C_vals_);
 
           // Step 1: Work estimation to determine C structure
           // First, get the work estimation buffer size
@@ -569,37 +677,15 @@ private:
             throw;
           }
 
-          // Step 3: After work estimation, get the actual number of non-zeros
-          // The work estimation should have populated C_rows_ with the correct values
-          gpuQueue_.wait();
-          nnzC_ = C_rows_[m_];  // Get actual nnz from the last element of row pointer
-
-          // Allocate C arrays based on actual size
-          if (C_vals_ != nullptr) {
-            sycl::free(C_vals_, gpuQueue_);
-          }
-          if (C_cols_ != nullptr) {
-            sycl::free(C_cols_, gpuQueue_);
-          }
-
-          if (nnzC_ > 0) {
-            C_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnzC_, gpuQueue_);
-            C_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnzC_, gpuQueue_);
-            gpuQueue_.wait();
-          }
-
-          // Step 4: Update CSR data for C with newly allocated arrays
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_,
-                                            index_, C_rows_, C_cols_, C_vals_);
-
-          // Step 5: Get compute buffer size
+          // Step 3: Get compute buffer size
           request_ = oneapi::mkl::sparse::matmat_request::get_compute_buf_size;
+          int64_t compute_buffer_size = 0;
           try {
             auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
                                                      B_device_, C_device_,
                                                      request_, description_,
-                                                     &temp_buffer_size,
-                                                     temp_buffer, dependencies);
+                                                     &compute_buffer_size,
+                                                     nullptr, dependencies);
             event.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Get compute buffer size: " << e.what()
@@ -609,32 +695,30 @@ private:
             throw;
           }
 
-          // Reallocate temp buffer if size changed
-          if (temp_buffer) {
-            sycl::free(temp_buffer, gpuQueue_);
-            temp_buffer = nullptr;
-          }
-          if (temp_buffer_size > 0) {
-            temp_buffer = sycl::malloc_shared(temp_buffer_size, gpuQueue_);
+          // Allocate compute buffer if needed (separate from work estimation buffer)
+          void* compute_buffer = nullptr;
+          if (compute_buffer_size > 0) {
+            compute_buffer = sycl::malloc_shared(compute_buffer_size, gpuQueue_);
           }
 
-          // Step 6: Compute
+          // Step 4: Compute
           request_ = oneapi::mkl::sparse::matmat_request::compute;
           try {
             auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
                                                      B_device_, C_device_,
                                                      request_, description_,
-                                                     &temp_buffer_size,
-                                                     temp_buffer, dependencies);
+                                                     &compute_buffer_size,
+                                                     compute_buffer, dependencies);
             event.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Compute: " << e.what() << std::endl;
             if (temp_buffer) sycl::free(temp_buffer, gpuQueue_);
+            if (compute_buffer) sycl::free(compute_buffer, gpuQueue_);
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
             throw;
           }
 
-          // Step 7: Finalize
+          // Step 5: Finalize
           request_ = oneapi::mkl::sparse::matmat_request::finalize;
           try {
             auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
@@ -645,9 +729,16 @@ private:
             std::cerr << "ERROR - Finalize: " << e.what() << std::endl;
           }
 
-          // Clean up temporary buffer
+          // Get actual nnzC after computation
+          gpuQueue_.wait();
+          nnzC_ = C_rows_[m_];
+
+          // Clean up temporary buffers
           if (temp_buffer) {
             sycl::free(temp_buffer, gpuQueue_);
+          }
+          if (compute_buffer) {
+            sycl::free(compute_buffer, gpuQueue_);
           }
 
           // Release C handle
@@ -662,6 +753,7 @@ private:
             sycl::free(C_cols_, gpuQueue_);
             C_cols_ = nullptr;
           }
+
           break;
         }
       }
@@ -678,17 +770,17 @@ private:
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_device_);
 
-          delete A_vals_device_;
-          delete A_cols_device_;
-          delete A_rows_device_;
-          delete B_vals_device_;
-          delete B_cols_device_;
-          delete B_rows_device_;
-          delete C_rows_device_;
+          delete A_vals_device_; A_vals_device_ = nullptr;
+          delete A_cols_device_; A_cols_device_ = nullptr;
+          delete A_rows_device_; A_rows_device_ = nullptr;
+          delete B_vals_device_; B_vals_device_ = nullptr;
+          delete B_cols_device_; B_cols_device_ = nullptr;
+          delete B_rows_device_; B_rows_device_ = nullptr;
+          delete C_rows_device_; C_rows_device_ = nullptr;
 
           // Note: C_vals_device_ and C_cols_device_ might not be allocated
-          if (C_vals_device_) delete C_vals_device_;
-          if (C_cols_device_) delete C_cols_device_;
+          if (C_vals_device_) { delete C_vals_device_; C_vals_device_ = nullptr; }
+          if (C_cols_device_) { delete C_cols_device_; C_cols_device_ = nullptr; }
           break;
         }
         case gpuOffloadType::unified: {
@@ -696,15 +788,10 @@ private:
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_device_);
 
-          // Ensure C arrays are freed if they haven't been already
-          if (C_vals_) {
-            sycl::free(C_vals_, gpuQueue_);
-            C_vals_ = nullptr;
-          }
-          if (C_cols_) {
-            sycl::free(C_cols_, gpuQueue_);
-            C_cols_ = nullptr;
-          }
+          // Don't free C arrays here - they're already freed in callSpmm
+          // Just ensure pointers are null
+          C_vals_ = nullptr;
+          C_cols_ = nullptr;
           break;
         }
       }
@@ -718,40 +805,32 @@ private:
           break;
         }
         case gpuOffloadType::once: {
+          // This cleanup happens after all iterations are complete
           // Release matrix handles and delete buffers
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_device_);
 
-          delete A_vals_device_;
-          delete A_cols_device_;
-          delete A_rows_device_;
-          delete B_vals_device_;
-          delete B_cols_device_;
-          delete B_rows_device_;
-          delete C_rows_device_;
+          delete A_vals_device_; A_vals_device_ = nullptr;
+          delete A_cols_device_; A_cols_device_ = nullptr;
+          delete A_rows_device_; A_rows_device_ = nullptr;
+          delete B_vals_device_; B_vals_device_ = nullptr;
+          delete B_cols_device_; B_cols_device_ = nullptr;
+          delete B_rows_device_; B_rows_device_ = nullptr;
+          delete C_rows_device_; C_rows_device_ = nullptr;
 
-          // Note: C_vals_device_ and C_cols_device_ might not be allocated
-          if (C_vals_device_) delete C_vals_device_;
-          if (C_cols_device_) delete C_cols_device_;
+          if (C_vals_device_) { delete C_vals_device_; C_vals_device_ = nullptr; }
+          if (C_cols_device_) { delete C_cols_device_; C_cols_device_ = nullptr; }
 
           // Clean up temporary buffers
           deallocateTempBuffers();
           break;
         }
         case gpuOffloadType::unified: {
-          // Release A and B handles
-          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
-          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_device_);
-
-          // Ensure C arrays are freed if they haven't been already
-          if (C_vals_) {
-              sycl::free(C_vals_, gpuQueue_);
-              C_vals_ = nullptr;
-          }
-          if (C_cols_) {
-              sycl::free(C_cols_, gpuQueue_);
-              C_cols_ = nullptr;
-          }
+          // For unified, the cleanup is already done in callSpmm and postLoopRequirements
+          // Just ensure we don't have any dangling handles
+          A_device_ = nullptr;
+          B_device_ = nullptr;
+          C_device_ = nullptr;
           break;
         }
       }

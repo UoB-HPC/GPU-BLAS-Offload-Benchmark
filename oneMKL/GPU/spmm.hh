@@ -437,6 +437,7 @@ private:
                         << e.what() << std::endl
                         << "OpenCL status: " << e.code().value() << std::endl;
             }
+          }
 
           // Get compute buffer size
           request_ = oneapi::mkl::sparse::matmat_request::get_compute_buf_size;
@@ -830,5 +831,6 @@ private:
     const T beta = BETA;
 };
 }
+
 
 #endif

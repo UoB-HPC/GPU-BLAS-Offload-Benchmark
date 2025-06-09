@@ -285,11 +285,13 @@ private:
 
           // Create A, B and C handles, set A and B data
           oneapi::mkl::sparse::init_matrix_handle(&A_device_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, A_device_, m_, k_ index_, A_rows_device_,
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, A_device_, m_, k_,
+                                            index_, A_rows_device_,
                                             A_cols_device_, A_vals_device_);
 
           oneapi::mkl::sparse::init_matrix_handle(&B_device_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, B_device_, k_, n_ index_, B_rows_device_,
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, B_device_, k_, n_,
+                                            index_, B_rows_device_,
                                             B_cols_device_, B_vals_device_);
         }
         case gpuOffloadType::unified: {
@@ -326,11 +328,12 @@ private:
                                                (int64_t)(2.0 * (nnzA_ + nnzB_))));
 
           C_rows_device_ = new sycl::buffer<int64_t>(C_rows_, sycl::range<1>(n_ + 1));
-          C_cols_device_ = new sycl::buffer<int64_t>(C_cols_, sycl::range<1>(max_nnzC_));
-          C_vals_device_ = new sycl::buffer<T>(C_vals_, sycl::range<1>(max_nnzC_));
+          C_cols_device_ = new sycl::buffer<int64_t>(C_cols_, sycl::range<1>(max_nnzC));
+          C_vals_device_ = new sycl::buffer<T>(C_vals_, sycl::range<1>(max_nnzC));
 
-          oenapi::mkl::sparse::init_matrix_handle(&C_device_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_ index_, C_rows_device_,
+          oneapi::mkl::sparse::init_matrix_handle(&C_device_);
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_,
+                                            index_, C_rows_device_,
                                             C_cols_device_, C_vals_device_);
 
           sycl::buffer<std::int64_t, 1> size_temp_buffer(sycl::range<1>(1));
@@ -338,14 +341,9 @@ private:
           // Step 1: Work estimation to determine C structure
           request_ = oneapi::mkl::sparse::matmat_request::get_work_estimation_buf_size;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_,
-                                                     A_device_,
-                                                     B_device_,
-                                                     C_device_,
-                                                     request_,
-                                                     description_,
-                                                     &size_temp_buffer,
-                                                     nullptr);
+            oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
+                                        C_device_, request_, description_,
+                                        &size_temp_buffer, nullptr);
             event.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Work estimation buffer size: " << e.what()
@@ -354,7 +352,7 @@ private:
             throw;
           }
 
-          sycl::buffer<int8_t, 1> temp_buffer(sycl::range<1>(size_temp_buffer));
+          sycl::buffer<int8_t, 1> temp_buffer{sycl::range<1>(size_temp_buffer)};
 
 
           // Step 2: Perform work estimation
@@ -374,13 +372,17 @@ private:
           // Step 3: Get compute buffer size
           request_ = oneapi::mkl::sparse::matmat_request::get_compute_buf_size;
 
-          sycl::buffer<std::int64_t, 1> size_comp_buffer(sycl::range<1>(1));
+          sycl::buffer<std::int64_t, 1> size_compute_buffer(sycl::range<1>(1));
           try {
             auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
                                                      B_device_, C_device_,
                                                      request_, description_,
                                                      &size_compute_buffer,
                                                      nullptr);
+            gpuQueue_.wait();
+            // Get the actual size from the buffer
+            auto host_acc = size_comp_buffer.get_access<sycl::access::mode::read>();
+            int64_t size_compute_buffer = host_acc[0];
             event.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Get compute buffer size: " << e.what()
@@ -390,7 +392,7 @@ private:
 
           // Allocate compute buffer if needed (separate from work estimation buffer)
 
-          sycl::buffer<int8_t, 1> compute_buffer(sycl::range<1>(size_compute_buffer));
+          sycl::buffer<uint8_t, 1> compute_buffer{sycl::range<1>(size_compute_buffer)};
 
           // Step 4: Compute
           request_ = oneapi::mkl::sparse::matmat_request::compute;
@@ -432,19 +434,6 @@ private:
           // Release C handle
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
 
-          // Free C arrays after each iteration to prevent memory accumulation
-          if (C_vals_) {
-            sycl::free(C_vals_, gpuQueue_);
-            C_vals_ = nullptr;
-          }
-          if (C_cols_) {
-            sycl::free(C_cols_, gpuQueue_);
-            C_cols_ = nullptr;
-          }
-          if (C_rows_) {
-            sycl::free(C_rows_, gpuQueue_);
-            C_rows_ = nullptr;
-          }
           break;
         }
         case gpuOffloadType::unified: {

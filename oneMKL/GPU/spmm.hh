@@ -814,7 +814,6 @@ private:
           break;
         }
         case gpuOffloadType::once: {
-
           // Do cleanup
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_device_);
@@ -830,9 +829,8 @@ private:
           delete C_cols_device_;
           delete C_rows_device_;
 
-          // Clean up temporary arrays
-          delete[] C_vals_temp;
-          delete[] C_cols_temp;
+          // Note: C_vals_temp and C_cols_temp were local variables in preLoopRequirements()
+          // They should be cleaned up there, not here
           break;
         }
         case gpuOffloadType::unified: {

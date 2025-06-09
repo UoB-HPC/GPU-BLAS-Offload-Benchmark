@@ -2,6 +2,7 @@
 
 #ifdef GPU_ONEMKL
 
+#include <memory>
 #include "../../include/kernels/GPU/spmm.hh"
 #include "../../include/utilities.hh"
 #include "common.hh"
@@ -50,6 +51,16 @@ public:
         if (C_vals_) { sycl::free(C_vals_, gpuQueue_); C_vals_ = nullptr; }
         if (C_cols_) { sycl::free(C_cols_, gpuQueue_); C_cols_ = nullptr; }
 
+        // Delete buffer objects
+        delete A_vals_device_;
+        delete A_cols_device_;
+        delete A_rows_device_;
+        delete B_vals_device_;
+        delete B_cols_device_;
+        delete B_rows_device_;
+        delete C_vals_device_;
+        delete C_cols_device_;
+        delete C_rows_device_;
 
         // Wait for all operations to complete before destroying the queue
         gpuQueue_.wait_and_throw();
@@ -58,7 +69,7 @@ public:
 
     void initialise(gpuOffloadType offload, int m, int n, int k,
                 double sparsity, bool binary = false) override {
-      std::cout << ".. checking already init";
+      std::cout << ".. checking already init" << std::endl;
       if (!alreadyInitialised_) {
         alreadyInitialised_ = true;
         // Perform set-up which doesn't need to happen every problem size change.
@@ -127,7 +138,7 @@ public:
 
       gpuQueue_.wait_and_throw();
 
-      std::cout << ".. setting metadata";
+      std::cout << ".. setting metadata" << std::endl;
       offload_ = offload;
       sparsity_ = sparsity;
       m_ = m;
@@ -144,7 +155,7 @@ public:
 
       // For unified memory, don't pre-allocate C arrays
       if (offload_ == gpuOffloadType::unified) {
-        std::cout <<".. unified malloc";
+        std::cout <<".. unified malloc" << std::endl;
         A_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * k_, gpuQueue_);
         A_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnzA_, gpuQueue_);
         A_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnzA_,
@@ -169,7 +180,7 @@ public:
         C_vals_ = nullptr;
         gpuQueue_.wait_and_throw();
       } else {
-        std::cout << ".. host malloc";
+        std::cout << ".. host malloc" << std::endl;
         A_ = (T*)sycl::malloc_host(sizeof(T) * m_ * k_, gpuQueue_);
         A_vals_ = (T*)sycl::malloc_host(sizeof(T) * nnzA_, gpuQueue_);
         A_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * nnzA_,
@@ -195,10 +206,10 @@ public:
         gpuQueue_.wait_and_throw();
       }
 
-      std::cout << ".. initialising input matrices";
+      std::cout << ".. initialising input matrices" << std::endl;
       initInputMatrices();
       gpuQueue_.wait_and_throw();
-      std::cout << ".. DONE";
+      std::cout << ".. DONE" << std::endl;
     }
 
 protected:
@@ -248,7 +259,7 @@ protected:
         nnzB_ = nnz_encountered;  // Update to actual count
       }
 
-      std::cout << " and C";
+      std::cout << " and C" << std::endl;
       // Initialize C_rows_ for CSR format
       for (int64_t i = 0; i <= m_; i++) {
         C_rows_[i] = 0;
@@ -271,6 +282,7 @@ private:
       switch(offload_) {
         case gpuOffloadType::always: {
           // TODO -- currently empty
+          [[fallthrough]];
         }
         case gpuOffloadType::once: {
           // Allocate GPU memory for A and B
@@ -282,17 +294,17 @@ private:
           B_cols_device_ = new sycl::buffer<int64_t>(B_cols_, sycl::range<1>(nnzB_));
           B_vals_device_ = new sycl::buffer<T>(B_vals_, sycl::range<1>(nnzB_));
 
-
           // Create A, B and C handles, set A and B data
           oneapi::mkl::sparse::init_matrix_handle(&A_device_);
           oneapi::mkl::sparse::set_csr_data(gpuQueue_, A_device_, m_, k_,
-                                            index_, A_rows_device_,
-                                            A_cols_device_, A_vals_device_);
+                                            index_, *A_rows_device_,
+                                            *A_cols_device_, *A_vals_device_);
 
           oneapi::mkl::sparse::init_matrix_handle(&B_device_);
           oneapi::mkl::sparse::set_csr_data(gpuQueue_, B_device_, k_, n_,
-                                            index_, B_rows_device_,
-                                            B_cols_device_, B_vals_device_);
+                                            index_, *B_rows_device_,
+                                            *B_cols_device_, *B_vals_device_);
+          break;
         }
         case gpuOffloadType::unified: {
           // Initialize matrix handles for A and B only
@@ -320,6 +332,7 @@ private:
       switch (offload_) {
         case gpuOffloadType::always: {
           // TODO -- currently empty
+          [[fallthrough]];
         }
         case gpuOffloadType::once: {
           // Pre-allocate C arrays with conservative estimate
@@ -327,16 +340,25 @@ private:
                                       std::min((int64_t)(nnzA_ * nnzB_),
                                                (int64_t)(2.0 * (nnzA_ + nnzB_))));
 
-          C_rows_device_ = new sycl::buffer<int64_t>(C_rows_, sycl::range<1>(n_ + 1));
+          // Allocate host memory for C
+          if (!C_cols_) {
+            C_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * max_nnzC, gpuQueue_);
+          }
+          if (!C_vals_) {
+            C_vals_ = (T*)sycl::malloc_host(sizeof(T) * max_nnzC, gpuQueue_);
+          }
+
+          C_rows_device_ = new sycl::buffer<int64_t>(C_rows_, sycl::range<1>(m_ + 1));
           C_cols_device_ = new sycl::buffer<int64_t>(C_cols_, sycl::range<1>(max_nnzC));
           C_vals_device_ = new sycl::buffer<T>(C_vals_, sycl::range<1>(max_nnzC));
 
           oneapi::mkl::sparse::init_matrix_handle(&C_device_);
           oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_,
-                                            index_, C_rows_device_,
-                                            C_cols_device_, C_vals_device_);
+                                            index_, *C_rows_device_,
+                                            *C_cols_device_, *C_vals_device_);
 
           sycl::buffer<std::int64_t, 1> size_temp_buffer(sycl::range<1>(1));
+          sycl::buffer<std::int8_t, 1>* temp_buffer_ptr = nullptr;
 
           // Step 1: Work estimation to determine C structure
           request_ = oneapi::mkl::sparse::matmat_request::get_work_estimation_buf_size;
@@ -344,7 +366,7 @@ private:
             oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
                                         C_device_, request_, description_,
                                         &size_temp_buffer, nullptr);
-            event.wait();
+            gpuQueue_.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Work estimation buffer size: " << e.what()
                       << std::endl;
@@ -352,18 +374,26 @@ private:
             throw;
           }
 
-          sycl::buffer<int8_t, 1> temp_buffer{sycl::range<1>(size_temp_buffer)};
+          // Get the size from the buffer
+          auto temp_size_acc = size_temp_buffer.get_host_access();
+          std::int64_t temp_buffer_size = temp_size_acc[0];
 
+          // Allocate temp buffer
+          std::unique_ptr<sycl::buffer<std::int8_t, 1>> temp_buffer;
+          if (temp_buffer_size > 0) {
+            temp_buffer = std::make_unique<sycl::buffer<std::int8_t, 1>>(sycl::range<1>{temp_buffer_size});
+            temp_buffer_ptr = temp_buffer.get();
+          }
 
           // Step 2: Perform work estimation
           request_ = oneapi::mkl::sparse::matmat_request::work_estimation;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
-                                                     B_device_, C_device_,
-                                                     request_, description_,
-                                                     &size_temp_buffer,
-                                                     temp_buffer);
-            event.wait();
+            oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
+                                       B_device_, C_device_,
+                                       request_, description_,
+                                       nullptr,
+                                       temp_buffer_ptr);
+            gpuQueue_.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Work estimation: " << e.what() << std::endl;
             throw;
@@ -374,35 +404,39 @@ private:
 
           sycl::buffer<std::int64_t, 1> size_compute_buffer(sycl::range<1>(1));
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
-                                                     B_device_, C_device_,
-                                                     request_, description_,
-                                                     &size_compute_buffer,
-                                                     nullptr);
+            oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
+                                       B_device_, C_device_,
+                                       request_, description_,
+                                       &size_compute_buffer,
+                                       nullptr);
             gpuQueue_.wait();
-            // Get the actual size from the buffer
-            auto host_acc = size_comp_buffer.get_access<sycl::access::mode::read>();
-            int64_t size_compute_buffer = host_acc[0];
-            event.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Get compute buffer size: " << e.what()
                       << std::endl;
             throw;
           }
 
-          // Allocate compute buffer if needed (separate from work estimation buffer)
+          // Get the actual size from the buffer
+          auto compute_size_acc = size_compute_buffer.get_host_access();
+          std::int64_t compute_buffer_size = compute_size_acc[0];
 
-          sycl::buffer<uint8_t, 1> compute_buffer{sycl::range<1>(size_compute_buffer)};
+          // Allocate compute buffer if needed
+          std::unique_ptr<sycl::buffer<std::uint8_t, 1>> compute_buffer;
+          sycl::buffer<std::uint8_t, 1>* compute_buffer_ptr = nullptr;
+          if (compute_buffer_size > 0) {
+            compute_buffer = std::make_unique<sycl::buffer<std::uint8_t, 1>>(sycl::range<1>{compute_buffer_size});
+            compute_buffer_ptr = compute_buffer.get();
+          }
 
           // Step 4: Compute
           request_ = oneapi::mkl::sparse::matmat_request::compute;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
-                                                     B_device_, C_device_,
-                                                     request_, description_,
-                                                     &size_compute_buffer,
-                                                     compute_buffer);
-            event.wait();
+            oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
+                                       B_device_, C_device_,
+                                       request_, description_,
+                                       nullptr,
+                                       compute_buffer_ptr);
+            gpuQueue_.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Compute: " << e.what() << std::endl;
             throw;
@@ -411,10 +445,10 @@ private:
           // Step 5: Finalize
           request_ = oneapi::mkl::sparse::matmat_request::finalize;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
-                                                 C_device_, request_, description_,
-                                                 nullptr, nullptr);
-            event.wait();
+            oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
+                                       C_device_, request_, description_,
+                                       nullptr, nullptr);
+            gpuQueue_.wait();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Finalize: " << e.what() << std::endl;
           }
@@ -423,16 +457,15 @@ private:
           gpuQueue_.wait();
           nnzC_ = C_rows_[m_];
 
-          // Clean up temporary buffers
-          if (temp_buffer) {
-            sycl::free(temp_buffer, gpuQueue_);
-          }
-          if (compute_buffer) {
-            sycl::free(compute_buffer, gpuQueue_);
-          }
-
-          // Release C handle
+          // Release C handle and delete buffers
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
+
+          delete C_rows_device_;
+          delete C_cols_device_;
+          delete C_vals_device_;
+          C_rows_device_ = nullptr;
+          C_cols_device_ = nullptr;
+          C_vals_device_ = nullptr;
 
           break;
         }
@@ -594,46 +627,38 @@ private:
       switch(offload_) {
         case gpuOffloadType::always: {
           // TODO -- currently empty
+          [[fallthrough]];
         }
         case gpuOffloadType::once: {
-          if (A_rows_device_) {
-            sycl::free(A_rows_device_, gpuQueue_);
-            A_rows_device_ = nullptr;
-          }
-          if (A_cols_device_) {
-            sycl::free(A_cols_device_, gpuQueue_);
-            A_cols_device_ = nullptr;
-          }
-          if (A_vals_device_) {
-            sycl::free(A_vals_device_, gpuQueue_);
-            A_vals_device_ = nullptr;
-          }
+          // Release matrix handles
+          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
+          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_device_);
 
-          if (B_rows_device_) {
-            sycl::free(B_rows_device_, gpuQueue_);
-            B_rows_device_ = nullptr;
-          }
-          if (B_cols_device_) {
-            sycl::free(B_cols_device_, gpuQueue_);
-            B_cols_device_ = nullptr;
-          }
-          if (B_vals_device_) {
-            sycl::free(B_vals_device_, gpuQueue_);
-            B_vals_device_ = nullptr;
-          }
+          // Delete buffer objects
+          delete A_rows_device_;
+          delete A_cols_device_;
+          delete A_vals_device_;
+          delete B_rows_device_;
+          delete B_cols_device_;
+          delete B_vals_device_;
 
-          if (C_rows_device_) {
-            sycl::free(C_rows_device_, gpuQueue_);
-            C_rows_device_ = nullptr;
+          A_rows_device_ = nullptr;
+          A_cols_device_ = nullptr;
+          A_vals_device_ = nullptr;
+          B_rows_device_ = nullptr;
+          B_cols_device_ = nullptr;
+          B_vals_device_ = nullptr;
+
+          // Free host memory for C if allocated
+          if (C_cols_) {
+            sycl::free(C_cols_, gpuQueue_);
+            C_cols_ = nullptr;
           }
-          if (C_cols_device_) {
-            sycl::free(C_cols_device_, gpuQueue_);
-            C_cols_device_ = nullptr;
+          if (C_vals_) {
+            sycl::free(C_vals_, gpuQueue_);
+            C_vals_ = nullptr;
           }
-          if (C_vals_device_) {
-            sycl::free(C_vals_device_, gpuQueue_);
-            C_vals_device_ = nullptr;
-          }
+          break;
         }
         case gpuOffloadType::unified: {
           // Release A and B handles

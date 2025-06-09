@@ -438,12 +438,26 @@ private:
 
             sycl::buffer<std::uint8_t, 1> work_buffer((std::uint8_t*)device_temp_buffer_1_,
                                                       sycl::range<1>(device_temp_buffer_1_size_));
+            sycl::buffer<int64_t, 1> work_size_buffer_for_estimation(&device_temp_buffer_1_size_, sycl::range<1>(1));
 
             try {
               oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_, C_device_,
                                           request_, description_,
-                                          nullptr,      // No size buffer needed for work_estimation
-                                          &work_buffer); // Pass the work buffer here
+                                          &work_size_buffer_for_estimation,  // Pass the size buffer
+                                          &work_buffer);                      // Pass the work buffer
+            } catch (sycl::exception const& e) {
+              std::cout << "ERROR - Caught synchronous SYCL exception during "
+                           "SPMM (always) work_estimation:\n"
+                        << e.what() << std::endl
+                        << "OpenCL status: " << e.code().value() << std::endl;
+            }
+          } else {
+            // If no work buffer is needed, call without any buffers
+            try {
+              oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_, C_device_,
+                                          request_, description_,
+                                          nullptr,      // No size buffer
+                                          nullptr);     // No work buffer
             } catch (sycl::exception const& e) {
               std::cout << "ERROR - Caught synchronous SYCL exception during "
                            "SPMM (always) work_estimation:\n"
@@ -516,10 +530,8 @@ private:
           gpuQueue_.wait_and_throw();
 
           // Read back the last element of C_rows to get nnzC
-          {
-            auto C_rows_acc = C_rows_device_->get_access<sycl::access::mode::read>();
-            nnzC_ = C_rows_acc[m_];
-          }
+          auto C_rows_acc = C_rows_device_->get_host_access();
+          nnzC_ = C_rows_acc[m_];
 
           // Do cleanup
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
@@ -566,15 +578,29 @@ private:
 
             sycl::buffer<std::uint8_t, 1> work_buffer((std::uint8_t*)device_temp_buffer_1_,
                                                       sycl::range<1>(device_temp_buffer_1_size_));
+            sycl::buffer<int64_t, 1> work_size_buffer_for_estimation(&device_temp_buffer_1_size_, sycl::range<1>(1));
 
             try {
               oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_, C_device_,
                                           request_, description_,
-                                          nullptr,      // No size buffer needed for work_estimation
-                                          &work_buffer); // Pass the work buffer here
+                                          &work_size_buffer_for_estimation,  // Pass the size buffer
+                                          &work_buffer);                      // Pass the work buffer
             } catch (sycl::exception const& e) {
               std::cout << "ERROR - Caught synchronous SYCL exception during "
-                           "SPMM (always) work_estimation:\n"
+                           "SPMM (once) work_estimation:\n"
+                        << e.what() << std::endl
+                        << "OpenCL status: " << e.code().value() << std::endl;
+            }
+          } else {
+            // If no work buffer is needed, call without any buffers
+            try {
+              oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_, C_device_,
+                                          request_, description_,
+                                          nullptr,      // No size buffer
+                                          nullptr);     // No work buffer
+            } catch (sycl::exception const& e) {
+              std::cout << "ERROR - Caught synchronous SYCL exception during "
+                           "SPMM (once) work_estimation:\n"
                         << e.what() << std::endl
                         << "OpenCL status: " << e.code().value() << std::endl;
             }
@@ -644,10 +670,8 @@ private:
           gpuQueue_.wait_and_throw();
 
           // Read back the last element of C_rows to get nnzC
-          {
-            auto C_rows_acc = C_rows_device_->get_access<sycl::access::mode::read>();
-            nnzC_ = C_rows_acc[m_];
-          }
+          auto C_rows_acc = C_rows_device_->get_host_access();
+          nnzC_ = C_rows_acc[m_];
           break;
         }
         case gpuOffloadType::unified: {

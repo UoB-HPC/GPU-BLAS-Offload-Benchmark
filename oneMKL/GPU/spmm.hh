@@ -206,6 +206,13 @@ public:
         C_vals_ = nullptr;
         gpuQueue_.wait_and_throw();
       }
+      // In initialise() function, after malloc_host allocations:
+      gpuQueue_.wait_and_throw();
+      // Add a barrier to ensure all allocations are complete
+      sycl::event barrier_event = gpuQueue_.submit([&](sycl::handler& cgh) {
+          cgh.single_task([]() {});
+      });
+      barrier_event.wait();
 
       std::cout << ".. initialising input matrices" << std::endl;
       gpuQueue_.wait_and_throw();

@@ -80,7 +80,13 @@ public:
           std::cerr << "ERROR - No GPU device found: " << e.what() << std::endl;
           std::terminate();
         }
-        gpuQueue_ = sycl::queue(myGpu_, exception_handler);
+
+        try {
+          gpuQueue_ = sycl::queue(myGpu_, exception_handler);
+        } catch (const sycl::exception& e) {
+          std::cerr << "ERROR - Failed to create queue: " << e.what() << std::endl;
+          throw;
+        }
 
         // Initialize all pointers to nullptr
         A_ = nullptr;
@@ -122,22 +128,26 @@ public:
       }
 
       // Clean up previous allocations
-      if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
-      if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
-      if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
-      if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
+      try {
+        if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
+        if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
+        if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
+        if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
 
-      if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
-      if (B_vals_) { sycl::free(B_vals_, gpuQueue_); B_vals_ = nullptr; }
-      if (B_cols_) { sycl::free(B_cols_, gpuQueue_); B_cols_ = nullptr; }
-      if (B_rows_) { sycl::free(B_rows_, gpuQueue_); B_rows_ = nullptr; }
+        if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
+        if (B_vals_) { sycl::free(B_vals_, gpuQueue_); B_vals_ = nullptr; }
+        if (B_cols_) { sycl::free(B_cols_, gpuQueue_); B_cols_ = nullptr; }
+        if (B_rows_) { sycl::free(B_rows_, gpuQueue_); B_rows_ = nullptr; }
 
-      if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
-      if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
-      if (C_vals_) { sycl::free(C_vals_, gpuQueue_); C_vals_ = nullptr; }
-      if (C_cols_) { sycl::free(C_cols_, gpuQueue_); C_cols_ = nullptr; }
-
-      gpuQueue_.wait_and_throw();
+        if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
+        if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
+        if (C_vals_) { sycl::free(C_vals_, gpuQueue_); C_vals_ = nullptr; }
+        if (C_cols_) { sycl::free(C_cols_, gpuQueue_); C_cols_ = nullptr; }
+        safe_wait(gpuQueue_, "memory cleanup");
+      } catch (const sycl::exception& e) {
+        std::cerr << "WARNING - Memory cleanup failed: " << e.what() <<
+        std::endl;
+      }
 
       std::cout << ".. setting metadata" << std::endl;
       offload_ = offload;
@@ -151,72 +161,95 @@ public:
       operationB_ = oneapi::mkl::transpose::nontrans;
       index_ = oneapi::mkl::index_base::zero;
 
-      nnzA_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
-      nnzB_ = 1 + (uint64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
+      try {
+        nnzA_ = 1 + static_cast<uint64_t>(static_cast<double>(m_) * static_cast<double>(k_) * (1.0 - sparsity_));
+        nnzB_ = 1 + static_cast<uint64_t>(static_cast<double>(k_) * static_cast<double>(n_) * (1.0 - sparsity_));
+
+        // Verify no overflow occurred
+        if (nnzA_ > std::numeric_limits<int64_t>::max() || nnzB_ > std::numeric_limits<int64_t>::max()) {
+          throw std::overflow_error("Matrix dimensions result in overflow");
+        }
+      } catch (const std::exception& e) {
+        std::cerr << "ERROR - Invalid matrix dimensions: " << e.what() << std::endl;
+        throw;
+      }
 
       // For unified memory, don't pre-allocate C arrays
       if (offload_ == gpuOffloadType::unified) {
-        std::cout <<".. unified malloc" << std::endl;
-        A_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * k_, gpuQueue_);
-        A_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnzA_, gpuQueue_);
-        A_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnzA_,
-                                                gpuQueue_);
-        A_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (m_ + 1),
-                                                gpuQueue_);
-        gpuQueue_.wait_and_throw();
+        try {
+          A_ = safe_malloc_shared<T>(m_ * k_, gpuQueue_, "A matrix");
+          A_vals_ = safe_malloc_shared<T>(nnzA_, gpuQueue_, "A values");
+          A_cols_ = safe_malloc_shared<int64_t>(nnzA_, gpuQueue_, "A columns");
+          A_rows_ = safe_malloc_shared<int64_t>(m_ + 1, gpuQueue_, "A rows");
 
-        B_ = (T*)sycl::malloc_shared(sizeof(T) * k_ * n_, gpuQueue_);
-        B_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnzB_, gpuQueue_);
-        B_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnzB_,
-                                                gpuQueue_);
-        B_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (k_ + 1),
-                                                gpuQueue_);
-        gpuQueue_.wait_and_throw();
+          B_ = safe_malloc_shared<T>(k_ * n_, gpuQueue_, "B matrix");
+          B_vals_ = safe_malloc_shared<T>(nnzB_, gpuQueue_, "B values");
+          B_cols_ = safe_malloc_shared<int64_t>(nnzB_, gpuQueue_, "B columns");
+          B_rows_ = safe_malloc_shared<int64_t>(k_ + 1, gpuQueue_, "B rows");
 
-        C_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * n_, gpuQueue_);
-        C_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (m_ + 1),
-                                                gpuQueue_);
-        // Don't pre-allocate C_cols_ and C_vals_ for unified memory
-        C_cols_ = nullptr;
-        C_vals_ = nullptr;
-        gpuQueue_.wait_and_throw();
+          C_ = safe_malloc_shared<T>(m_ * n_, gpuQueue_, "C matrix");
+          C_rows_ = safe_malloc_shared<int64_t>(m_ + 1, gpuQueue_, "C rows");
+
+          safe_wait(gpuQueue_, "unified memory allocation");
+        } catch (const std::exception& e) {
+          // Cleanup any successfully allocated memory
+          cleanup_allocations();
+          throw;
+        }
       } else {
-        std::cout << ".. host malloc" << std::endl;
-        A_ = (T*)sycl::malloc_host(sizeof(T) * m_ * k_, gpuQueue_);
-        A_vals_ = (T*)sycl::malloc_host(sizeof(T) * nnzA_, gpuQueue_);
-        A_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * nnzA_,
-                                              gpuQueue_);
-        A_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (m_ + 1),
-                                              gpuQueue_);
-        gpuQueue_.wait_and_throw();
+        try {
+          std::cout << ".. host malloc" << std::endl;
+          A_ = static_cast<T*>(sycl::malloc_host(sizeof(T) * m_ * k_,
+                                                 gpuQueue_));
+          if (!A_) throw std::bad_alloc();
+          A_vals_ = static_cast<T*>((T*)sycl::malloc_host(sizeof(T) * nnzA_,
+                                                  gpuQueue_));
+          if (!A_vals_) throw std::bad_alloc();
+          A_cols_ = static_cast<int64_t*>sycl::malloc_host(sizeof(int64_t) *
+                  nnzA_, gpuQueue_);
+          if (!A_cols_) throw std::badalloc();
+          A_rows_ = static_cast<int64_t*>sycl::malloc_host(sizeof(int64_t) *
+                  (m_ + 1), gpuQueue_);
+          if (!A_rows_) throw std::badalloc();
 
-        B_ = (T*)sycl::malloc_host(sizeof(T) * k_ * n_, gpuQueue_);
-        B_vals_ = (T*)sycl::malloc_host(sizeof(T) * nnzB_, gpuQueue_);
-        B_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * nnzB_,
-                                              gpuQueue_);
-        B_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (k_ + 1),
-                                              gpuQueue_);
-        gpuQueue_.wait_and_throw();
 
-        C_ = (T*)sycl::malloc_host(sizeof(T) * m_ * n_, gpuQueue_);
-        C_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (m_ + 1),
-                                              gpuQueue_);
-        // Initialize C array pointers to nullptr
-        C_cols_ = nullptr;
-        C_vals_ = nullptr;
-        gpuQueue_.wait_and_throw();
+          B_ = static_cast<T*>(sycl::malloc_host(sizeof(T) * k_ * n_,
+                                                 gpuQueue_));
+          if (!B_) throw std::bad_alloc();
+          B_vals_ = static_cast<T*>((T*)sycl::malloc_host(sizeof(T) * nnzB_,
+                                                  gpuQueue_));
+          if (!B_vals_) throw std::bad_alloc();
+          B_cols_ = static_cast<int64_t*>sycl::malloc_host(sizeof(int64_t) *
+                  nnzB_, gpuQueue_);
+          if (!B_cols_) throw std::badalloc();
+          B_rows_ = static_cast<int64_t*>sycl::malloc_host(sizeof(int64_t) *
+                  (k_ + 1), gpuQueue_);
+          if (!B_rows_) throw std::badalloc();
+
+          C_ = static_cast<T*>(sycl::malloc_host(sizeof(T) * m_ * n_,
+                                                 gpuQueue_));
+          if (!C_) throw std::bad_alloc();
+          C_rows_ = static_cast<int64_t*>sycl::malloc_host(sizeof(int64_t) *
+                  (m_ + 1), gpuQueue_);
+          if (!C_rows_) throw std::badalloc();
+          // Initialize C array pointers to nullptr
+          C_cols_ = nullptr;
+          C_vals_ = nullptr;
+          safe_wait(gpuQueue_, "unified memory allocation");
+        } catch (const st::exception& e) {
+          cleanup_allocations();
+          throw;
+        }
       }
-      // In initialise() function, after malloc_host allocations:
-      gpuQueue_.wait_and_throw();
-      // Add a barrier to ensure all allocations are complete
-      sycl::event barrier_event = gpuQueue_.submit([&](sycl::handler& cgh) {
-          cgh.single_task([]() {});
-      });
-      barrier_event.wait();
 
       std::cout << ".. initialising input matrices" << std::endl;
-      gpuQueue_.wait_and_throw();
-      initInputMatrices();
+      try {
+        initInputMatrices();
+      } catch (const std::exception& e) {
+        std::cerr << "ERROR - Matrix initialization failed: " << e.what() << std::endl;
+        cleanup_allocations();
+        throw;
+      }
       std::cout << ".. DONE" << std::endl;
     }
 
@@ -694,6 +727,27 @@ private:
     }
 
     void postCallKernelCleanup() override {}
+
+    T* safe_malloc_shared(size_t size, sycl::queue& q, const std::string& var_name) {
+      try {
+        T* ptr = sycl::malloc_shared<T>(size, q);
+        if (!ptr) {
+          throw std::runtime_error("Failed to allocate shared memory for " + var_name);
+        }
+        return ptr;
+      } catch (const sycl::exception& e) {
+        std::cerr << "SYCL allocation error for " << var_name << ": " << e.what() << std::endl;
+        throw;
+      }
+    }
+    void safe_wait(sycl::queue& q, const std::string& operation) {
+      try {
+        q.wait_and_throw();
+      } catch (const sycl::exception& e) {
+        std::cerr << "SYCL synchronization error during " << operation << ": " << e.what() << std::endl;
+        throw;
+      }
+    }
 
     // Member variables
     bool alreadyInitialised_ = false;

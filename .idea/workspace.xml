@@ -17,7 +17,6 @@
   <component name="ChangeListManager">
     <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Debugging onemkl">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/utilities.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/utilities.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -184,15 +183,7 @@
       <workItem from="1738238254258" duration="39310000" />
       <workItem from="1739450473604" duration="26000" />
       <workItem from="1747736781678" duration="61000" />
-      <workItem from="1747736860910" duration="105870000" />
-    </task>
-    <task id="LOCAL-00031" summary="Tidying up spGEMM classes to remove duplicated code">
-      <option name="closed" value="true" />
-      <created>1712136173732</created>
-      <option name="number" value="00031" />
-      <option name="presentableId" value="LOCAL-00031" />
-      <option name="project" value="LOCAL" />
-      <updated>1712136173732</updated>
+      <workItem from="1747736860910" duration="109872000" />
     </task>
     <task id="LOCAL-00032" summary="Fixing py script to accomodate new kernels">
       <option name="closed" value="true" />
@@ -578,7 +569,15 @@
       <option name="project" value="LOCAL" />
       <updated>1749558088188</updated>
     </task>
-    <option name="localTasksCounter" value="80" />
+    <task id="LOCAL-00080" summary="Debugging onemkl">
+      <option name="closed" value="true" />
+      <created>1749560123260</created>
+      <option name="number" value="00080" />
+      <option name="presentableId" value="LOCAL-00080" />
+      <option name="project" value="LOCAL" />
+      <updated>1749560123260</updated>
+    </task>
+    <option name="localTasksCounter" value="81" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

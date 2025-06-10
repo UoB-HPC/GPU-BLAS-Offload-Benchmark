@@ -1,6 +1,7 @@
 #pragma once
 
 #include <random>
+#include <queue>
 #include <iostream>
 
 // Define CPU related macros
@@ -82,102 +83,11 @@ int consume(void* a, void* b, void* c);
 }
 
 /**
- * Generates sparse matrices with scale-free properties using the R-MAT model.
- * This implementation addresses several issues in the original:
- * - Consistent random number generation for reproducibility
- * - Clearer boundary semantics and termination conditions
- * - Better floating-point comparisons
- * - Optional validation and statistics collection
- *
- * @param M         Pointer to flattened n×n adjacency matrix (row-major order)
- * @param n         Matrix dimension
- * @param x1        Left boundary (inclusive)
- * @param x2        Right boundary (exclusive) - changed semantics for clarity
- * @param y1        Top boundary (inclusive)
- * @param y2        Bottom boundary (exclusive) - changed semantics for clarity
- * @param a         Probability of top-left quadrant [0,1]
- * @param b         Probability of top-right quadrant [0,1]
- * @param c         Probability of bottom-left quadrant [0,1]
- * @param gen       Random number generator (consistent across all operations)
- * @param dist      Uniform distribution [0,1)
- * @param bin       Binary values (true) or weighted values (false)
- * @param eps       Epsilon for floating-point zero comparison (default: 1e-10)
- *
- * @return Number of successful edge placements (0 if position occupied)
- */
-template<typename T>
-int rMat_internal(T* M, int n, int x1, int x2, int y1, int y2,
-                  float a, float b, float c,
-                  std::default_random_engine& gen,
-                  std::uniform_real_distribution<double>& dist,
-                  bool bin, T eps = static_cast<T>(1e-10)) {
-
-  // Validate probability parameters
-  float d = 1.0f - (a + b + c);
-  if (a < 0 || b < 0 || c < 0 || d < 0 || (a + b + c) > 1.0f) {
-    std::cerr << "Warning: Invalid R-MAT probabilities (a=" << a
-              << ", b=" << b << ", c=" << c << ", d=" << d << ")\n";
-    return 0;
-  }
-
-  // Base case: single cell (using exclusive upper bounds)
-  if ((x2 - x1) <= 1 && (y2 - y1) <= 1) {
-    if (x1 >= n || y1 >= n || x1 < 0 || y1 < 0) {
-      return 0; // Out of bounds
-    }
-
-    uint64_t index = static_cast<uint64_t>(y1) * static_cast<uint64_t>(n) + static_cast<uint64_t>(x1);
-
-    // Check if position is already occupied (using epsilon for floating-point)
-    if (std::abs(M[index]) > eps) {
-      return 0; // Position occupied
-    }
-
-    // Place edge with consistent random generation
-    if (bin) {
-      M[index] = static_cast<T>(1.0);
-    } else {
-      // Use the same generator for consistency
-      std::uniform_real_distribution<double> value_dist(-50.0, 50.0);
-      M[index] = static_cast<T>(value_dist(gen));
-    }
-    return 1;
-  }
-
-  // Recursive case: subdivide matrix
-  int x_mid = x1 + (x2 - x1) / 2;
-  int y_mid = y1 + (y2 - y1) / 2;
-
-  // Ensure we don't create empty regions
-  if (x_mid <= x1) x_mid = x1 + 1;
-  if (y_mid <= y1) y_mid = y1 + 1;
-  if (x_mid >= x2) x_mid = x2 - 1;
-  if (y_mid >= y2) y_mid = y2 - 1;
-
-  // Select quadrant based on R-MAT probabilities
-  double random_val = dist(gen);
-
-  if (random_val < a) {
-    // Top-left quadrant
-    return rMat_internal(M, n, x1, x_mid, y1, y_mid, a, b, c, gen, dist, bin,
-                         eps);
-  } else if (random_val < (a + b)) {
-    // Top-right quadrant
-    return rMat_internal(M, n, x_mid, x2, y1, y_mid, a, b, c, gen, dist, bin, eps);
-  } else if (random_val < (a + b + c)) {
-    // Bottom-left quadrant
-    return rMat_internal(M, n, x1, x_mid, y_mid, y2, a, b, c, gen, dist, bin, eps);
-  } else {
-    // Bottom-right quadrant
-    return rMat_internal(M, n, x_mid, x2, y_mid, y2, a, b, c, gen, dist, bin, eps);
-  }
-}
-
-/**
  * R-MAT (Recursive MATrix) Graph Generator - Single Edge Addition
  *
- * Implements the R-MAT model for generating scale-free graphs with realistic
- * structural properties. R-MAT recursively subdivides the adjacency matrix into
+ * Iterative Implementation of the R-MAT model for generating scale-free graphs
+ * with  realistic
+ * structural properties. R-MAT subdivides the adjacency matrix into
  * four quadrants and probabilistically selects which quadrant to place each edge,
  * creating graphs with power-law degree distributions and community structure
  * similar to real-world networks.
@@ -235,8 +145,69 @@ int rMat_internal(T* M, int n, int x1, int x2, int y1, int y2,
 template<typename T>
 bool rMat(T* M, int n, int x1, int x2, int y1, int y2, float a, float b, float c,
           std::default_random_engine* gen, std::uniform_real_distribution<double> dist, bool bin) {
-  // Convert to exclusive upper bounds for internal consistency
-  return rMat_internal(M, n, x1, x2 + 1, y1, y2 + 1, a, b, c, *gen, dist, bin)
-  > 0;
+  struct Region {
+      int x1, x2, y1, y2;
+  };
+
+  std::queue<Region> regions;
+  regions.push({x1, x2 + 1, y1, y2 + 1}); // Convert to exclusive upper bounds
+
+  while (!regions.empty()) {
+    Region current = regions.front();
+    regions.pop();
+
+    // Base case: single cell
+    if ((current.x2 - current.x1) <= 1 && (current.y2 - current.y1) <= 1) {
+      if (current.x1 >= n || current.y1 >= n || current.x1 < 0 || current.y1 < 0) {
+        continue; // Out of bounds
+      }
+
+      uint64_t index = static_cast<uint64_t>(current.y1) * static_cast<uint64_t>(n) +
+                       static_cast<uint64_t>(current.x1);
+
+      // Check if position is already occupied
+      if (std::abs(M[index]) > static_cast<T>(1e-10)) {
+        return false; // Position occupied
+      }
+
+      // Place edge
+      if (bin) {
+        M[index] = static_cast<T>(1.0);
+      } else {
+        std::uniform_real_distribution<double> value_dist(-50.0, 50.0);
+        M[index] = static_cast<T>(value_dist(*gen));
+      }
+      return true;
+    }
+
+    // Calculate midpoints
+    int x_mid = current.x1 + (current.x2 - current.x1) / 2;
+    int y_mid = current.y1 + (current.y2 - current.y1) / 2;
+
+    // Ensure we don't create empty regions
+    if (x_mid <= current.x1) x_mid = current.x1 + 1;
+    if (y_mid <= current.y1) y_mid = current.y1 + 1;
+    if (x_mid >= current.x2) x_mid = current.x2 - 1;
+    if (y_mid >= current.y2) y_mid = current.y2 - 1;
+
+    // Select quadrant based on R-MAT probabilities
+    double random_val = dist(*gen);
+
+    if (random_val < a) {
+      // Top-left quadrant
+      regions.push({current.x1, x_mid, current.y1, y_mid});
+    } else if (random_val < (a + b)) {
+      // Top-right quadrant
+      regions.push({x_mid, current.x2, current.y1, y_mid});
+    } else if (random_val < (a + b + c)) {
+      // Bottom-left quadrant
+      regions.push({current.x1, x_mid, y_mid, current.y2});
+    } else {
+      // Bottom-right quadrant
+      regions.push({x_mid, current.x2, y_mid, current.y2});
+    }
+  }
+
+  return false; // Should not reach here
 }
 

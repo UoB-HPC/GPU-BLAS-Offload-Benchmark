@@ -17,7 +17,7 @@
   <component name="ChangeListManager">
     <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Debugging onemkl">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spmm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/include/utilities.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/utilities.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -184,15 +184,7 @@
       <workItem from="1738238254258" duration="39310000" />
       <workItem from="1739450473604" duration="26000" />
       <workItem from="1747736781678" duration="61000" />
-      <workItem from="1747736860910" duration="104236000" />
-    </task>
-    <task id="LOCAL-00030" summary="Fixing after rebase">
-      <option name="closed" value="true" />
-      <created>1712057111636</created>
-      <option name="number" value="00030" />
-      <option name="presentableId" value="LOCAL-00030" />
-      <option name="project" value="LOCAL" />
-      <updated>1712057111636</updated>
+      <workItem from="1747736860910" duration="105870000" />
     </task>
     <task id="LOCAL-00031" summary="Tidying up spGEMM classes to remove duplicated code">
       <option name="closed" value="true" />
@@ -578,7 +570,15 @@
       <option name="project" value="LOCAL" />
       <updated>1749557799668</updated>
     </task>
-    <option name="localTasksCounter" value="79" />
+    <task id="LOCAL-00079" summary="Debugging onemkl">
+      <option name="closed" value="true" />
+      <created>1749558088187</created>
+      <option name="number" value="00079" />
+      <option name="presentableId" value="LOCAL-00079" />
+      <option name="project" value="LOCAL" />
+      <updated>1749558088188</updated>
+    </task>
+    <option name="localTasksCounter" value="80" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

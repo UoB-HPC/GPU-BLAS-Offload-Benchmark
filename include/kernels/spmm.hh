@@ -108,7 +108,6 @@ protected:
         std::cout << "success " << i << ", ";
       }
 
-      std::cout << std::endl << "To Sparse!";
 
       toSparseFormat();
     }

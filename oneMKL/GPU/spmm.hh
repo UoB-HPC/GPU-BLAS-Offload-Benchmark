@@ -208,8 +208,8 @@ public:
       }
 
       std::cout << ".. initialising input matrices" << std::endl;
-      initInputMatrices();
       gpuQueue_.wait_and_throw();
+      initInputMatrices();
       std::cout << ".. DONE" << std::endl;
     }
 

@@ -146,6 +146,65 @@ bool rMat(float* M, int n, int x1, int x2, int y1, int y2, float a, float b,
   }
   return true;
 }
+
+/**
+ * R-MAT (Recursive MATrix) Graph Generator - Single Edge Addition
+ *
+ * Implements the R-MAT model for generating scale-free graphs with realistic
+ * structural properties. R-MAT recursively subdivides the adjacency matrix into
+ * four quadrants and probabilistically selects which quadrant to place each edge,
+ * creating graphs with power-law degree distributions and community structure
+ * similar to real-world networks.
+ *
+ * The algorithm works by:
+ * 1. Dividing the current matrix region into 4 quadrants
+ * 2. Using probabilities (a,b,c,d) where d = 1-(a+b+c) to select a quadrant
+ * 3. Recursively descending until reaching a 1x1 cell
+ * 4. Attempting to place a non-zero value at that position
+ *
+ * This implementation is particularly relevant for sparse linear algebra benchmarks
+ * as R-MAT graphs exhibit:
+ * - High sparsity (typical density < 0.1%)
+ * - Irregular structure that challenges cache efficiency
+ * - Realistic non-uniform sparsity patterns found in real applications
+ * - Scalable generation for large problem sizes
+ *
+ * @param M         Pointer to flattened n×n adjacency matrix (row-major order)
+ * @param n         Matrix dimension (number of vertices in the graph)
+ * @param x1        Left boundary of current matrix subregion (inclusive)
+ * @param x2        Right boundary of current matrix subregion (inclusive)
+ * @param y1        Top boundary of current matrix subregion (inclusive)
+ * @param y2        Bottom boundary of current matrix subregion (inclusive)
+ * @param a         Probability of selecting top-left quadrant [0,1]
+ * @param b         Probability of selecting top-right quadrant [0,1]
+ * @param c         Probability of selecting bottom-left quadrant [0,1]
+ *                  Note: bottom-right probability d = 1-(a+b+c)
+ * @param gen       Pointer to random number generator for reproducible results
+ * @param dist      Uniform real distribution [0,1) for quadrant selection
+ * @param bin       If true, creates binary matrix (edges = 1.0);
+ *                  if false, assigns random weights in range [-50, 50)
+ *
+ * @return true if successfully added non-zero value to an empty position,
+ *         false if selected position already contains non-zero value
+ *
+ * @note Typical R-MAT parameters for realistic graphs:
+ *       - a=0.45, b=0.15, c=0.15, d=0.25 (Kronecker-like)
+ *       - a=0.57, b=0.19, c=0.19, d=0.05 (more skewed)
+ *
+ * @note For sparse linear algebra benchmarks, this generates matrices with:
+ *       - Irregular sparsity patterns (not banded/block-structured)
+ *       - Variable row/column densities challenging load balancing
+ *       - Realistic cache behavior representative of graph applications
+ *
+ * @warning Uses 64-bit indexing to prevent overflow for large matrices (n > 46k)
+ * @warning Non-thread-safe due to shared random number generator
+ *
+ * References:
+ * - Chakrabarti, D., Zhan, Y., & Faloutsos, C. (2004). R-MAT: A recursive model
+ *   for graph mining. SIAM International Conference on Data Mining.
+ * - Leskovec, J., et al. (2010). Kronecker graphs: An approach to modeling networks.
+ *   Journal of Machine Learning Research, 11, 985-1042.
+ */
 bool rMat(double* M, int n, int x1, int x2, int y1, int y2, float a, float b,
           float c, std::default_random_engine* gen,
           std::uniform_real_distribution<double> dist, bool bin) {

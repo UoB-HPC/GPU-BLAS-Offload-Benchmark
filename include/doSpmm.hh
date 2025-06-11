@@ -463,9 +463,9 @@ private:
         writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, M, K, probSize,
                       sparsity, iterations_, gpuResult_once.runtime,
                       gpuResult_once.gflops);
-        writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, M, K,
-                       probSize, sparsity, iterations_, gpuResult_always.runtime,
-                       gpuResult_always.gflops);
+//        writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, M, K,
+//                       probSize, sparsity, iterations_, gpuResult_always.runtime,
+//                       gpuResult_always.gflops);
         writeLineToCsv(csvFile, "gpu_unified", kernelName, N, M, K, probSize,
                        sparsity, iterations_, gpuResult_unified.runtime,
                        gpuResult_unified.gflops);

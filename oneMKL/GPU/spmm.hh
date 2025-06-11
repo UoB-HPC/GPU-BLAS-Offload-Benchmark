@@ -202,41 +202,41 @@ public:
           A_ = static_cast<T*>(sycl::malloc_host(sizeof(T) * m_ * k_,
                                                  gpuQueue_));
           if (!A_) throw std::bad_alloc();
-          A_vals_ = static_cast<T*>((T*)sycl::malloc_host(sizeof(T) * nnzA_,
+          A_vals_ = static_cast<T*>(sycl::malloc_host(sizeof(T) * nnzA_,
                                                   gpuQueue_));
           if (!A_vals_) throw std::bad_alloc();
-          A_cols_ = static_cast<int64_t*>sycl::malloc_host(sizeof(int64_t) *
-                  nnzA_, gpuQueue_);
-          if (!A_cols_) throw std::badalloc();
-          A_rows_ = static_cast<int64_t*>sycl::malloc_host(sizeof(int64_t) *
-                  (m_ + 1), gpuQueue_);
-          if (!A_rows_) throw std::badalloc();
+          A_cols_ = static_cast<int64_t*>(sycl::malloc_host(sizeof(int64_t) *
+                  nnzA_, gpuQueue_));
+          if (!A_cols_) throw std::bad_alloc();
+          A_rows_ = static_cast<int64_t*>(sycl::malloc_host(sizeof(int64_t) *
+                  (m_ + 1), gpuQueue_));
+          if (!A_rows_) throw std::bad_alloc();
 
 
           B_ = static_cast<T*>(sycl::malloc_host(sizeof(T) * k_ * n_,
                                                  gpuQueue_));
           if (!B_) throw std::bad_alloc();
-          B_vals_ = static_cast<T*>((T*)sycl::malloc_host(sizeof(T) * nnzB_,
+          B_vals_ = static_cast<T*>(sycl::malloc_host(sizeof(T) * nnzB_,
                                                   gpuQueue_));
           if (!B_vals_) throw std::bad_alloc();
-          B_cols_ = static_cast<int64_t*>sycl::malloc_host(sizeof(int64_t) *
-                  nnzB_, gpuQueue_);
-          if (!B_cols_) throw std::badalloc();
-          B_rows_ = static_cast<int64_t*>sycl::malloc_host(sizeof(int64_t) *
-                  (k_ + 1), gpuQueue_);
-          if (!B_rows_) throw std::badalloc();
+          B_cols_ = static_cast<int64_t*>(sycl::malloc_host(sizeof(int64_t) *
+                  nnzB_, gpuQueue_));
+          if (!B_cols_) throw std::bad_alloc();
+          B_rows_ = static_cast<int64_t*>(sycl::malloc_host(sizeof(int64_t) *
+                  (k_ + 1), gpuQueue_));
+          if (!B_rows_) throw std::bad_alloc();
 
           C_ = static_cast<T*>(sycl::malloc_host(sizeof(T) * m_ * n_,
                                                  gpuQueue_));
           if (!C_) throw std::bad_alloc();
-          C_rows_ = static_cast<int64_t*>sycl::malloc_host(sizeof(int64_t) *
-                  (m_ + 1), gpuQueue_);
-          if (!C_rows_) throw std::badalloc();
+          C_rows_ = static_cast<int64_t*>(sycl::malloc_host(sizeof(int64_t) *
+                  (m_ + 1), gpuQueue_));
+          if (!C_rows_) throw std::bad_alloc();
           // Initialize C array pointers to nullptr
           C_cols_ = nullptr;
           C_vals_ = nullptr;
           safe_wait(gpuQueue_, "unified memory allocation");
-        } catch (const st::exception& e) {
+        } catch (const std::exception& e) {
           cleanup_allocations();
           throw;
         }
@@ -728,9 +728,11 @@ private:
 
     void postCallKernelCleanup() override {}
 
-    T* safe_malloc_shared(size_t size, sycl::queue& q, const std::string& var_name) {
+    // Template function to allocate shared memory
+    template <typename U>
+    U* safe_malloc_shared(size_t size, sycl::queue& q, const std::string& var_name) {
       try {
-        T* ptr = sycl::malloc_shared<T>(size, q);
+        U* ptr = sycl::malloc_shared<U>(size, q);
         if (!ptr) {
           throw std::runtime_error("Failed to allocate shared memory for " + var_name);
         }
@@ -740,12 +742,35 @@ private:
         throw;
       }
     }
+
     void safe_wait(sycl::queue& q, const std::string& operation) {
       try {
         q.wait_and_throw();
       } catch (const sycl::exception& e) {
         std::cerr << "SYCL synchronization error during " << operation << ": " << e.what() << std::endl;
         throw;
+      }
+    }
+
+    // Helper function to clean up allocations
+    void cleanup_allocations() {
+      try {
+        if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
+        if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
+        if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
+        if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
+
+        if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
+        if (B_vals_) { sycl::free(B_vals_, gpuQueue_); B_vals_ = nullptr; }
+        if (B_cols_) { sycl::free(B_cols_, gpuQueue_); B_cols_ = nullptr; }
+        if (B_rows_) { sycl::free(B_rows_, gpuQueue_); B_rows_ = nullptr; }
+
+        if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
+        if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
+        if (C_vals_) { sycl::free(C_vals_, gpuQueue_); C_vals_ = nullptr; }
+        if (C_cols_) { sycl::free(C_cols_, gpuQueue_); C_cols_ = nullptr; }
+      } catch (const sycl::exception& e) {
+        std::cerr << "WARNING - Error during cleanup: " << e.what() << std::endl;
       }
     }
 

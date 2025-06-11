@@ -438,15 +438,15 @@ private:
         calcGflops(flops, iterations_, gpuResult_unified.runtime);
         if (print_) std::cout << ".. DONE" << std::endl;
 
-      // - ALWAYS: Offload to/from GPU every iteration
-        if (print_) std::cout << "\tAlways ->\tInitialise";
-        gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity);
-        if (print_) std::cout << std::endl << "\t\t\tCompute";
-        time_checksum_gflop gpuResult_always = gpu_.compute();
-        if (print_) std::cout << std::endl << "\t\t\tCalculate";
-        gpuResult_always.gflops =
-              calcGflops(flops, iterations_, gpuResult_always.runtime);
-        if (print_) std::cout << ".. DONE" << std::endl;
+//      // - ALWAYS: Offload to/from GPU every iteration
+//        if (print_) std::cout << "\tAlways ->\tInitialise";
+//        gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity);
+//        if (print_) std::cout << std::endl << "\t\t\tCompute";
+//        time_checksum_gflop gpuResult_always = gpu_.compute();
+//        if (print_) std::cout << std::endl << "\t\t\tCalculate";
+//        gpuResult_always.gflops =
+//              calcGflops(flops, iterations_, gpuResult_always.runtime);
+//        if (print_) std::cout << ".. DONE" << std::endl;
       // - ONCE : Offload to/from GPU once before all iterations and once
       // after
         if (print_) std::cout << "\tOnce ->\t\tInitialise";

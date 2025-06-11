@@ -15,9 +15,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Debugging onemkl">
-      <change beforePath="$PROJECT_DIR$/include/doSpmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpmm.hh" afterDir="false" />
-    </list>
+    <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Debugging onemkl" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -182,15 +180,7 @@
       <workItem from="1738238254258" duration="39310000" />
       <workItem from="1739450473604" duration="26000" />
       <workItem from="1747736781678" duration="61000" />
-      <workItem from="1747736860910" duration="119430000" />
-    </task>
-    <task id="LOCAL-00038" summary="Rebasing">
-      <option name="closed" value="true" />
-      <created>1715161090646</created>
-      <option name="number" value="00038" />
-      <option name="presentableId" value="LOCAL-00038" />
-      <option name="project" value="LOCAL" />
-      <updated>1715161090646</updated>
+      <workItem from="1747736860910" duration="119664000" />
     </task>
     <task id="LOCAL-00039" summary="Adding AOCL files">
       <option name="closed" value="true" />
@@ -576,7 +566,15 @@
       <option name="project" value="LOCAL" />
       <updated>1749650425306</updated>
     </task>
-    <option name="localTasksCounter" value="87" />
+    <task id="LOCAL-00087" summary="Debugging onemkl">
+      <option name="closed" value="true" />
+      <created>1749650457446</created>
+      <option name="number" value="00087" />
+      <option name="presentableId" value="LOCAL-00087" />
+      <option name="project" value="LOCAL" />
+      <updated>1749650457447</updated>
+    </task>
+    <option name="localTasksCounter" value="88" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

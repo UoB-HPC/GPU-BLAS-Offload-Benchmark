@@ -125,6 +125,9 @@ public:
 
         C_vals_temp_ = nullptr;
         C_cols_temp_ = nullptr;
+      } else {
+        gpuQueue_ = sycl::queue();  // Reset the queue
+        gpuQueue_ = sycl::queue(myGpu_, exception_handler);  // Recreate
       }
 
       // Clean up previous allocations
@@ -769,6 +772,8 @@ private:
         if (C_rows_) { sycl::free(C_rows_, gpuQueue_); C_rows_ = nullptr; }
         if (C_vals_) { sycl::free(C_vals_, gpuQueue_); C_vals_ = nullptr; }
         if (C_cols_) { sycl::free(C_cols_, gpuQueue_); C_cols_ = nullptr; }
+        gpuQueue_.wait_and_throw();
+        sycl::free(nullptr, gpuQueue_);
       } catch (const sycl::exception& e) {
         std::cerr << "WARNING - Error during cleanup: " << e.what() << std::endl;
       }

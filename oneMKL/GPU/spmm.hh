@@ -249,6 +249,7 @@ protected:
 
 private:
     void preLoopRequirements() override {
+      if (offload_ == gpuOffloadType::always) return;
       // Initialize the descriptor if not already done
       if (!descriptor_initialized_) {
         oneapi::mkl::sparse::init_matmat_descr(&description_);

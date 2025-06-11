@@ -271,9 +271,24 @@ private:
           B_cols_device_ = new sycl::buffer<int64_t>(B_cols_, sycl::range<1>(nnzB_));
           B_vals_device_ = new sycl::buffer<T>(B_vals_, sycl::range<1>(nnzB_));
 
-          // The matrix handle stuff is the same for both unified and once,
-          // so just fallthrough into it
-          [[fallthrough]];
+          // Initialize matrix handles for A and B only
+          oneapi::mkl::sparse::init_matrix_handle(&A_handle_);
+          oneapi::mkl::sparse::init_matrix_handle(&B_handle_);
+
+          // Set CSR data for A and B
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, A_handle_, m_, k_, index_,
+                                            A_rows_device_, A_cols_device_,
+                                            A_vals_device_);
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, B_handle_, k_, n_, index_,
+                                            B_rows_device_, B_cols_device_,
+                                            B_vals_device_);
+
+          // Sort matrices to ensure they're in proper format
+          oneapi::mkl::sparse::sort_matrix(gpuQueue_, A_handle_);
+          oneapi::mkl::sparse::sort_matrix(gpuQueue_, B_handle_);
+
+          // Wait to ensure data is set
+          gpuQueue_.wait_and_throw();
         }
         case gpuOffloadType::unified: {
           // Initialize matrix handles for A and B only

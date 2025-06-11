@@ -64,9 +64,8 @@ public:
     }
 
     void initialise(gpuOffloadType offload, int m, int n, int k,
-                double sparsity, bool binary = false) override {
+                    double sparsity, bool binary = false) override {
       if (offload == gpuOffloadType::always) return;
-      std::cout << ".. checking already init" << std::endl;
       // Perform set-up which doesn't need to happen every problem size change.
       try {
         myGpu_ = sycl::device(sycl::gpu_selector_v);
@@ -271,32 +270,24 @@ private:
           B_cols_device_ = new sycl::buffer<int64_t>(B_cols_, sycl::range<1>(nnzB_));
           B_vals_device_ = new sycl::buffer<T>(B_vals_, sycl::range<1>(nnzB_));
 
-          // Create A, B and C handles, set A and B data
-          oneapi::mkl::sparse::init_matrix_handle(&A_device_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, A_device_, m_, k_,
-                                            index_, *A_rows_device_,
-                                            *A_cols_device_, *A_vals_device_);
-
-          oneapi::mkl::sparse::init_matrix_handle(&B_device_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, B_device_, k_, n_,
-                                            index_, *B_rows_device_,
-                                            *B_cols_device_, *B_vals_device_);
-          break;
+          // The matrix handle stuff is the same for both unified and once,
+          // so just fallthrough into it
+          [[fallthrough]];
         }
         case gpuOffloadType::unified: {
           // Initialize matrix handles for A and B only
-          oneapi::mkl::sparse::init_matrix_handle(&A_device_);
-          oneapi::mkl::sparse::init_matrix_handle(&B_device_);
+          oneapi::mkl::sparse::init_matrix_handle(&A_handle_);
+          oneapi::mkl::sparse::init_matrix_handle(&B_handle_);
 
           // Set CSR data for A and B
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, A_device_, m_, k_, index_,
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, A_handle_, m_, k_, index_,
                                             A_rows_, A_cols_, A_vals_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, B_device_, k_, n_, index_,
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, B_handle_, k_, n_, index_,
                                             B_rows_, B_cols_, B_vals_);
 
           // Sort matrices to ensure they're in proper format
-          oneapi::mkl::sparse::sort_matrix(gpuQueue_, A_device_);
-          oneapi::mkl::sparse::sort_matrix(gpuQueue_, B_device_);
+          oneapi::mkl::sparse::sort_matrix(gpuQueue_, A_handle_);
+          oneapi::mkl::sparse::sort_matrix(gpuQueue_, B_handle_);
 
           // Wait to ensure data is set
           gpuQueue_.wait_and_throw();
@@ -329,8 +320,8 @@ private:
           C_cols_device_ = new sycl::buffer<int64_t>(C_cols_, sycl::range<1>(max_nnzC));
           C_vals_device_ = new sycl::buffer<T>(C_vals_, sycl::range<1>(max_nnzC));
 
-          oneapi::mkl::sparse::init_matrix_handle(&C_device_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_,
+          oneapi::mkl::sparse::init_matrix_handle(&C_handle_);
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_handle_, m_, n_,
                                             index_, *C_rows_device_,
                                             *C_cols_device_, *C_vals_device_);
 
@@ -339,14 +330,14 @@ private:
           request_ = oneapi::mkl::sparse::matmat_request::get_work_estimation_buf_size;
 
           try {
-            oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
-                                        C_device_, request_, description_,
+            oneapi::mkl::sparse::matmat(gpuQueue_, A_handle_, B_handle_,
+                                        C_handle_, request_, description_,
                                         &size_temp_buffer, nullptr);
             gpuQueue_.wait_and_throw();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Work estimation buffer size: " << e.what()
                       << std::endl;
-            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_handle_);
             throw;
           }
 
@@ -362,8 +353,8 @@ private:
           // Step 2: Perform work estimation
           request_ = oneapi::mkl::sparse::matmat_request::work_estimation;
           try {
-            oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
-                                       B_device_, C_device_,
+            oneapi::mkl::sparse::matmat(gpuQueue_, A_handle_,
+                                       B_handle_, C_handle_,
                                        request_, description_,
                                        &size_temp_buffer,
                                        temp_buffer_ptr);
@@ -371,7 +362,7 @@ private:
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Work estimation: " << e.what() << std::endl;
             if (temp_buffer_ptr) delete temp_buffer_ptr;
-            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_handle_);
             throw;
           }
 
@@ -380,8 +371,8 @@ private:
           sycl::buffer<std::int64_t, 1> size_compute_buffer(sycl::range<1>(1));
 
           try {
-            oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
-                                       B_device_, C_device_,
+            oneapi::mkl::sparse::matmat(gpuQueue_, A_handle_,
+                                       B_handle_, C_handle_,
                                        request_, description_,
                                        &size_compute_buffer,
                                        nullptr);
@@ -390,7 +381,7 @@ private:
             std::cerr << "ERROR - Get compute buffer size: " << e.what()
                       << std::endl;
             if (temp_buffer_ptr) delete temp_buffer_ptr;
-            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_handle_);
             throw;
           }
 
@@ -405,23 +396,23 @@ private:
           // Step 4: Compute
           request_ = oneapi::mkl::sparse::matmat_request::compute;
           try {
-            oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
-                                        C_device_, request_, description_,
+            oneapi::mkl::sparse::matmat(gpuQueue_, A_handle_, B_handle_,
+                                        C_handle_, request_, description_,
                                         &size_compute_buffer, compute_buffer_ptr);
             gpuQueue_.wait_and_throw();
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Compute: " << e.what() << std::endl;
             if (temp_buffer_ptr) delete temp_buffer_ptr;
             if (compute_buffer_ptr) delete compute_buffer_ptr;
-            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_handle_);
             throw;
           }
 
           // Step 5: Finalize
           request_ = oneapi::mkl::sparse::matmat_request::finalize;
           try {
-            oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
-                                       C_device_, request_, description_,
+            oneapi::mkl::sparse::matmat(gpuQueue_, A_handle_, B_handle_,
+                                       C_handle_, request_, description_,
                                        &size_compute_buffer, compute_buffer_ptr);
             gpuQueue_.wait_and_throw();
           } catch (sycl::exception const& e) {
@@ -436,24 +427,8 @@ private:
             auto c_rows_acc = C_rows_device_->get_host_access(sycl::read_only);
             nnzC_ = c_rows_acc[m_];
           }
-
-          // Clean up temporary buffers
-          if (temp_buffer_ptr) {
-            delete temp_buffer_ptr;
-          }
-          if (compute_buffer_ptr) {
-            delete compute_buffer_ptr;
-          }
-
           // Release C handle and delete buffers
-          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
-
-          delete C_rows_device_;
-          delete C_cols_device_;
-          delete C_vals_device_;
-          C_rows_device_ = nullptr;
-          C_cols_device_ = nullptr;
-          C_vals_device_ = nullptr;
+          cleanup_C();
 
           break;
         }
@@ -464,7 +439,7 @@ private:
           std::vector<sycl::event> dependencies;
 
           // Initialize C matrix handle for this iteration
-          oneapi::mkl::sparse::init_matrix_handle(&C_device_);
+          oneapi::mkl::sparse::init_matrix_handle(&C_handle_);
 
           // Pre-allocate C arrays with conservative estimate
           int64_t max_nnzC = std::min((int64_t)(m_ * n_),
@@ -491,16 +466,16 @@ private:
           gpuQueue_.wait();
 
           // Set CSR data for C with pre-allocated arrays
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_device_, m_, n_,
+          oneapi::mkl::sparse::set_csr_data(gpuQueue_, C_handle_, m_, n_,
                                             index_, C_rows_, C_cols_, C_vals_);
 
           // Step 1: Work estimation to determine C structure
           request_ = oneapi::mkl::sparse::matmat_request::get_work_estimation_buf_size;
           try {
             auto event = oneapi::mkl::sparse::matmat(gpuQueue_,
-                                                     A_device_,
-                                                     B_device_,
-                                                     C_device_,
+                                                     A_handle_,
+                                                     B_handle_,
+                                                     C_handle_,
                                                      request_,
                                                      description_,
                                                      &temp_buffer_size,
@@ -510,7 +485,7 @@ private:
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Work estimation buffer size: " << e.what()
                       << std::endl;
-            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_handle_);
             throw;
           }
 
@@ -522,8 +497,8 @@ private:
           // Step 2: Perform work estimation
           request_ = oneapi::mkl::sparse::matmat_request::work_estimation;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
-                                                     B_device_, C_device_,
+            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_handle_,
+                                                     B_handle_, C_handle_,
                                                      request_, description_,
                                                      &temp_buffer_size,
                                                      temp_buffer, dependencies);
@@ -531,7 +506,7 @@ private:
           } catch (sycl::exception const& e) {
             std::cerr << "ERROR - Work estimation: " << e.what() << std::endl;
             if (temp_buffer) sycl::free(temp_buffer, gpuQueue_);
-            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_handle_);
             throw;
           }
 
@@ -539,8 +514,8 @@ private:
           request_ = oneapi::mkl::sparse::matmat_request::get_compute_buf_size;
           int64_t compute_buffer_size = 0;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
-                                                     B_device_, C_device_,
+            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_handle_,
+                                                     B_handle_, C_handle_,
                                                      request_, description_,
                                                      &compute_buffer_size,
                                                      nullptr, dependencies);
@@ -549,7 +524,7 @@ private:
             std::cerr << "ERROR - Get compute buffer size: " << e.what()
                       << std::endl;
             if (temp_buffer) sycl::free(temp_buffer, gpuQueue_);
-            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_handle_);
             throw;
           }
 
@@ -562,8 +537,8 @@ private:
           // Step 4: Compute
           request_ = oneapi::mkl::sparse::matmat_request::compute;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_,
-                                                     B_device_, C_device_,
+            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_handle_,
+                                                     B_handle_, C_handle_,
                                                      request_, description_,
                                                      &compute_buffer_size,
                                                      compute_buffer, dependencies);
@@ -572,15 +547,15 @@ private:
             std::cerr << "ERROR - Compute: " << e.what() << std::endl;
             if (temp_buffer) sycl::free(temp_buffer, gpuQueue_);
             if (compute_buffer) sycl::free(compute_buffer, gpuQueue_);
-            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_handle_);
             throw;
           }
 
           // Step 5: Finalize
           request_ = oneapi::mkl::sparse::matmat_request::finalize;
           try {
-            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_device_, B_device_,
-                                                 C_device_, request_, description_,
+            auto event = oneapi::mkl::sparse::matmat(gpuQueue_, A_handle_, B_handle_,
+                                                 C_handle_, request_, description_,
                                                  nullptr, nullptr, dependencies);
             event.wait();
           } catch (sycl::exception const& e) {
@@ -591,35 +566,8 @@ private:
           gpuQueue_.wait();
           nnzC_ = C_rows_[m_];
 
-          // Clean up temporary buffers
-          if (temp_buffer) {
-            sycl::free(temp_buffer, gpuQueue_);
-            temp_buffer = nullptr;
-          }
-          if (compute_buffer) {
-            sycl::free(compute_buffer, gpuQueue_);
-            computE_buffer = nullptr;
-          }
+          cleanup_C();
 
-          // Release C handle
-          if (C_device_) {
-            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
-            C_device_ = nullptr;
-          }
-
-          // Free C arrays after each iteration to prevent memory accumulation
-          if (C_vals_) {
-            sycl::free(C_vals_, gpuQueue_);
-            C_vals_ = nullptr;
-          }
-          if (C_cols_) {
-            sycl::free(C_cols_, gpuQueue_);
-            C_cols_ = nullptr;
-          }
-          if (C_rows_) {
-            sycl::free(C_rows_, gpuQueue_);
-            C_rows_ = nullptr;
-          }
           break;
         }
       }
@@ -632,7 +580,7 @@ private:
           break;
         }
         case gpuOffloadType::once: {
-          [[fallthrough]]
+          [[fallthrough]];
         }
         case gpuOffloadType::unified: {
           cleanup_allocations();
@@ -669,6 +617,7 @@ private:
 
     // Helper function to clean up allocations
     void cleanup_allocations() {
+      std::cout << ".. cleanup";
       try {
         if (A_) {
           sycl::free(A_, gpuQueue_);
@@ -686,20 +635,20 @@ private:
           sycl::free(A_rows_, gpuQueue_);
           A_rows_ = nullptr;
         }
-        if (A_device_) {
-          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
-          A_device_ = nullptr;
+        if (A_handle_) {
+          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_handle_);
+          A_handle_ = nullptr;
         }
         if (A_vals_device_) {
-          sycl::free(A_vals_device_, gpuQueue_);
+          delete[] A_vals_device_;
           A_vals_device_ = nullptr;
         }
         if (A_cols_device_) {
-          sycl::free(A_cols_device_, gpuQueue_);
+          delete[] A_cols_device_;
           A_cols_device_ = nullptr;
         }
         if (A_rows_device_) {
-          sycl::free(A_rows_device_, gpuQueue_);
+          delete[] A_rows_device_;
           A_rows_device_ = nullptr;
         }
 
@@ -719,23 +668,34 @@ private:
           sycl::free(B_rows_, gpuQueue_);
           B_rows_ = nullptr;
         }
-        if (B_device_) {
-          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_device_);
-          B_device_ = nullptr;
+        if (B_handle_) {
+          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_handle_);
+          B_handle_ = nullptr;
         }
         if (B_vals_device_) {
-          sycl::free(B_vals_device_, gpuQueue_);
+          delete[] B_vals_device_;
           B_vals_device_ = nullptr;
         }
         if (B_cols_device_) {
-          sycl::free(B_cols_device_, gpuQueue_);
+          delete[] B_cols_device_;
           B_cols_device_ = nullptr;
         }
         if (B_rows_device_) {
-          sycl::free(B_rows_device_, gpuQueue_);
+          delete[] B_rows_device_;
           B_rows_device_ = nullptr;
         }
 
+        cleanup_C();
+
+        safe_wait(gpuQueue_, "memory cleanup");
+      } catch (const sycl::exception& e) {
+        std::cerr << "WARNING - Memory cleanup failed: " << e.what() <<
+        std::endl;
+      }
+    }
+
+    void cleanup_C() {
+      try {
         if (C_) {
           sycl::free(C_, gpuQueue_);
           C_ = nullptr;
@@ -752,40 +712,23 @@ private:
           sycl::free(C_cols_, gpuQueue_);
           C_cols_ = nullptr;
         }
-        if (C_device_) {
-          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_device_);
-          C_device_ = nullptr;
+        if (C_handle_) {
+          oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_handle_);
+          C_handle_ = nullptr;
         }
         if (C_rows_device_) {
-          sycl::free(C_rows_device_, gpuQueue_);
+          delete[] C_rows_device_;
           C_rows_device_ = nullptr;
         }
         if (C_vals_device_) {
-          sycl::free(C_vals_device_, gpuQueue_);
+          delete[] C_vals_device_;
           C_vals_device_ = nullptr;
         }
         if (C_cols_device_) {
-          sycl::free(C_cols_device_, gpuQueue_);
+          delete[] C_cols_device_;
           C_cols_device_ = nullptr;
         }
 
-        if (device_temp_buffer_1_) {
-          sycl::free(device_temp_buffer_1_, gpuQueue_);
-          device_temp_buffer_1_ = nullptr;
-        }
-        if (device_temp_buffer_2_) {
-          sycl::free(device_temp_buffer_2_, gpuQueue_);
-          device_temp_buffer_2_ = nullptr;
-        }
-
-        if (C_vals_temp_) {
-          sycl::free(C_vals_temp_, gpuQueue_);
-          C_vals_temp_ = nullptr;
-        }
-        if (C_cols_temp_) {
-          sycl::free(C_cols_temp_, gpuQueue_);
-          C_cols_temp_ = nullptr;
-        }
         safe_wait(gpuQueue_, "memory cleanup");
       } catch (const sycl::exception& e) {
         std::cerr << "WARNING - Memory cleanup failed: " << e.what() <<
@@ -820,14 +763,10 @@ private:
     int64_t* C_cols_ = nullptr;
     int64_t* C_rows_ = nullptr;
 
-    // Temporary arrays for C in always mode
-    T* C_vals_temp_ = nullptr;
-    int64_t* C_cols_temp_ = nullptr;
-
     // Matrix handles
-    oneapi::mkl::sparse::matrix_handle_t A_device_ = nullptr;
-    oneapi::mkl::sparse::matrix_handle_t B_device_ = nullptr;
-    oneapi::mkl::sparse::matrix_handle_t C_device_ = nullptr;
+    oneapi::mkl::sparse::matrix_handle_t A_handle_ = nullptr;
+    oneapi::mkl::sparse::matrix_handle_t B_handle_ = nullptr;
+    oneapi::mkl::sparse::matrix_handle_t C_handle_ = nullptr;
 
     // Buffer pointers for "once" and "always" offload modes
     sycl::buffer<T, 1>* A_vals_device_ = nullptr;
@@ -841,11 +780,6 @@ private:
     sycl::buffer<T, 1>* C_vals_device_ = nullptr;
     sycl::buffer<int64_t, 1>* C_cols_device_ = nullptr;
     sycl::buffer<int64_t, 1>* C_rows_device_ = nullptr;
-
-    int64_t device_temp_buffer_1_size_ = 0;
-    void* device_temp_buffer_1_ = nullptr;
-    int64_t device_temp_buffer_2_size_ = 0;
-    void* device_temp_buffer_2_ = nullptr;
 
     const T alpha = ALPHA;
     const T beta = BETA;

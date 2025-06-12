@@ -27,10 +27,7 @@ public:
 
     ~spmm_gpu() {
       // Release descriptor if initialized
-      if (descriptor_initialized_) {
-        oneapi::mkl::sparse::release_matmat_descr(&description_);
-        descriptor_initialized_ = false;
-      }
+      oneapi::mkl::sparse::release_matmat_descr(&description_);
       // Wait for all operations to complete before destroying the queue
       gpuQueue_.wait_and_throw();
     }
@@ -53,7 +50,7 @@ public:
         throw;
       }
 
-      std::cout << ".. setting metadata";
+//      std::cout << ".. setting metadata";
       offload_ = offload;
       sparsity_ = sparsity;
       m_ = m;
@@ -103,7 +100,7 @@ public:
       } else {
         // For 'once' mode, allocate host memory only
         try {
-          std::cout << ".. host malloc";
+//          std::cout << ".. host malloc";
           A_ = static_cast<T*>(sycl::malloc_host(sizeof(T) * m_ * k_, gpuQueue_));
           if (!A_) throw std::bad_alloc();
           A_vals_ = static_cast<T*>(sycl::malloc_host(sizeof(T) * nnzA_, gpuQueue_));
@@ -137,21 +134,21 @@ public:
         }
       }
 
-      std::cout << ".. initialising input matrices";
+//      std::cout << ".. initialising input matrices";
       try {
         initInputMatrices();
       } catch (const std::exception& e) {
         std::cerr << "ERROR - Matrix initialization failed: " << e.what() << std::endl;
         throw;
       }
-      std::cout << ".. DONE" << std::endl;
+//      std::cout << ".. DONE" << std::endl;
     }
 
 protected:
     void toSparseFormat() override {
       int64_t nnz_encountered = 0;
 
-      std::cout << ".. to sparse A";
+//      std::cout << ".. to sparse A";
       // Convert A to CSR format
       A_rows_[0] = 0;
       for (int64_t row = 0; row < m_; row++) {
@@ -172,7 +169,7 @@ protected:
         nnzA_ = nnz_encountered;  // Update to actual count
       }
 
-      std::cout << " B";
+//      std::cout << " B";
       // Convert B to CSR format
       nnz_encountered = 0;
       B_rows_[0] = 0;
@@ -194,7 +191,7 @@ protected:
         nnzB_ = nnz_encountered;  // Update to actual count
       }
 
-      std::cout << " and C";
+//      std::cout << " and C";
       // Initialize C_rows_ for CSR format
       for (int64_t i = 0; i <= m_; i++) {
         C_rows_[i] = 0;
@@ -210,10 +207,7 @@ private:
     void preLoopRequirements() override {
       if (offload_ == gpuOffloadType::always) return;
       // Initialize the descriptor if not already done
-      if (!descriptor_initialized_) {
-        oneapi::mkl::sparse::init_matmat_descr(&description_);
-        descriptor_initialized_ = true;
-      }
+      oneapi::mkl::sparse::init_matmat_descr(&description_);
 
       switch(offload_) {
         case gpuOffloadType::always: {
@@ -512,37 +506,37 @@ private:
 
           // Clean up device memory
           if (temp_buffer != nullptr) {
-            std::cout << ".. freeing temp_buffer";
+//            std::cout << ".. freeing temp_buffer";
             sycl::free(temp_buffer, gpuQueue_);
             temp_buffer = nullptr;
           }
           if (compute_buffer != nullptr) {
-            std::cout << ".. freeing compute_buffer";
+//            std::cout << ".. freeing compute_buffer";
             sycl::free(compute_buffer, gpuQueue_);
             compute_buffer = nullptr;
           }
           if (temp_buffer_size_device != nullptr) {
-            std::cout << ".. freeing temp_buffer_size_device";
+//            std::cout << ".. freeing temp_buffer_size_device";
             sycl::free(temp_buffer_size_device, gpuQueue_);
             temp_buffer_size_device = nullptr;
           }
           if (compute_buffer_size_device != nullptr) {
-            std::cout << ".. freeing compute_buffer_size_device";
+//            std::cout << ".. freeing compute_buffer_size_device";
             sycl::free(compute_buffer_size_device, gpuQueue_);
             compute_buffer_size_device = nullptr;
           }
           if (C_cols_device != nullptr) {
-            std::cout << ".. freeing C_cols_device";
+//            std::cout << ".. freeing C_cols_device";
             sycl::free(C_cols_device, gpuQueue_);
             C_cols_device = nullptr;
           }
           if (C_vals_device != nullptr) {
-            std::cout << ".. freeing C_vals_device";
+//            std::cout << ".. freeing C_vals_device";
             sycl::free(C_vals_device, gpuQueue_);
             C_vals_device = nullptr;
           }
           if (C_rows_device != nullptr) {
-            std::cout << ".. freeing C_rows_device";
+//            std::cout << ".. freeing C_rows_device";
             sycl::free(C_rows_device, gpuQueue_);
             C_rows_device = nullptr;
           }
@@ -703,23 +697,23 @@ private:
           try {
             // Clean up temporary buffers
             if (temp_buffer) {
-              std::cout << ".. freeing temp_buffer";
+//              std::cout << ".. freeing temp_buffer";
               sycl::free(temp_buffer, gpuQueue_);
               temp_buffer = nullptr;
             }
             if (compute_buffer) {
-              std::cout << ".. freeing compute_buffer";
+//              std::cout << ".. freeing compute_buffer";
               sycl::free(compute_buffer, gpuQueue_);
               compute_buffer = nullptr;
             }
             // Free previous allocations if they exist
             if (C_vals_) {
-              std::cout << ".. freeing C_vals_";
+//              std::cout << ".. freeing C_vals_";
               sycl::free(C_vals_, gpuQueue_);
               C_vals_ = nullptr;
             }
             if (C_cols_) {
-              std::cout << ".. freeing C_cols_";
+//              std::cout << ".. freeing C_cols_";
               sycl::free(C_cols_, gpuQueue_);
               C_cols_ = nullptr;
             }
@@ -744,40 +738,40 @@ private:
         case gpuOffloadType::once: {
           // Release matrix handles
           try {
-            std::cout << ".. releasing A_handle_";
+//            std::cout << ".. releasing A_handle_";
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_handle_);
-            std::cout << ".. releasing B_handle_";
+//            std::cout << ".. releasing B_handle_";
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_handle_);
-            std::cout << ".. releasing matmat decription";
+//            std::cout << ".. releasing matmat decription";
             oneapi::mkl::sparse::release_matmat_descr(&description_);
             // Free device memory
             if (A_rows_device_) {
-              std::cout << ".. freeing A_rows_device_";
+//              std::cout << ".. freeing A_rows_device_";
               sycl::free(A_rows_device_, gpuQueue_);
               A_rows_device_ = nullptr;
             }
             if (A_cols_device_) {
-              std::cout << ".. freeing A_cols_device_";
+//              std::cout << ".. freeing A_cols_device_";
               sycl::free(A_cols_device_, gpuQueue_);
               A_cols_device_ = nullptr;
             }
             if (A_vals_device_) {
-              std::cout << ".. freeing A_vals_device_";
+//              std::cout << ".. freeing A_vals_device_";
               sycl::free(A_vals_device_, gpuQueue_);
               A_vals_device_ = nullptr;
             }
             if (B_rows_device_) {
-              std::cout << ".. freeing B_rows_device_";
+//              std::cout << ".. freeing B_rows_device_";
               sycl::free(B_rows_device_, gpuQueue_);
               B_rows_device_ = nullptr;
             }
             if (B_cols_device_) {
-              std::cout << ".. freeing B_cols_device_";
+//              std::cout << ".. freeing B_cols_device_";
               sycl::free(B_cols_device_, gpuQueue_);
               B_cols_device_ = nullptr;
             }
             if (B_vals_device_) {
-              std::cout << ".. freeing B_vals_device_";
+//              std::cout << ".. freeing B_vals_device_";
               sycl::free(B_vals_device_, gpuQueue_);
               B_vals_device_ = nullptr;
             }
@@ -794,12 +788,12 @@ private:
           try {
             oneapi::mkl::sparse::release_matmat_descr(&description_);
             if (A_handle_) {
-              std::cout << ".. releasing A_handle_";
+//              std::cout << ".. releasing A_handle_";
               oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_handle_);
               A_handle_ = nullptr;
             }
             if (B_handle_) {
-              std::cout << ".. releasing B_handle_";
+//              std::cout << ".. releasing B_handle_";
               oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_handle_);
               B_handle_ = nullptr;
             }

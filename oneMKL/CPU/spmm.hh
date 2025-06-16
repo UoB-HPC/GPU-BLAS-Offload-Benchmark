@@ -30,7 +30,7 @@ public:
 
     void initialise(int m, int n, int k, double sparsity,
                     bool binary = false) {
-      std::cout << ".. setting metadata";
+//      std::cout << ".. setting metadata";
       m_ = m;
       n_ = n;
       k_ = k;
@@ -45,19 +45,19 @@ public:
       nnzA_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
       nnzB_ = 1 + (uint64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
 
-      std::cout << ".. making data structures";
+//      std::cout << ".. making data structures";
       A_ = (T*)mkl_malloc(sizeof(T) * m_ * k_, 64);
       B_ = (T*)mkl_malloc(sizeof(T) * k_ * n_, 64);
       C_ = (T*)mkl_malloc(sizeof(T) * m_ * n_, 64);
 
-      std::cout << ".. initialising matrices";
+//      std::cout << ".. initialising matrices";
       initInputMatrices();
-      std::cout << ".. DONE";
+//      std::cout << ".. DONE";
     }
 
 protected:
     void toSparseFormat() override {
-      std::cout << ".. to sparse format";
+//      std::cout << ".. to sparse format";
       A_vals_ = new T[nnzA_];
       A_cols_ = new MKL_INT[nnzA_];
       A_rowsb_ = new MKL_INT[m_ + 1];

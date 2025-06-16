@@ -17,9 +17,7 @@
   <component name="ChangeListManager">
     <list default="true" id="0893f9af-dab8-4239-8892-923019f84a19" name="Changes" comment="Debugging onemkl">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/doSpmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpmm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spmm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/GPU/spmm.hh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oneMKL/CPU/spmm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/CPU/spmm.hh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -185,15 +183,7 @@
       <workItem from="1738238254258" duration="39310000" />
       <workItem from="1739450473604" duration="26000" />
       <workItem from="1747736781678" duration="61000" />
-      <workItem from="1747736860910" duration="137042000" />
-    </task>
-    <task id="LOCAL-00042" summary="No longer overwriting B_">
-      <option name="closed" value="true" />
-      <created>1727949079616</created>
-      <option name="number" value="00042" />
-      <option name="presentableId" value="LOCAL-00042" />
-      <option name="project" value="LOCAL" />
-      <updated>1727949079616</updated>
+      <workItem from="1747736860910" duration="138537000" />
     </task>
     <task id="LOCAL-00043" summary="Adding kernel selection for gemv">
       <option name="closed" value="true" />
@@ -579,7 +569,15 @@
       <option name="project" value="LOCAL" />
       <updated>1749739754825</updated>
     </task>
-    <option name="localTasksCounter" value="91" />
+    <task id="LOCAL-00091" summary="Debugging onemkl">
+      <option name="closed" value="true" />
+      <created>1749740728357</created>
+      <option name="number" value="00091" />
+      <option name="presentableId" value="LOCAL-00091" />
+      <option name="project" value="LOCAL" />
+      <updated>1749740728357</updated>
+    </task>
+    <option name="localTasksCounter" value="92" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

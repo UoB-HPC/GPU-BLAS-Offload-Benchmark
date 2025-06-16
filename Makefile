@@ -123,10 +123,11 @@ endif
 HEADER_FILES+= $(wildcard oneMKL/CPU/*.hh)
 
 else ifeq ($(CPU_LIB), AOCL)
+override CXXFLAGS += -laoclutils -lblis-mt -lflame -laoclsparse
 ifeq ($(COMPILER), INTEL)
-override CXXFLAGS += -lblis-mt -qopenmp
+override CXXFLAGS += -qopenmp
 else
-override CXXFLAGS += -lblis-mt -fopenmp
+override CXXFLAGS += -fopenmp
 endif
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS="-L<AOCL_DIR>/lib -I<AOCL_DIR>/include/blis -Wl,-rpath,<AOCL_DIR>/lib"` to make command)

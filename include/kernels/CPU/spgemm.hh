@@ -26,19 +26,26 @@ public:
     /**
      * Initialise the required data structures.
      */
-    void initialise(int n, int m, int k, double sparsity,
+    void initialise(int m, int n, int k, double sparsity,
                     bool binary = false) {
-      n_ = n;
+      std::cout << ".. setting metadata";
       m_ = m;
+      n_ = n;
       k_ = k;
-
       sparsity_ = sparsity;
 
       nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
 
-      A_ = (T*)malloc(sizeof(T) * m_ * k_);
-      B_ = (T*)malloc(sizeof(T) * k_ * n_);
-      C_ = (T*)calloc(sizeof(T) * m_ * n_);
+      // Allocate memory for dense matrices
+      A_ = (T*)calloc(m_ * k_, sizeof(T));
+      B_ = (T*)calloc(k_ * n_, sizeof(T));
+      C_ = (T*)calloc(m_ * n_, sizeof(T));
+
+      // Check for allocation failures
+      if (!A_ || !B_ || !C_) {
+        std::cerr << "ERROR: Memory allocation failed in spgemm initialization" << std::endl;
+        exit(1);
+      }
 
       initInputMatrices();
     }

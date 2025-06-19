@@ -74,8 +74,10 @@ public:
       prev_gpuResult_unified = time_checksum_gflop();
       std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                                           "_square_square_M=N=K.csv");
+      print_ = true;
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = dim, K = dim;
+        if (print_) std::cout << dim << "x" << dim << std::endl;
         callKernels(csvFile, dim, dim, dim, sparsity_);
       }
       // Close file
@@ -314,13 +316,13 @@ private:
       time_checksum_gflop gpuResult_always;
       time_checksum_gflop gpuResult_unified;
 
+      print_ = true;
 // Perform CPU kernel
 #if CPU_ENABLED
       if (doCPU_) {
-        if (print_) {
-          std::cout << "CPU -> " << std::endl;
-        }
+        if (print_) std::cout << "CPU -> init" << std::endl;
         cpu_.initialise(M, N, K, SPARSITY);
+        if (print_) std::cout << ".. comp";
         cpuResult = cpu_.compute();
         cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
         // Write result to CSV file

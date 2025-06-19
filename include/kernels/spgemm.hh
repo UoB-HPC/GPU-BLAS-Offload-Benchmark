@@ -21,19 +21,19 @@ public:
     /** Call the kernel n times.  Returns the time elapsed for all n calls
      * in seconds */
     time_checksum_gflop compute() {
-      bool print_ = false;
+      bool print_ = true;
       // Start the timer
       std::chrono::time_point<std::chrono::high_resolution_clock> startTime =
               std::chrono::high_resolution_clock::now();
 
       // perform the SPMM calls
-      if (print_) std::cout << "pre... ";
+      if (print_) std::cout << ".. pre";
       preLoopRequirements();
       for (int i = 0; i < iterations_; i++) {
-        if (print_) std::cout << "spGEMM... ";
+        if (print_) std::cout << ".. spGEMM";
         callSpgemm();
       }
-      if (print_) std::cout << "post";
+      if (print_) std::cout << ".. post";
       postLoopRequirements();
       if (print_) std::cout << std::endl;
 
@@ -76,32 +76,82 @@ private:
 protected:
     /** Set up the starting matrices */
     void initInputMatrices() {
-      bool print_ = false;
-      if (print_) std::cout << " initialising matrices ";
+      std::cout << "DEBUG: initInputMatrices - Start" << std::endl;
+      std::cout << "  m_=" << m_ << ", n_=" << n_ << ", k_=" << k_ << std::endl;
+      std::cout << "  nnz_=" << nnz_ << ", sparsity_=" << sparsity_ << std::endl;
+
+      // Initialize A to zero
+      std::cout << "DEBUG: Zeroing matrix A (size=" << (m_ * k_) << ")" << std::endl;
       for (int i = 0; i < (m_ * k_); i++) {
+        std::cout << "A_[" << i << "] = 0.0;" << std::endl;
         A_[i] = 0.0;
       }
 
+      // Initialize B with random values
+      std::cout << "DEBUG: Initializing matrix B" << std::endl;
       srand(SEED);
       for (int i = 0; i < (k_ * n_); i++) {
         B_[i] = (T)((double)(rand() % 100) / 7.0);
       }
 
+      // Initialize C to zero
+      std::cout << "DEBUG: Initializing matrix C" << std::endl;
       for (int i = 0; i < (m_ * n_); i++) {
         C_[i] = (T)0.0;
       }
 
-      // Random number generator objects for use in descent
+      // Random number generator for R-MAT
       std::default_random_engine gen;
-      gen.seed(std::chrono::system_clock::now()
-                       .time_since_epoch().count());
+      gen.seed(std::chrono::system_clock::now().time_since_epoch().count());
       std::uniform_real_distribution<double> dist(0.0, 1.0);
-      // Using a=0.45 and b=c=0.22 as default probabilities
+
+      // Generate sparse matrix using R-MAT
+      std::cout << "DEBUG: Generating sparse matrix with R-MAT" << std::endl;
+      int successful_inserts = 0;
+      int failed_attempts = 0;
+      const int max_attempts_per_element = 100;
+
       for (int i = 0; i < nnz_; i++) {
-        while (!rMat(A_, k_, 0, k_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22, &gen,
-                      dist, false)) {}
+        int attempts = 0;
+        bool inserted = false;
+
+        while (!inserted && attempts < max_attempts_per_element) {
+          inserted = rMat(A_, k_, 0, k_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22,
+                          &gen, dist, false);
+          attempts++;
+        }
+
+        if (inserted) {
+          successful_inserts++;
+        } else {
+          failed_attempts++;
+          std::cout << "WARNING: Failed to insert element " << i
+                    << " after " << attempts << " attempts" << std::endl;
+        }
+
+        // Progress update
+        if ((i + 1) % 1000 == 0) {
+          std::cout << "  Generated " << (i + 1) << "/" << nnz_
+                    << " non-zeros" << std::endl;
+        }
       }
+
+      std::cout << "DEBUG: R-MAT generation complete. "
+                << "Successful: " << successful_inserts
+                << ", Failed: " << failed_attempts << std::endl;
+
+      // Count actual non-zeros
+      int actual_nnz = 0;
+      for (int i = 0; i < (m_ * k_); i++) {
+        if (std::abs(A_[i]) > 1e-10) {
+          actual_nnz++;
+        }
+      }
+      std::cout << "DEBUG: Actual non-zeros in A: " << actual_nnz << std::endl;
+
+      std::cout << "DEBUG: Calling toSparseFormat()" << std::endl;
       toSparseFormat();
+      std::cout << "DEBUG: initInputMatrices - Complete" << std::endl;
     }
 
     /** Move matrices into the sparse representation of for the given library */

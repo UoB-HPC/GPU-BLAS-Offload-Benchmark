@@ -28,6 +28,7 @@ public:
 
     void initialise(int m, int n, int k, double sparsity,
                     bool binary = false) {
+
       m_ = m;
       n_ = n;
       k_ = k;
@@ -40,7 +41,6 @@ public:
 
       /** Determine the number of nnz elements in A and B */
       nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
-
 
       A_ = (T*)mkl_malloc(sizeof(T) * m_ * k_, 64);
       B_ = (T*)mkl_malloc(sizeof(T) * k_ * n_, 64);

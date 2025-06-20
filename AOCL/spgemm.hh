@@ -39,7 +39,7 @@ public:
       sparsity_ = sparsity;
 
       nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
-      nnz_aocl_ = (aoclsparse_int)nnz_;
+      nnz_aocl_ = nnz_;
 
 
       A_rows_ = new aoclsparse_int[m_ + 1];
@@ -123,6 +123,12 @@ private:
         printAOCLError(status_);
       }
 
+      // Check the AOCL source code checks here so I can confirm exactly which internal check is failing:
+      internalCheck(m_aocl_, k_aocl_, nnz_aocl_, A_rows_, A_cols_, A_vals_, 
+                    0, 0);
+    
+
+
       // Create the aocl sparse matrix for A_
       if constexpr (std::is_same_v<T, float>) {
         status_ = aoclsparse_create_scsr(&A_aocl_, // aoclsparse_matrix*
@@ -134,14 +140,20 @@ private:
                                          A_cols_,
                                          A_vals_);
       } else if constexpr (std::is_same_v<T, double>) {
-        status_ = aoclsparse_create_dcsr(&A_aocl_, base_, m_aocl_, k_aocl_,
-                                        nnz_aocl_, A_rows_, A_cols_, A_vals_);
+        status_ = aoclsparse_create_dcsr(&A_aocl_,
+                                         base_,
+                                         m_aocl_,
+                                         k_aocl_,
+                                         nnz_aocl_,
+                                         A_rows_,
+                                         A_cols_,
+                                         A_vals_);
       }
 
-//      if (status_ != aoclsparse_status_success) {
-//        std::cout << std::endl << "aoclsparse_create_?csr failing with: ";
-//        printAOCLError(status_);
-//      }
+      if (status_ != aoclsparse_status_success) {
+        std::cout << std::endl << "aoclsparse_create_?csr failing with: ";
+        printAOCLError(status_);
+      }
 
     }
 
@@ -245,6 +257,95 @@ private:
       }
       std::cout << std::endl;
       exit(1);
+    }
+
+    void internalCheck(aoclsparse_int          maj_dim,
+                       aoclsparse_int          min_dim,
+                       aoclsparse_int          nnz,
+                       const aoclsparse_int   *idx_ptr,
+                       const aoclsparse_int   *indices,
+                       const void             *val,
+                       int                    shape,
+                       int                    base) {
+        if (idx_ptr == nullptr) {
+            std::cout << "INVALID ROWS ARRAY" << std::endl;
+            exit(1);
+        }
+        if (indices == nullptr){
+            std::cout << "INVALID COLS ARRAY" << std::endl;
+            exit(1);
+        }
+        if (val == nullptr){
+            std::cout << "INVALID VALS ARRAY" << std::endl;
+            exit(1);
+        }
+
+        if ((min_dim < 0) || (maj_dim < 0) || (nnz < 0)) {
+            std::cout << "Wrong min_dim/maj_dim/nnz" << std::endl;
+            exit(1);
+        }
+
+        if ((idx_ptr[0] - base) != 0) {
+            std::cout << "Wrong csr_row_ptr[0] or csc.col_ptr[0]" << std::endl;
+            exit(1);
+        }
+        if ((idx_ptr[maj_dim] - base) != nnz) {
+            std::cout << "Wrong csr_row_ptr[m]!=nnz or csc.col_ptr[n]!=nnz" << std::endl;
+            exit(1);
+        }
+        for (aoclsparse_int i = 1; i <= maj_dim; i++) {
+            if (idx_ptr[i - 1] > idx_ptr[i]) {
+                std::cout << "Wrong csr_row_ptr/csc.col_ptr - not nondecreasing" << std::endl;
+                exit (1);
+            }
+        }
+
+        // assume indices are fully sorted & fulldiag matrix unless proved otherwise
+        int sort = 1;
+        bool fulldiag = true;
+
+        aoclsparse_int idxstart, idxend, j, jmin = 0, jmax = min_dim - 1;
+        for (aoclsparse_int i = 0; i < maj_dim; i++) {
+            idxend   = idx_ptr[i + 1] - base;
+            idxstart = idx_ptr[i] - base;
+            if (shape == 1) {
+                jmin = 0;
+                jmax = i;
+            } else if (shape == 2) {
+                jmin = i;
+                jmax = min_dim - 1;
+            }
+            // check if visited D, U group within this row
+            bool diagonal = false, upper = false;
+            aoclsparse_int prev = -1; // holds previous col index, initially set to -1
+
+            for (aoclsparse_int idx = idxstart; idx < idxend; idx++) {
+                j = indices[idx] - base;
+                if (j < jmin || j > jmax) {
+                    std::cout << "Wrong index - out of bounds or triangle, @idx=" << idx << ": j=" << j
+                              << ", i=" << i << std::endl;
+                    exit(1);          
+                }
+                // check for sorting pattern for each element in a row
+                if (sort != 3) {
+                    if (prev > j) sort = 2; // unsorted col idx (duplicate elements are allowed)
+                    else prev = j; // update previous col index
+
+                    // check for group-order
+                    if ((j <= i && upper) || (j < i && diagonal)) sort = 3;
+                }
+                if (j > i) upper = true;
+                else if(j == i) {
+                    if (diagonal) {
+                        std::cout << "Wrong diag - duplicate diag for i=j=" << i << std::endl;
+                        exit(1);
+                    }
+                    // diagonal element visited
+                    diagonal = true;
+                }
+            }
+            if (!diagonal && i < min_dim) fulldiag = false; // missing diagonal
+        }
     }
 
     aoclsparse_status status_;

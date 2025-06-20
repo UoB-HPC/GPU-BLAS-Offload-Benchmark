@@ -11,6 +11,8 @@
 #include "doSpgemv.hh"
 #include "utilities.hh"
 
+#define CPU_AOCL
+
 /** A function which prints standard configuration information to stdout. */
 void printBenchmarkConfig(const int iters, const int upperLimit);
 

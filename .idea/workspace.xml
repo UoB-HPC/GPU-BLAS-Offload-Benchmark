@@ -19,9 +19,6 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/AOCL/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/AOCL/spgemm.hh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/include/doSpgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/doSpgemm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/CPU/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/CPU/spgemm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/include/kernels/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/include/kernels/spgemm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oneMKL/CPU/spgemm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/oneMKL/CPU/spgemm.hh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -187,15 +184,7 @@
       <workItem from="1738238254258" duration="39310000" />
       <workItem from="1739450473604" duration="26000" />
       <workItem from="1747736781678" duration="61000" />
-      <workItem from="1747736860910" duration="173632000" />
-    </task>
-    <task id="LOCAL-00045" summary="Beginning gemv ARMPL">
-      <option name="closed" value="true" />
-      <created>1729522236773</created>
-      <option name="number" value="00045" />
-      <option name="presentableId" value="LOCAL-00045" />
-      <option name="project" value="LOCAL" />
-      <updated>1729522236773</updated>
+      <workItem from="1747736860910" duration="176280000" />
     </task>
     <task id="LOCAL-00046" summary="Beginning gemv ARMPL">
       <option name="closed" value="true" />
@@ -581,7 +570,15 @@
       <option name="project" value="LOCAL" />
       <updated>1750077193292</updated>
     </task>
-    <option name="localTasksCounter" value="94" />
+    <task id="LOCAL-00094" summary="Debugging AOCL -- Setting up makefile to build sparse stuff">
+      <option name="closed" value="true" />
+      <created>1750348948237</created>
+      <option name="number" value="00094" />
+      <option name="presentableId" value="LOCAL-00094" />
+      <option name="project" value="LOCAL" />
+      <updated>1750348948237</updated>
+    </task>
+    <option name="localTasksCounter" value="95" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

@@ -1,0 +1,2 @@
+Device,Kernel,M,N,K,Total Problem Size (KiB),sparsity,Iterations,Total Seconds,GFLOP/s
+cpu,sgemm,16,16,1,1.125,0.99000001,2,0.00001,0.163

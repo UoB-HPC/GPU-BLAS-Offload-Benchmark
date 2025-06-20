@@ -77,6 +77,7 @@ public:
       print_ = true;
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = dim, K = dim;
+        if (dim == 2) continue;
         if (print_) std::cout << dim << "x" << dim << std::endl;
         callKernels(csvFile, dim, dim, dim, sparsity_);
       }

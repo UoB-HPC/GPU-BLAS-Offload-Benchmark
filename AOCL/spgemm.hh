@@ -267,6 +267,7 @@ private:
                        const void             *val,
                        int                    shape,
                        int                    base) {
+        std::cout << "CHECKING POINTERS" << std::endl;               
         if (idx_ptr == nullptr) {
             std::cout << "INVALID ROWS ARRAY" << std::endl;
             exit(1);
@@ -279,20 +280,24 @@ private:
             std::cout << "INVALID VALS ARRAY" << std::endl;
             exit(1);
         }
+        std::cout << "CHECKING POSITIVE SIZES" << std::endl;
 
         if ((min_dim < 0) || (maj_dim < 0) || (nnz < 0)) {
             std::cout << "Wrong min_dim/maj_dim/nnz" << std::endl;
             exit(1);
         }
+        std::cout << "CHECKING ROW 0 = 0" << std::endl;
 
         if ((idx_ptr[0] - base) != 0) {
             std::cout << "Wrong csr_row_ptr[0] or csc.col_ptr[0]" << std::endl;
             exit(1);
         }
+        std::cout << "CHECKING LAST ROW = NNZ" << std::endl;
         if ((idx_ptr[maj_dim] - base) != nnz) {
             std::cout << "Wrong csr_row_ptr[m]!=nnz or csc.col_ptr[n]!=nnz" << std::endl;
             exit(1);
         }
+        std::cout << "CHECKING ROW POINTERS INCREASE" << std::endl;
         for (aoclsparse_int i = 1; i <= maj_dim; i++) {
             if (idx_ptr[i - 1] > idx_ptr[i]) {
                 std::cout << "Wrong csr_row_ptr/csc.col_ptr - not nondecreasing" << std::endl;
@@ -304,8 +309,10 @@ private:
         int sort = 1;
         bool fulldiag = true;
 
+        std::cout << "CHECKING DIAGONALITY" << std::endl;
         aoclsparse_int idxstart, idxend, j, jmin = 0, jmax = min_dim - 1;
         for (aoclsparse_int i = 0; i < maj_dim; i++) {
+        std::cout << "i = " << i;
             idxend   = idx_ptr[i + 1] - base;
             idxstart = idx_ptr[i] - base;
             if (shape == 1) {
@@ -320,6 +327,7 @@ private:
             aoclsparse_int prev = -1; // holds previous col index, initially set to -1
 
             for (aoclsparse_int idx = idxstart; idx < idxend; idx++) {
+                std::cout << ", idx = " << idx << ", diag = " << ((diagonal) ? "true" : "false") << std::endl;
                 j = indices[idx] - base;
                 if (j < jmin || j > jmax) {
                     std::cout << "Wrong index - out of bounds or triangle, @idx=" << idx << ": j=" << j

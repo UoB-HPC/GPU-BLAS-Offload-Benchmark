@@ -56,5 +56,9 @@ gpu-blob
 CSV*
 Graphs*
 
-# VS Code
+# IDE
 .vscode
+.DS_Store
+
+# Bash scripts to run on different systems
+*.sh

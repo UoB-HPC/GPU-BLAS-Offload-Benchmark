@@ -21,7 +21,6 @@ public:
     /** Call the kernel n times.  Returns the time elapsed for all n calls
      * in seconds */
     time_checksum_gflop compute() {
-      bool print_ = true;
       // Start the timer
       std::chrono::time_point<std::chrono::high_resolution_clock> startTime =
               std::chrono::high_resolution_clock::now();
@@ -76,26 +75,26 @@ private:
 protected:
     /** Set up the starting matrices */
     void initInputMatrices() {
-      std::cout << "DEBUG: initInputMatrices - Start" << std::endl;
-      std::cout << "  m_=" << m_ << ", n_=" << n_ << ", k_=" << k_ << std::endl;
-      std::cout << "  nnz_=" << nnz_ << ", sparsity_=" << sparsity_ << std::endl;
+      if (print_) std::cout << "DEBUG: initInputMatrices - Start" << std::endl;
+      if (print_) std::cout << "  m_=" << m_ << ", n_=" << n_ << ", k_=" << k_ << std::endl;
+      if (print_) std::cout << "  nnz_=" << nnz_ << ", sparsity_=" << sparsity_ << std::endl;
 
       // Initialize A to zero
-      std::cout << "DEBUG: Zeroing matrix A (size=" << (m_ * k_) << ")" << std::endl;
+      if (print_) std::cout << "DEBUG: Zeroing matrix A (size=" << (m_ * k_) << ")" << std::endl;
       for (int i = 0; i < (m_ * k_); i++) {
-        std::cout << "A_[" << i << "] = 0.0;" << std::endl;
+        if (print_) std::cout << "A_[" << i << "] = 0.0;" << std::endl;
         A_[i] = 0.0;
       }
 
       // Initialize B with random values
-      std::cout << "DEBUG: Initializing matrix B" << std::endl;
+      if (print_) std::cout << "DEBUG: Initializing matrix B" << std::endl;
       srand(SEED);
       for (int i = 0; i < (k_ * n_); i++) {
         B_[i] = (T)((double)(rand() % 100) / 7.0);
       }
 
       // Initialize C to zero
-      std::cout << "DEBUG: Initializing matrix C" << std::endl;
+      if (print_) std::cout << "DEBUG: Initializing matrix C" << std::endl;
       for (int i = 0; i < (m_ * n_); i++) {
         C_[i] = (T)0.0;
       }
@@ -106,7 +105,7 @@ protected:
       std::uniform_real_distribution<double> dist(0.0, 1.0);
 
       // Generate sparse matrix using R-MAT
-      std::cout << "DEBUG: Generating sparse matrix with R-MAT" << std::endl;
+      if (print_) std::cout << "DEBUG: Generating sparse matrix with R-MAT" << std::endl;
       int successful_inserts = 0;
       int failed_attempts = 0;
       const int max_attempts_per_element = 100;
@@ -125,20 +124,16 @@ protected:
           successful_inserts++;
         } else {
           failed_attempts++;
-          std::cout << "WARNING: Failed to insert element " << i
-                    << " after " << attempts << " attempts" << std::endl;
+          if (print_) std::cout << "WARNING: Failed to insert element " << i << " after " << attempts << " attempts" << std::endl;
         }
 
         // Progress update
         if ((i + 1) % 1000 == 0) {
-          std::cout << "  Generated " << (i + 1) << "/" << nnz_
-                    << " non-zeros" << std::endl;
+          if (print_) std::cout << "  Generated " << (i + 1) << "/" << nnz_ << " non-zeros" << std::endl;
         }
       }
 
-      std::cout << "DEBUG: R-MAT generation complete. "
-                << "Successful: " << successful_inserts
-                << ", Failed: " << failed_attempts << std::endl;
+      if (print_) std::cout << "DEBUG: R-MAT generation complete. Successful: " << successful_inserts << ", Failed: " << failed_attempts << std::endl;
 
       // Count actual non-zeros
       int actual_nnz = 0;
@@ -147,12 +142,14 @@ protected:
           actual_nnz++;
         }
       }
-      std::cout << "DEBUG: Actual non-zeros in A: " << actual_nnz << std::endl;
+      if (print_) std::cout << "DEBUG: Actual non-zeros in A: " << actual_nnz << std::endl;
 
-      std::cout << "DEBUG: Calling toSparseFormat()" << std::endl;
+      if (print_) std::cout << "DEBUG: Calling toSparseFormat()" << std::endl;
       toSparseFormat();
-      std::cout << "DEBUG: initInputMatrices - Complete" << std::endl;
+      if (print_) std::cout << "DEBUG: initInputMatrices - Complete" << std::endl;
     }
+
+    bool print_ = false;
 
     /** Move matrices into the sparse representation of for the given library */
     virtual void toSparseFormat() = 0;

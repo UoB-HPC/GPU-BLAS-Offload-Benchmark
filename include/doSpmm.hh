@@ -51,7 +51,6 @@ public:
         gpu_(iterations_)
 #endif
     {
-      print_ = true;
       static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
                     "ERROR - doSpmm can only be constructed using one of the "
                     "following types: [float, double].");
@@ -618,7 +617,7 @@ private:
 	gpu::spmm_gpu<T> gpu_;
 #endif
 
-    bool print_;
+    bool print_ = false;
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */
     cpuGpu_offloadThreshold cpuGpu_once_;

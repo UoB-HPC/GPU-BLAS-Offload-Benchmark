@@ -80,10 +80,10 @@ protected:
                                          A_cols_,
                                          A_vals_);
       } else {
-      // Un-specialised class will not do any work - print error and exit.
-      std::cout << "ERROR - Datatype for AOCL CPU SPGEMV kernel not supported."
-                << std::endl;
-      exit(1);
+        // Un-specialised class will not do any work - print error and exit.
+        std::cerr << "ERROR - Datatype for AOCL CPU SPGEMV kernel not supported."
+                  << std::endl;
+        exit(1);
       }
     }
 
@@ -115,7 +115,7 @@ private:
                        y_);
       } else {
         // Un-specialised class will not do any work - print error and exit.
-        std::cout << "ERROR - Datatype for AOCL CPU SPGEMV kernel not "
+        std::cerr << "ERROR - Datatype for AOCL CPU SPGEMV kernel not "
                      "supported." << std::endl;
         exit(1);
       }

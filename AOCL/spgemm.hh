@@ -147,7 +147,7 @@ private:
   void preLoopRequirements() override {}
 
   void callSpgemm() override {
-    operation_ = aoclsparse_operation_none; // Todo - check that this is okay
+    operation_ = aoclsparse_operation_none; // Just saying no transposition happening first
     if constexpr (std::is_same_v<T, float>) {
       status_ = aoclsparse_scsrmm(operation_, 
                                   alpha, 
@@ -156,7 +156,7 @@ private:
                                   order_, 
                                   B_, 
                                   n_aocl_, 
-                                  k_aocl_, 
+                                  n_aocl_, 
                                   beta, 
                                   C_, 
                                   n_aocl_);
@@ -168,15 +168,19 @@ private:
                                   order_, 
                                   B_, 
                                   n_aocl_, 
-                                  k_aocl_, 
+                                  n_aocl_, 
                                   beta, 
                                   C_, 
                                   n_aocl_);
     }
     if (status_ != aoclsparse_status_success) {
       std::cerr << "aoclsparse_?csrmm is failing with problem size of " << m_ << "x" << k_ << " . " << k_ << "x" << n_ << std::endl;
-      printAOCLError(status_)
-    };
+      std::cerr << "\tm_aocl_=" << m_aocl_ << std::endl;
+      std::cerr << "\tn_aocl_=" << n_aocl_ << std::endl;
+      std::cerr << "\tk_aocl_=" << k_aocl_ << std::endl;
+      std::cerr << "\tnnz_aocl_=" << nnz_aocl_ << std::endl;
+      printAOCLError(status_);
+    }
   }
 
   void postLoopRequirements() override {

@@ -28,7 +28,7 @@ public:
      */
     void initialise(int m, int n, int k, double sparsity,
                     bool binary = false) {
-      std::cout << ".. setting metadata";
+      if (print_) std::cout << ".. setting metadata";
       m_ = m;
       n_ = n;
       k_ = k;
@@ -58,6 +58,8 @@ private:
       free(B_);
       free(C_);
     }
+
+    bool print_ = false;
 };
 
 }

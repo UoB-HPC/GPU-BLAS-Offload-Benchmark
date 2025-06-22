@@ -54,7 +54,6 @@ public:
         gpu_(iterations_)
 #endif
     {
-      print_ = false;
       static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
       "ERROR - doSpgemm can only be constructed using one of the "
       "following types: [float, double].");
@@ -74,11 +73,11 @@ public:
       prev_gpuResult_unified = time_checksum_gflop();
       std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                                           "_square_square_M=N=K.csv");
-      print_ = true;
+
+      if (print_) std::cout << "============ SQUARE ==============" << std::endl;
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = dim, K = dim;
-        if (dim == 2) continue;
-        if (print_) std::cout << dim << "x" << dim << std::endl;
+        if (print_) std::cout << "\t" << dim << "x" << dim << std::endl;
         callKernels(csvFile, dim, dim, dim, sparsity_);
       }
       // Close file
@@ -316,8 +315,6 @@ private:
       time_checksum_gflop gpuResult_once;
       time_checksum_gflop gpuResult_always;
       time_checksum_gflop gpuResult_unified;
-
-      print_ = true;
 // Perform CPU kernel
 #if CPU_ENABLED
       if (doCPU_) {
@@ -666,7 +663,7 @@ private:
     /** The GEMM GPU kernel. */
   gpu::spgemm_gpu<T> gpu_;
 #endif
-    bool print_;
+    bool print_ = false;
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */
     cpuGpu_offloadThreshold cpuGpu_once_;

@@ -174,6 +174,7 @@ public:
           callKernels(csvFile, 32, dim, sparsity_);
         }
       }
+      if (print_) std::cout << "Made it through all of the kernel" << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -510,6 +511,8 @@ private:
     /** The GEMV GPU kernel. */
   gpu::spgemv_gpu<T> gpu_;
 #endif
+
+    bool print_ = false;
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */
     cpuGpu_offloadThreshold cpuGpu_once_;

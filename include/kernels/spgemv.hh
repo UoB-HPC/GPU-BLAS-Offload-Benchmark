@@ -78,15 +78,39 @@ protected:
 
       // Random number generator objects for use in descent
       std::default_random_engine gen;
-      gen.seed(std::chrono::system_clock::now()
-                       .time_since_epoch().count());
+      gen.seed(std::chrono::system_clock::now().time_since_epoch().count());
       std::uniform_real_distribution<double> dist(0.0, 1.0);
 
-      // Using a=0.45 and b=c=0.22 as default probabilities
+      if (print_) std::cout << "DEBUG: Generating sparse matrix with R-MAT" << std::endl;
+      int successful_inserts = 0;
+      int failed_attempts = 0;
+      const int max_attempts_per_element = 100;
+
       for (int i = 0; i < nnz_; i++) {
-        while (!rMat(A_, m_, 0, n_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22, &gen, dist,
-                     false)) {}
+        int attempts = 0;
+        bool inserted = false;
+
+        while (!inserted && attempts < max_attempts_per_element) {
+          inserted = rMat(A_, n_, 0, n_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22,
+                          &gen, dist, false);
+          attempts++;
+        }
+
+        if (inserted) {
+          successful_inserts++;
+        } else {
+          failed_attempts++;
+          if (print_) std::cout << "WARNING: Failed to insert element " << i << " after " << attempts << " attempts" << std::endl;
+        }
+
+        // Progress update
+        if ((i + 1) % 1000 == 0) {
+          if (print_) std::cout << "  Generated " << (i + 1) << "/" << nnz_ << " non-zeros" << std::endl;
+        }
       }
+
+      if (print_) std::cout << "DEBUG: R-MAT generation complete. Successful: " << successful_inserts << ", Failed: " << failed_attempts << std::endl;
+
 
       // Initialise the input and output vectors
       for (int y = 0; y < n_; y++) {
@@ -98,6 +122,8 @@ protected:
 
       toSparseFormat();
     }
+
+    bool print_ = false;
 
     /** Move starting matrix into the sparse representation of for the given
      * library */

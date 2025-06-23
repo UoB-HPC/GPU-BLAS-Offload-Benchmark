@@ -103,6 +103,7 @@ public:
       int K = startDimention_;
       int M = 16 * K;
       int N = 16 * K;
+      if (print_) std::cout << "============ TALL-THIN x SHORT-WIDE ==============" << std::endl;
       while (M <= upperLimit_) {
         callKernels(csvFile, M, N, K, sparsity_);
         M += 16;
@@ -128,6 +129,7 @@ public:
       prev_gpuResult_unified = time_checksum_gflop();
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_tall-thin_short-wide_M=N_K=32.csv");
+      if (print_) std::cout << "============ TALL-THIN x SHORT-WIDE ==============" << std::endl;
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = dim, K = 32;
@@ -663,6 +665,7 @@ private:
     /** The GEMM GPU kernel. */
   gpu::spgemm_gpu<T> gpu_;
 #endif
+
     bool print_ = false;
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */

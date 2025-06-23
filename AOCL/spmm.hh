@@ -339,6 +339,10 @@ private:
         std::cerr << "aoclsparse_destroy failing for C" << std::endl;
         printAOCLError(status_);
       }
+
+      delete[] A_;
+      delete[] B_;
+      delete[] C_;
     }
 
     void printAOCLError(aoclsparse_status stat) {

@@ -1,8 +1,8 @@
 #pragma once
 
 #ifdef CPU_AOCL
-#include "aoclsparse.h"
 
+#include "aoclsparse.h"
 #include <algorithm>
 
 #include "../include/kernels/CPU/spgemv.hh"
@@ -25,6 +25,7 @@ public:
     using spgemv<T>::iterations_;
 
     void initialise(int m, int n, double sparsity, bool binary = false) {
+      if (print_) std::cout << "=========== Matrix = " << m << "x" << n << " ===========" << std::endl;
       base_ = aoclsparse_index_base_zero;
       operation_ = aoclsparse_operation_none;
 
@@ -35,91 +36,142 @@ public:
       nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
       nnz_aocl_ = nnz_;
 
-      A_rows_ = (aoclsparse_int*)malloc(sizeof(aoclsparse_int) * (m_ + 1));
-      A_cols_ = (aoclsparse_int*)malloc(sizeof(aoclsparse_int) * nnz_);
-      A_vals_ = (T*)malloc(sizeof(T) * nnz_);
+      A_ = (T*)calloc(m_ * n_, sizeof(T));
+      x_ = (T*)calloc(n_, sizeof(T));
+      y_ = (T*)calloc(m_, sizeof(T));
 
-
+      if (print_) std::cout << "About to initialise matrices" << std::endl;
       initInputMatrixVector();
+
+      status_ = aoclsparse_create_mat_descr(&A_description_);
+      if (status_ != aoclsparse_status_success) {
+        std::cerr << "aoclsparse_create_mat_descr failing for A" << std::endl;
+        printAOCLError(status_);
+      }
     }
 
 protected:
     void toSparseFormat() override {
-      int nnz_encountered = 0;
+      aoclsparse_int actual_nnz = 0;
+      for (int i = 0; i < m_ * n_; i++) {
+        if (A_[i] != static_cast<T>(0)) {
+          actual_nnz++;
+        }
+      }
+    
+      if (actual_nnz != nnz_aocl_) {
+        if (print_) std::cerr << "Warning: Actual nnz (" << actual_nnz << ") differs from expected nnz (" << nnz_aocl_ << ")" << std::endl;
+        nnz_ = nnz_aocl_ = actual_nnz; // Update nnz_aocl_ to reflect actual count
+      }
 
+      // Initialise datastructures for the CSR format
+      A_rows_ = new aoclsparse_int[m_ + 1];
+      A_cols_ = new aoclsparse_int[nnz_aocl_];
+      A_vals_ = new T[nnz_aocl_];
+
+      // Initialize row pointer with base (zero, as we're using C++)
       A_rows_[0] = 0;
-
-      for (int row = 0; row < m_; row++) {
-        A_rows_[row + 1] = nnz_encountered;
-        for (int col = 0; col < n_; col++) {
-          if (A_[(row * n_) + col] != 0.0) {
-            A_cols_[nnz_encountered] = col;
-            A_vals_[nnz_encountered] = static_cast<T>(A_[(row * n_) + col]);
-            nnz_encountered++;
+      
+      
+      // First pass: count non-zeros per row to build row pointer
+      for (aoclsparse_int i = 0; i < m_; ++i) {
+        aoclsparse_int row_nnz = 0;
+        for (aoclsparse_int j = 0; j < n_; ++j) {
+          if (A_[i * n_ + j] != static_cast<T>(0)) {
+            row_nnz++;
+          }
+        }
+        A_rows_[i + 1] = A_rows_[i] + row_nnz;
+      }
+    
+      
+      // Second pass: populate column indices and values
+      aoclsparse_int current_val = 0;
+      for (aoclsparse_int i = 0; i < m_; ++i) {
+        for (aoclsparse_int j = 0; j < n_; ++j) {
+          T val = A_[i * n_ + j];
+          if (val != static_cast<T>(0)) {
+            A_cols_[current_val] = j;  // Adjust for base indexing
+            A_vals_[current_val] = val;
+            current_val++;
           }
         }
       }
-      status_ = aoclsparse_create_mat_descr(&A_description_);
 
+      // Move into the AOCL CSR matrix handle
       if constexpr (std::is_same_v<T, float>) {
-        status_ = aoclsparse_create_scsr(&A_aocl_,
-                                         base_,
-                                         m_aocl_,
-                                         n_aocl_,
-                                         nnz_aocl_,
-                                         A_rows_,
-                                         A_cols_,
-                                         A_vals_);
+        status_ = aoclsparse_create_scsr(&A_aocl_, 
+                                        base_, 
+                                        m_aocl_, 
+                                        n_aocl_, 
+                                        nnz_aocl_, 
+                                        A_rows_, 
+                                        A_cols_, 
+                                        A_vals_);
       } else if constexpr (std::is_same_v<T, double>) {
-        status_ = aoclsparse_create_dcsr(&A_aocl_,
-                                         base_,
-                                         m_aocl_,
-                                         n_aocl_,
-                                         nnz_aocl_,
-                                         A_rows_,
-                                         A_cols_,
-                                         A_vals_);
-      } else {
-        // Un-specialised class will not do any work - print error and exit.
-        std::cerr << "ERROR - Datatype for AOCL CPU SPGEMV kernel not supported."
-                  << std::endl;
-        exit(1);
+        status_ = aoclsparse_create_dcsr(&A_aocl_, 
+                                        base_, 
+                                        m_aocl_, 
+                                        n_aocl_, 
+                                        nnz_aocl_, 
+                                        A_rows_, 
+                                        A_cols_, 
+                                        A_vals_);
+      }
+      if (status_ != aoclsparse_status_success) {
+        std::cerr << "aoclsparse_create_?csr is failing with problem size of " << m_ << "x" << n_ << " . " << n_ << "x" << n_ << std::endl;
+        printAOCLError(status_);
+      } else if (print_) {
+        std::cout << "aoclsparse_create_?csr success" << std::endl;
       }
     }
 
 private:
     void preLoopRequirements() override {
-      status_ = aoclsparse_set_mv_hint(A_aocl_,
-                                       operation_,
+      status_ = aoclsparse_set_mv_hint(A_aocl_, 
+                                       operation_, 
                                        A_description_,
-                                       iterations_);
+                                       5); // Currently hard coded iternation count
+      if (status_ != aoclsparse_status_success) {
+        std::cerr << "aoclsparse_set_mv_hint failing" << std::endl;
+        printAOCLError(status_);
+      } else if (print_) {
+        std::cout << "aoclsparse_set_mv_hint success" << std::endl;
+      }
+
       status_ = aoclsparse_optimize(A_aocl_);
+      if (status_ != aoclsparse_status_success) {
+        std::cerr << "aoclsparse_optimize failing" << std::endl;
+        printAOCLError(status_);
+      } else if (print_) {
+        std::cout << "aoclsparse_optimize success" << std::endl;
+      }                           
     }
 
     void callSpgemv() override {
       if constexpr (std::is_same_v<T, float>) {
-        aoclsparse_smv(operation_,
-                       &alpha,
-                       A_aocl_,
-                       A_description_,
-                       x_,
-                       &beta,
-                       y_);
+        status_ = aoclsparse_smv(operation_, 
+                                 &alpha, 
+                                 A_aocl_, 
+                                 A_description_, 
+                                 x_, 
+                                 &beta, 
+                                 y_);
       } else if constexpr (std::is_same_v<T, double>) {
-        aoclsparse_dmv(operation_,
-                       &alpha,
-                       A_aocl_,
-                       A_description_,
-                       x_,
-                       &beta,
-                       y_);
-      } else {
-        // Un-specialised class will not do any work - print error and exit.
-        std::cerr << "ERROR - Datatype for AOCL CPU SPGEMV kernel not "
-                     "supported." << std::endl;
-        exit(1);
+        status_ = aoclsparse_dmv(operation_, 
+                                 &alpha, 
+                                 A_aocl_, 
+                                 A_description_, 
+                                 x_, 
+                                 &beta, 
+                                 y_);
       }
-      callConsume();
+      if (status_ != aoclsparse_status_success) {
+        std::cerr << "aoclsparse_?mv failing" << std::endl;
+        printAOCLError(status_);
+      } else if (print_) {
+        std::cout << "aoclsparse_?mv success" << std::endl;
+      }                   
     }
 
     void postLoopRequirements() override {
@@ -127,11 +179,82 @@ private:
 
     void postCallKernelCleanup() override {
       status_ = aoclsparse_destroy_mat_descr(A_description_);
+      if (status_ != aoclsparse_status_success) {
+        std::cerr << "aoclsparse_destroy_mat_descr failing" << std::endl;
+        printAOCLError(status_);
+      } else if (print_) {
+        std::cout << "aoclsparse_destroy_mat_descr success" << std::endl;
+      }               
+
       status_ = aoclsparse_destroy(&A_aocl_);
-      free(A_rows_);
-      free(A_cols_);
-      free(A_vals_);
+      if (status_ != aoclsparse_status_success) {
+        std::cerr << "aoclsparse_destroy failing" << std::endl;
+        printAOCLError(status_);
+      } else if (print_) {
+        std::cout << "aoclsparse_destroy success" << std::endl;
+      } 
+
+      delete[] A_;
+      delete[] x_;
+      delete[] y_;
     }
+
+    void printAOCLError(aoclsparse_status stat) {
+      switch (stat) {
+        case aoclsparse_status_success:
+          std::cerr << "SUCCESS - The operation completed successfully";
+          break;
+        case aoclsparse_status_not_implemented:
+          std::cerr << "NOT_IMPLEMENTED - The requested functionality is not yet implemented in this version";
+          break;
+        case aoclsparse_status_invalid_pointer:
+          std::cerr << "INVALID_POINTER - One or more pointer parameters are NULL or otherwise invalid";
+          break;
+        case aoclsparse_status_invalid_size:
+          std::cerr << "INVALID_SIZE - One or more size parameters (m, n, nnz, etc.) contain an invalid value (e.g., negative or zero where positive required)";
+          break;
+        case aoclsparse_status_internal_error:
+          std::cerr << "INTERNAL_ERROR - Internal library failure";
+          break;
+        case aoclsparse_status_invalid_value:
+          std::cerr << "INVALID_VALUE - Input parameters contain an invalid value (e.g., invalid enum value, base index neither 0 nor 1)";
+          break;
+        case aoclsparse_status_invalid_index_value:
+          std::cerr << "INVALID_INDEX_VALUE - At least one index value is invalid (e.g., negative or out of bounds)";
+          break;
+        case aoclsparse_status_maxit:
+          std::cerr << "MAXIT - function stopped after reaching number of iteration limit";
+          break;
+        case aoclsparse_status_user_stop:
+          std::cerr << "USER_STOP - user requested termination";
+          break;
+        case aoclsparse_status_wrong_type:
+          std::cerr << "WRONG_TYPE - Data type mismatch (e.g., matrix datatypes don't match between operations)";
+          break;
+        case aoclsparse_status_memory_error:
+          std::cerr << "MEMORY_ERROR - memory allocation failure";
+          break;
+        case aoclsparse_status_numerical_error:
+          std::cerr << "NUMERICAL_ERROR - numerical error, e.g., matrix is not positive definite, devide-by-zero error";
+          break;
+        case aoclsparse_status_invalid_operation:
+          std::cerr << "INVALID_OPERATION - cannot proceed with the request at this point";
+          break;
+        case aoclsparse_status_unsorted_input:
+          std::cerr << "UNSORTED_INPUT - the input matrices are not sorted";
+          break;
+        case aoclsparse_status::aoclsparse_status_invalid_kid:
+          std::cerr << "INVALID_KID - user requested kernel id was not available";
+          break;
+        default:
+          std::cerr << "UNKNOWN_STATUS - Unrecognized status code (" + std::to_string(stat) + ")";
+          break;
+      }
+      std::cerr << std::endl;
+      exit(1);
+    }
+
+    bool print_ = false;
 
     aoclsparse_status status_;
 

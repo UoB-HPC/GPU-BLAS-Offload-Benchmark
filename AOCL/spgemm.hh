@@ -197,6 +197,9 @@ private:
       std::cerr << "aoclsparse_destroy is failing with problem size of " << m_ << "x" << k_ << " . " << k_ << "x" << n_ << std::endl;
       printAOCLError(status_);
     }
+    delete[] A_;
+    delete[] B_;
+    delete[] C_;
   }
 
   void printAOCLError(aoclsparse_status stat) {

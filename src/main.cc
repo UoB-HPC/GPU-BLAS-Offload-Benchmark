@@ -47,41 +47,41 @@ int main(int argc, char** argv) {
 
 //  // -------- GEMM --------
 //  // Single-Precision GEMM
-//  if (doSgemm) {
-//    std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
-//    doGemm<float> sgemm(std::string(absPath), iters, startDim, upperLimit,
-//                        doCpu, doGpu);
-//    sgemm.collectData();
-//    std::cout << "Finished!" << std::endl;
-//  }
-//
-//  // Double-Precision GEMM
-//  if (doDgemm) {
-//    std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
-//    doGemm<double> dgemm(std::string(absPath), iters, startDim, upperLimit,
-//                         doCpu, doGpu);
-//    dgemm.collectData();
-//    std::cout << "Finished!" << std::endl;
-//  }
+ if (doSgemm) {
+   std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
+   doGemm<float> sgemm(std::string(absPath), iters, startDim, upperLimit,
+                       doCpu, doGpu);
+   sgemm.collectData();
+   std::cout << "Finished!" << std::endl;
+ }
+
+ // Double-Precision GEMM
+ if (doDgemm) {
+   std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
+   doGemm<double> dgemm(std::string(absPath), iters, startDim, upperLimit,
+                        doCpu, doGpu);
+   dgemm.collectData();
+   std::cout << "Finished!" << std::endl;
+ }
 
   // // -------- SPGEMM --------
   // // Single-Precision Sparse GEMM
-  // if (doSspgemm) {
-  //   std::cout << std::endl << "Comparing SSpGEMM Kernels:" << std::endl;
-  //   doSpgemm<float> sspgemm(std::string(absPath), iters, startDim, upperLimit,
-  //                           sparsity, doCpu, doGpu);
-  //   sspgemm.collectData();
-  //   std::cout << "Finished!" << std::endl;
-  // }
+  if (doSspgemm) {
+    std::cout << std::endl << "Comparing SSpGEMM Kernels:" << std::endl;
+    doSpgemm<float> sspgemm(std::string(absPath), iters, startDim, upperLimit,
+                            sparsity, doCpu, doGpu);
+    sspgemm.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
 
-  // // Double-Precision Sparse GEMM
-  // if (doDspgemm) {
-  //   std::cout << std::endl << "Comparing DSpGEMMM Kernels:" << std::endl;
-  //   doSpgemm<double> dspgemm(std::string(absPath), iters, startDim, upperLimit,
-  //                            sparsity, doCpu, doGpu);
-  //   dspgemm.collectData();
-  //   std::cout << "Finished!" << std::endl;
-  // }
+  // Double-Precision Sparse GEMM
+  if (doDspgemm) {
+    std::cout << std::endl << "Comparing DSpGEMMM Kernels:" << std::endl;
+    doSpgemm<double> dspgemm(std::string(absPath), iters, startDim, upperLimit,
+                             sparsity, doCpu, doGpu);
+    dspgemm.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
 
   // -------- SPMM --------
   // Single-Precision Sparse Matrix-Matrix

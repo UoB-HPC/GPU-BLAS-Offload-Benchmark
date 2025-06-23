@@ -4,6 +4,8 @@
 #include "aoclsparse.h"
 
 #include <algorithm>
+#include <thread>
+#include <chrono>
 
 #include "../include/kernels/CPU/spmm.hh"
 #include "../include/utilities.hh"
@@ -26,16 +28,23 @@ public:
     using spmm<T>::nnzB_;
     using spmm<T>::iterations_;
 
-    void initialise(int m, int n, int k, double sparsity,
-                    bool binary = false) {
+    void initialise(int m, int n, int k, double sparsity, bool binary = false) {
+      if (print_) std::cout << "setting up metadata" << std::endl;
+      
+      sparsity_ = sparsity;
+      
       m_aocl_ = m_ = m;
       n_aocl_ = n_ = n;
       k_aocl_ = k_ = k;
 
-      uint64_t nnz = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
-      nnzA_aocl_ = nnzA_ = nnz;
-      nnzB_aocl_ = nnzB_ = nnz;
-
+    
+      uint64_t total_elements_A = (uint64_t)m_ * (uint64_t)k_;
+      uint64_t total_elements_B = (uint64_t)k_ * (uint64_t)n_;
+      nnzA_aocl_ = nnzA_ = 1 + (uint64_t)((double)total_elements_A * (1.0 - sparsity));
+      nnzB_aocl_ = nnzB_ = 1 + (uint64_t)((double)total_elements_B * (1.0 - sparsity));
+      
+      if (print_) std::cout << "Allocating dense matrix arrays" << std::endl;
+      
       A_ = (T*)calloc(m_ * k_, sizeof(T));
       B_ = (T*)calloc(k_ * n_, sizeof(T));
       C_ = (T*)calloc(m_ * n_, sizeof(T));
@@ -44,23 +53,26 @@ public:
       operationA_ = aoclsparse_operation_none;
       operationB_ = aoclsparse_operation_none;
 
+      if (print_) std::cout << "Creating AOCL description for A" << std::endl;
       status_ = aoclsparse_create_mat_descr(&A_description_);
       if (status_ != aoclsparse_status_success) {
         std::cerr << "aoclsparse_create_mat_descr failing for A" << std::endl;
         printAOCLError(status_);
       }
+      if (print_) std::cout << "Creating AOCL description for B" << std::endl;
       status_ = aoclsparse_create_mat_descr(&B_description_);
       if (status_ != aoclsparse_status_success) {
         std::cerr << "aoclsparse_create_mat_descr failing for B" << std::endl;
         printAOCLError(status_);
       }
-
+      if (print_) std::cout << "initialising matrices" << std::endl;
       initInputMatrices();
     }
 
 protected:
     void toSparseFormat() override {
       // ____ START WITH A ____
+      if (print_) std::cout << "to sparse" << std::endl;
       aoclsparse_int actual_nnz = 0;
       for (int i = 0; i < m_ * k_; i++) {
         if (A_[i] != static_cast<T>(0)) {
@@ -187,7 +199,7 @@ protected:
       current_val = 0;
       for (aoclsparse_int i = 0; i < k_; ++i) {
         for (aoclsparse_int j = 0; j < n_; ++j) {
-          T val = A_[i * n_ + j];
+          T val = B_[i * n_ + j];
           if (val != static_cast<T>(0)) {
             B_cols_[current_val] = j; 
             B_vals_[current_val] = val;
@@ -272,14 +284,25 @@ private:
         printAOCLError(status_);
       }
 
-      status_ = aoclsparse_export_zcsr(C_aocl_, 
-                                       &base_,
-                                       &C_M,
-                                       &C_N,
-                                       &nnzC_aocl_,
-                                       &C_rows_,
-                                       &C_cols_,
-                                       &C_vals_);
+      if constexpr (std::is_same_v<T, float>) {
+        status_ = aoclsparse_export_scsr(C_aocl_, 
+                                        &base_,
+                                        &C_M,
+                                        &C_N,
+                                        &nnzC_aocl_,
+                                        &C_rows_,
+                                        &C_cols_,
+                                        &C_vals_);
+      } else if constexpr (std::is_same_v<T, double>) {
+        status_ = aoclsparse_export_dcsr(C_aocl_, 
+                                        &base_,
+                                        &C_M,
+                                        &C_N,
+                                        &nnzC_aocl_,
+                                        &C_rows_,
+                                        &C_cols_,
+                                        &C_vals_);
+      }
       if (status_ != aoclsparse_status_success) {
         std::cerr << "aoclsparse_export_zcsr failing" << std::endl;
         printAOCLError(status_);

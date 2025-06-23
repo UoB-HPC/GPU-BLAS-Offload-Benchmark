@@ -54,25 +54,30 @@ public:
       static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
                     "ERROR - doSpmm can only be constructed using one of the "
                     "following types: [float, double].");
+      if (print_) std::cout << "doSpmm initialised" << std::endl;                    
     }
 
     /** Run all problem types and write data to CSV files. */
     void collectData() {
       // Square Problem Sizes...
       // Re-initialise offload threshold structures
+      if (print_) std::cout << "Setting up data collection structures" << std::endl;
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
       prev_gpuResult_always = time_checksum_gflop();
       prev_gpuResult_once = time_checksum_gflop();
       prev_gpuResult_unified = time_checksum_gflop();
+      if (print_) std::cout << "Making CSV file" << std::endl;
       std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                                           "_square_square_M=N=K.csv");
+      if (print_) std::cout << "======= SQUARE =======" << std::endl;
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-        if (print_) std::cout << dim << " x " << dim << ":" << std::endl;
+        if (print_) std::cout << dim << "x" << dim << " . " << dim << "x" << dim << ", ";
         // M = dim, N = dim, K = dim;
         callKernels(csvFile, dim, dim, dim, sparsity_);
       }
+      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -97,11 +102,13 @@ public:
       int M = 16 * K;
       int N = 16 * K;
       while (M <= upperLimit_) {
+        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
         callKernels(csvFile, M, N, K, sparsity_);
         M += 16;
         N += 16;
         K++;
       }
+      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -124,9 +131,11 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = dim, K = 32;
+          if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
           callKernels(csvFile, dim, dim, 32, sparsity_);
         }
       }
+      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -150,11 +159,13 @@ public:
       N = startDimention_;
       K = 16 * M;
       while (K <= upperLimit_) {
+          if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
         callKernels(csvFile, M, N, K, sparsity_);
         M++;
         N++;
         K += 16;
       }
+      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -177,9 +188,11 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = 32, K = dim;
+          if (print_) std::cout << "32x" << dim << " . " << dim << "x32" << ", ";
           callKernels(csvFile, 32, 32, dim, sparsity_);
         }
       }
+      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -203,11 +216,13 @@ public:
       N = startDimention_;
       M = 16 * K;
       while (M <= upperLimit_) {
+          if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
         callKernels(csvFile, M, N, K, sparsity_);
         M += 16;
         N++;
         K++;
       }
+      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -230,9 +245,11 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = 32, K = 32;
+          if (print_) std::cout << dim << "x32" << " . " << "32x32, ";
           callKernels(csvFile, dim, 32, 32, sparsity_);
         }
       }
+      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -256,11 +273,13 @@ public:
       K = startDimention_;
       N = 16 * K;
       while (N <= upperLimit_) {
+        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
         callKernels(csvFile, M, N, K, sparsity_);
         M++;
         N += 16;
         K++;
       }
+      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -282,9 +301,11 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = dim, K = 32;
+          if (print_) std::cout << "32x32 . " << "32x" << N << ", ";
           callKernels(csvFile, 32, dim, 32, sparsity_);
         }
       }
+      if (print_) std::cout << std::endl;
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
     // Print offload results to stdout
@@ -411,16 +432,16 @@ private:
 
 #if CPU_ENABLED
       if (doCPU_) {
-//        if (print_) std::cout << "\tCPU ->\t\tInitialise";
+        if (print_) std::cout << "\tCPU ->\t\tInitialise" << std::endl;
         cpu_.initialise(N, M, K, sparsity);
-//        if (print_) std::cout << std::endl << "\t\t\tCompute";
+        if (print_) std::cout << "\t\t\tCompute" << std::endl ;
         time_checksum_gflop cpuResult = cpu_.compute();
-//        if (print_) std::cout << std::endl << "\t\t\tCalculate";
+        if (print_) std::cout << "\t\t\tCalculate" << std::endl ;
         cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
         writeLineToCsv(csvFile, "cpu", kernelName, N, M, K, probSize,
                        sparsity, iterations_, cpuResult.runtime,
                        cpuResult.gflops);
-//        if (print_) std::cout << ".. DONE" << std::endl;
+        if (print_) std::cout << "\t\t\tDONE" << std::endl;
       }
 #endif
 #if GPU_ENABLED

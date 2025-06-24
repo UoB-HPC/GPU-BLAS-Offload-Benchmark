@@ -58,6 +58,8 @@ Graphs*
 
 # IDE
 .vscode
+
+# MAC metadata
 .DS_Store
 
 # Bash scripts to run on different systems

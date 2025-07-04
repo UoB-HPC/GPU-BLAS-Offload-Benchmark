@@ -74,7 +74,7 @@ public:
       std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                                           "_square_square_M=N=K.csv");
 
-      if (print_) std::cout << "============ SQUARE ==============" << std::endl;
+      if (print_) std::cout << "============ SQUARE x SQUARE ==============" << std::endl;
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = dim, K = dim;
         if (print_) std::cout << "\t" << dim << "x" << dim << std::endl;
@@ -103,8 +103,9 @@ public:
       int K = startDimention_;
       int M = 16 * K;
       int N = 16 * K;
-      if (print_) std::cout << "============ TALL-THIN x SHORT-WIDE ==============" << std::endl;
+      if (print_) std::cout << "============ TALL/THIN x SHORT/WIDE ==============" << std::endl;
       while (M <= upperLimit_) {
+        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
         callKernels(csvFile, M, N, K, sparsity_);
         M += 16;
         N += 16;
@@ -129,9 +130,10 @@ public:
       prev_gpuResult_unified = time_checksum_gflop();
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_tall-thin_short-wide_M=N_K=32.csv");
-      if (print_) std::cout << "============ TALL-THIN x SHORT-WIDE ==============" << std::endl;
+      if (print_) std::cout << "============ TALL/THIN x SHORT/WIDE ==============" << std::endl;
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        if (print_) std::cout << dim << "x32" << " . " << "32x" << dim << std::endl;
           // M = dim, N = dim, K = 32;
           callKernels(csvFile, dim, dim, 32, sparsity_);
         }
@@ -158,7 +160,9 @@ public:
       M = startDimention_;
       N = startDimention_;
       K = 16 * M;
+      if (print_) std::cout << "============ SHORT/WIDE x TALL/THIN ==============" << std::endl;
       while (K <= upperLimit_) {
+        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
         callKernels(csvFile, M, N, K, sparsity_);
         M++;
         N++;
@@ -184,9 +188,10 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_short-wide_tall-thin_M=N=32_K.csv");
       if (upperLimit_ >= 32) {
+      if (print_) std::cout << "============ SHORT/WIDE x TALL/THIN ==============" << std::endl;
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = 32, K = dim;
-          if (print_) std::cout << "Problem 32 x 32 x " << dim << std::endl;
+          if (print_) std::cout << "32x" << dim << " . " << dim << "x32" << std::endl;
           callKernels(csvFile, 32, 32, dim, sparsity_);
         }
       }
@@ -212,7 +217,9 @@ public:
       K = startDimention_;
       N = startDimention_;
       M = 16 * K;
+      if (print_) std::cout << "============ TALL/THIN x SQUARE ==============" << std::endl;
       while (M <= upperLimit_) {
+        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
         callKernels(csvFile, M, N, K, sparsity_);
         M += 16;
         N++;
@@ -238,8 +245,10 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_tall-thin_square_K=N=32_M.csv");
       if (upperLimit_ >= 32) {
+      if (print_) std::cout << "============ TALL/THIN x SQUARE ==============" << std::endl;
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = 32, K = 32;
+        if (print_) std::cout << M << "x32 . 32x32" << std::endl;
           callKernels(csvFile, dim, 32, 32, sparsity_);
         }
       }
@@ -265,7 +274,9 @@ public:
       M = startDimention_;
       K = startDimention_;
       N = 16 * K;
+      if (print_) std::cout << "============ SQUARE x SHORT/WIDE ==============" << std::endl;
       while (N <= upperLimit_) {
+        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
         callKernels(csvFile, M, N, K, sparsity_);
         M++;
         N += 16;
@@ -290,8 +301,10 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_square_short-wide_M=K=32_N.csv");
       if (upperLimit_ >= 32) {
+      if (print_) std::cout << "============ SQUARE x SHORT/WIDE ==============" << std::endl;
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = dim, K = 32;
+        if (print_) std::cout << "32x32 . 32x" << N << std::endl;
           callKernels(csvFile, 32, dim, 32, sparsity_);
         }
       }
@@ -320,9 +333,7 @@ private:
 // Perform CPU kernel
 #if CPU_ENABLED
       if (doCPU_) {
-        if (print_) std::cout << "CPU -> init" << std::endl;
         cpu_.initialise(M, N, K, SPARSITY);
-        if (print_) std::cout << ".. comp";
         cpuResult = cpu_.compute();
         cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
         // Write result to CSV file
@@ -340,38 +351,29 @@ private:
       if (doGPU_) {
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
-        if (print_) {
-          std::cout << "GPU once -> ";
-          std::cout << "\tInitialise...";
-        }
+        if (print_) std::cout << "\tAbout to init" << std::endl;
         gpu_.initialise(gpuOffloadType::once, M, N, K, SPARSITY);
-        if (print_) std::cout << "\t\tCompute... ";
+        if (print_) std::cout << "\tAbout to compute" << std::endl;
         gpuResult_once = gpu_.compute();
-        if (print_) std::cout << "\t\tFlops..." << std::endl;
+
         gpuResult_once.gflops =
             calcGflops(flops, iterations_, gpuResult_once.runtime);
-        if (print_) std::cout << std::endl;
+        if (print_) std::cout << "GPU-ONCE DONE" << std::endl;
 
         // - ALWAYS: Offload to/from GPU every iteration
-        if (print_) std::cout << "GPU always -> ";
-        if (print_) std::cout << "\tInitialise...";
         gpu_.initialise(gpuOffloadType::always, M, N, K, SPARSITY);
-        if (print_) std::cout << "\t\tCompute... ";
         gpuResult_always = gpu_.compute();
-        if (print_) std::cout << "\t\tFlops..." << std::endl;
         gpuResult_always.gflops =
             calcGflops(flops, iterations_, gpuResult_always.runtime);
+        if (print_) std::cout << "GPU-ALWAYS DONE" << std::endl;
 
         // - UNIFIED : data passed from host to device (and device to host) as
         //             needed
-        if (print_) std::cout << "GPU unified -> ";
-        if (print_) std::cout << "\tInitialise...";
         gpu_.initialise(gpuOffloadType::unified, M, N, K, SPARSITY);
-        if (print_) std::cout << "\t\tCompute... ";
         gpuResult_unified = gpu_.compute();
-        if (print_) std::cout << "\t\tFlops... " << std::endl;
         gpuResult_unified.gflops =
             calcGflops(flops, iterations_, gpuResult_unified.runtime);
+        if (print_) std::cout << "GPU-ALWAYS DONE" << std::endl;
 
         // Write results to CSV file
         writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,

@@ -270,7 +270,7 @@ print:
 $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
 	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/libconsume.so
 	@echo "Building main executable with $(CXX)"
-	$(CXX) $(SRC_FILES) --output $@ $(CXXFLAGS) -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS)
+	$(CXX) $(SRC_FILES) -o $@ $(CXXFLAGS) -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS)
 
 clean:
 	rm -f $(EXE) src/Consume/libconsume.so

@@ -44,6 +44,24 @@ int main(int argc, char** argv) {
   std::cout << "All results will be saved in CSV files at '" << absPath << "'"
             << std::endl
             << std::endl;
+// -------- GEMV --------
+  // Single-Precision GEMV
+  if (doSgemv) {
+    std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
+    doGemv<float> sgemv(std::string(absPath), iters, startDim, upperLimit,
+                        doCpu, doGpu);
+    sgemv.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
+
+  // Double-Precision GEMV
+  if (doDgemv) {
+    std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
+    doGemv<double> dgemv(std::string(absPath), iters, startDim, upperLimit,
+                         doCpu, doGpu);
+    dgemv.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
 
 //  // -------- GEMM --------
 //  // Single-Precision GEMM
@@ -63,6 +81,26 @@ int main(int argc, char** argv) {
    dgemm.collectData();
    std::cout << "Finished!" << std::endl;
  }
+
+
+  // -------- SPGEMV --------
+  // Single-Precision Sparse GEMV
+  if (doSspgemv) {
+    std::cout << std::endl << "Comparing SSPGEMV Kernels:" << std::endl;
+    doSpgemv<float> sspgemv(std::string(absPath), iters, startDim, upperLimit,
+                            sparsity, doCpu, doGpu);
+    sspgemv.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
+
+  // Double-Precision Sparse GEMV
+  if (doDspgemv) {
+    std::cout << std::endl << "Comparing DSPGEMV Kernels:" << std::endl;
+    doSpgemv<double> dspgemv(std::string(absPath), iters, startDim, upperLimit,
+                             sparsity, doCpu, doGpu);
+    dspgemv.collectData();
+    std::cout << "Finished!" << std::endl;
+  }
 
   // // -------- SPGEMM --------
   // // Single-Precision Sparse GEMM
@@ -101,49 +139,10 @@ int main(int argc, char** argv) {
     dspmm.collectData();
     std::cout << "Finished!" << std::endl;
   }
-
-  // -------- GEMV --------
-  // Single-Precision GEMV
-  if (doSgemv) {
-    std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
-    doGemv<float> sgemv(std::string(absPath), iters, startDim, upperLimit,
-                        doCpu, doGpu);
-    sgemv.collectData();
-    std::cout << "Finished!" << std::endl;
-  }
-
-  // Double-Precision GEMV
-  if (doDgemv) {
-    std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
-    doGemv<double> dgemv(std::string(absPath), iters, startDim, upperLimit,
-                         doCpu, doGpu);
-    dgemv.collectData();
-    std::cout << "Finished!" << std::endl;
-  }
-
-  // -------- SPGEMV --------
-  // Single-Precision Sparse GEMV
-  if (doSspgemv) {
-    std::cout << std::endl << "Comparing SSPGEMV Kernels:" << std::endl;
-    doSpgemv<float> sspgemv(std::string(absPath), iters, startDim, upperLimit,
-                            sparsity, doCpu, doGpu);
-    sspgemv.collectData();
-    std::cout << "Finished!" << std::endl;
-  }
-
-  // Double-Precision Sparse GEMV
-  if (doDspgemv) {
-    std::cout << std::endl << "Comparing DSPGEMV Kernels:" << std::endl;
-    doSpgemv<double> dspgemv(std::string(absPath), iters, startDim, upperLimit,
-                             sparsity, doCpu, doGpu);
-    dspgemv.collectData();
-    std::cout << "Finished!" << std::endl;
-  }
-
-
   free(absPath);
   return 0;
 }
+
 
 void printBenchmarkConfig(const int iters, const int upperLimit) {
   std::string cpuEnabledStr = (doCpu) ? "True" : "False";

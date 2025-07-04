@@ -63,6 +63,12 @@ public:
                                               gpuQueue_);
         x_ = (T*)sycl::malloc_host(sizeof(T) * n_, gpuQueue_);
         y_ = (T*)sycl::malloc_host(sizeof(T) * m_, gpuQueue_);
+
+        A_vals_device_ = (T*)sycl::malloc_device(sizeof(T) * nnz_, gpuQueue_);
+        A_cols_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * nnz_, gpuQueue_);
+        A_rows_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * (m_ + 1), gpuQueue_);
+        x_device_ = (T*)sycl::malloc_device(sizeof(T) * n_, gpuQueue_);
+        y_device_ = (T*)sycl::malloc_device(sizeof(T) * m_, gpuQueue_);
       }
 
       initInputMatrixVector();
@@ -89,34 +95,33 @@ protected:
 
 private:
     void preLoopRequirements() override {
-      switch(offload_) {
+      if (offload_ == gpuOffloadType::once) {
+        gpuQueue_.memcpy(A_vals_device_, A_vals_, sizeof(T) * nnz_);
+        gpuQueue_.memcpy(A_cols_device_, A_cols_, sizeof(int64_t) * nnz_);
+        gpuQueue_.memcpy(A_rows_device_, A_rows_, sizeof(int64_t) * (m_ + 1));
+        gpuQueue_.memcpy(x_device_, x_, sizeof(T) * m_);
+      }
+      if (offload_ != gpuOffloadType::always) {
+        oneapi::mkl::sparse::init_matrix_handle(&A_device_);
+        oneapi::mkl::sparse::set_csr_data(gpuQueue_,
+                                          A_device_,
+                                          m_,
+                                          n_,
+                                          index_,
+                                          A_rows_,
+                                          A_cols_,
+                                          A_vals_);
+        gpuQueue_.wait_and_throw();
+      }
+    }
+
+    void callSpgemv() override {
+      switch (offload_) {
         case gpuOffloadType::always: {
-          break;
-        }
-        case gpuOffloadType::once: {
-          A_vals_device_ = new sycl::buffer<T, 1>(A_vals_,
-                                                  sycl::range<1>(nnz_));
-          A_cols_device_ = new sycl::buffer<int64_t, 1>(A_cols_,
-                                                        sycl::range<1>(nnz_));
-          A_rows_device_ = new sycl::buffer<int64_t, 1>(A_rows_,
-                                                        sycl::range<1>(m_ + 1));
-
-          oneapi::mkl::sparse::init_matrix_handle(&A_device_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_,
-                                            A_device_,
-                                            m_,
-                                            n_,
-                                            index_,
-                                            *A_rows_device_,
-                                            *A_cols_device_,
-                                            *A_vals_device_);
-
-          x_device_ = new sycl::buffer<T, 1>(x_, sycl::range<1>(n_));
-          y_device_ = new sycl::buffer<T, 1>(y_, sycl::range<1>(m_));
-          gpuQueue_.wait_and_throw();
-          break;
-        }
-        case gpuOffloadType::unified: {
+          gpuQueue_.memcpy(A_vals_device_, A_vals_, sizeof(T) * nnz_);
+          gpuQueue_.memcpy(A_cols_device_, A_cols_, sizeof(int64_t) * nnz_);
+          gpuQueue_.memcpy(A_rows_device_, A_rows_, sizeof(int64_t) * (m_ + 1));
+          gpuQueue_.memcpy(x_device_, x_, sizeof(T) * m_);
           oneapi::mkl::sparse::init_matrix_handle(&A_device_);
           oneapi::mkl::sparse::set_csr_data(gpuQueue_,
                                             A_device_,
@@ -127,50 +132,16 @@ private:
                                             A_cols_,
                                             A_vals_);
           gpuQueue_.wait_and_throw();
-          break;
-        }
-      }
-    }
-
-    void callSpgemv() override {
-      switch (offload_) {
-        case gpuOffloadType::always: {
-          // Do transfer etc.
-          A_vals_device_ = new sycl::buffer<T, 1>(A_vals_,
-                                                  sycl::range<1>(nnz_));
-          A_cols_device_ = new sycl::buffer<int64_t, 1>(A_cols_,
-                                                        sycl::range<1>(nnz_));
-          A_rows_device_ = new sycl::buffer<int64_t, 1>(A_rows_,
-                                                        sycl::range<1>(m_ + 1));
-
-          oneapi::mkl::sparse::init_matrix_handle(&A_device_);
-          oneapi::mkl::sparse::set_csr_data(gpuQueue_,
-                                            A_device_,
-                                            m_,
-                                            n_,
-                                            index_,
-                                            *A_rows_device_,
-                                            *A_cols_device_,
-                                            *A_vals_device_);
-
-          x_device_ = new sycl::buffer<T, 1>(x_, sycl::range<1>(n_));
-          y_device_ = new sycl::buffer<T, 1>(y_, sycl::range<1>(m_));
-          gpuQueue_.wait_and_throw();
           // Do computation
           try {
             oneapi::mkl::sparse::gemv(gpuQueue_,
                                       operation_,
                                       alpha,
                                       A_device_,
-                                      *x_device_,
+                                      x_device_,
                                       beta,
-                                      *y_device_);
-          } catch (sycl::exception const& e) {
-            std::cout << "ERROR - Caught synchronous SYCL exception during "
-                         "SPGEMV (Once):\n"
-                      << e.what() << std::endl
-                      << "OpenCL status: " << e.code().value() << std::endl;
-          }
+                                      y_device_);
+          } catch (sycl::exception const& e) {std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;}
           // Do cleanup
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
           break;
@@ -181,15 +152,10 @@ private:
                                       operation_,
                                       alpha,
                                       A_device_,
-                                      *x_device_,
+                                      x_device_,
                                       beta,
-                                      *y_device_);
-          } catch (sycl::exception const& e) {
-            std::cout << "ERROR - Caught synchronous SYCL exception during "
-                         "SPGEMV (Once):\n"
-                      << e.what() << std::endl
-                      << "OpenCL status: " << e.code().value() << std::endl;
-          }
+                                      y_device_);
+          } catch (sycl::exception const& e) {std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;}
           break;
         }
         case gpuOffloadType::unified: {
@@ -201,12 +167,7 @@ private:
                                       x_,
                                       beta,
                                       y_);
-          } catch (sycl::exception const& e) {
-            std::cout << "ERROR - Caught synchronous SYCL exception during "
-                         "SPGEMV (Unified):\n"
-                      << e.what() << std::endl
-                      << "OpenCL status: " << e.code().value() << std::endl;
-          }
+          } catch (sycl::exception const& e) {std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Unified):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;}
           break;
         }
       }
@@ -246,11 +207,11 @@ private:
 
     oneapi::mkl::sparse::matrix_handle_t A_device_;
 
-    sycl::buffer<T, 1>* A_vals_device_;
-    sycl::buffer<int64_t, 1>* A_cols_device_;
-    sycl::buffer<int64_t, 1>* A_rows_device_;
-    sycl::buffer<T, 1>* x_device_;
-    sycl::buffer<T, 1>* y_device_;
+    T* A_vals_device_;
+    int64_t* A_cols_device_;
+    int64_t* A_rows_device_;
+    T* x_device_;
+    T* y_device_;
 
     const T alpha = ALPHA;
     const T beta = BETA;

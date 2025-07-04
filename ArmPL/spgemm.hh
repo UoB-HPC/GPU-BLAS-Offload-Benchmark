@@ -2,7 +2,7 @@
 
 #ifdef CPU_ARMPL
 #include <stdlib.h>
-#include <armpl.h>
+#include "armpl.h"
 #include <omp.h>
 
 #include <algorithm>

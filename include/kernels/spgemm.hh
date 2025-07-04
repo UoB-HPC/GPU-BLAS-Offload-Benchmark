@@ -26,15 +26,14 @@ public:
               std::chrono::high_resolution_clock::now();
 
       // perform the SPMM calls
-      if (print_) std::cout << ".. pre";
+      if (print_) std::cout << "\t\tPre-loop requirements" << std::endl;
       preLoopRequirements();
       for (int i = 0; i < iterations_; i++) {
-        if (print_) std::cout << ".. spGEMM";
+        if (print_) std::cout << "\t\tcallSpgemm" << std::endl;
         callSpgemm();
       }
-      if (print_) std::cout << ".. post";
+      if (print_) std::cout << "\t\tPost-loop requirements" << std::endl;
       postLoopRequirements();
-      if (print_) std::cout << std::endl;
 
       // Stop the timer
       std::chrono::time_point<std::chrono::high_resolution_clock> endTime =

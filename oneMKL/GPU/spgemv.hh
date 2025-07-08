@@ -82,7 +82,6 @@ protected:
       A_rows_[0] = 0;
 
       for (int64_t row = 0; row < m_; row++) {
-        A_rows_[row + 1] = nnz_encountered;
         for (int64_t col = 0; col < n_; col++) {
           if (A_[(row * n_) + col] != 0.0) {
             A_cols_[nnz_encountered] = col;
@@ -90,6 +89,7 @@ protected:
             nnz_encountered++;
           }
         }
+        A_rows_[row + 1] = nnz_encountered;
       }
     }
 

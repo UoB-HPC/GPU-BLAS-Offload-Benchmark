@@ -33,7 +33,7 @@ public:
           myGpu_ = sycl::device(sycl::gpu_selector_v);
         } catch (const std::exception& e) {
           std::cerr << "ERROR - No GPU device found: " << e.what() << '\n';
-            exit(1);
+          exit(1);
         }
         gpuQueue_ = sycl::queue(myGpu_, exception_handler);
       }  
@@ -124,7 +124,6 @@ protected:
       A_rows_[0] = 0;
 
       for (int64_t row = 0; row < m_; row++) {
-        A_rows_[row + 1] = nnz_encountered;
         for (int64_t col = 0; col < k_; col++) {
           if (A_[(row * k_) + col] != 0.0) {
             A_cols_[nnz_encountered] = col;
@@ -132,6 +131,7 @@ protected:
             nnz_encountered++;
           }
         }
+        A_rows_[row + 1] = nnz_encountered;
       }
     }
 

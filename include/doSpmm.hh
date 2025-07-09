@@ -638,7 +638,7 @@ private:
 	gpu::spmm_gpu<T> gpu_;
 #endif
 
-    bool print_ = false;
+    bool print_ = true;
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */
     cpuGpu_offloadThreshold cpuGpu_once_;

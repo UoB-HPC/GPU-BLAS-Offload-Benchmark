@@ -190,13 +190,9 @@ class doGemv {
     const uint64_t flops = calcFlops(M, N);
     std::string kernelName = getKernelName();
 
-    time_checksum_gflop cpuResult;
-    time_checksum_gflop gpuResult_once;
-    time_checksum_gflop gpuResult_always;
-    time_checksum_gflop gpuResult_unified;
-
 // Perform CPU kernel
 #if CPU_ENABLED
+    time_checksum_gflop cpuResult;
     if (doCPU_) {
       cpu_.initialise(M, N);
       cpuResult = cpu_.compute();
@@ -209,6 +205,9 @@ class doGemv {
 
 // Perform the GPU kernels
 #if GPU_ENABLED
+    time_checksum_gflop gpuResult_once;
+    time_checksum_gflop gpuResult_always;
+    time_checksum_gflop gpuResult_unified;
     if (doGPU_) {
       // - ONCE : Offload to/from GPU once before all iterations and once
       // after

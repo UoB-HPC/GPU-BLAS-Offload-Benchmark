@@ -8,8 +8,10 @@
     if (hipError_t e = (f); e != hipSuccess) {                          \
       std::cout << "HIP error: " << __FILE__ << ":" << __LINE__ << ": " \
                 << hipGetErrorString(e) << std::endl;                   \
+      std::cout << "[DEBUG] -- " << #f << std::endl;                    \
       exit(1);                                                          \
     }                                                                   \
   } while (false)
 
-#endif
+
+#endif 

@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
 
   // Double-Precision Sparse GEMM
   if (doDspgemm) {
-    std::cout << std::endl << "Comparing DSpGEMMM Kernels:" << std::endl;
+    std::cout << std::endl << "Comparing DSpGEMM Kernels:" << std::endl;
     doSpgemm<double> dspgemm(std::string(absPath), iters, startDim, upperLimit,
                              sparsity, doCpu, doGpu);
     dspgemm.collectData();
@@ -236,8 +236,8 @@ void getParameters(int argc, char** argv) {
       doSspgemv = (kernelList.find("sspgemv") != std::string::npos);
       doDspgemv = (kernelList.find("dspgemv") != std::string::npos);
 
-      if (!doSgemm && !doDgemm && !doSspgemm && !doDspgemm &&
-          !doSgemv && !doDgemv && !doSspgemv && !doDspgemv) {
+      if (!doSgemv && !doSspgemv && !doSgemm && !doSspgemm && !doSspmm &&
+          !doDgemm && !doDspgemv && !doDgemv && !doDspgemm && !doDspmm) {
         std::cout << "ERROR - no implemented kernels in list" << std::endl;
         exit(1);
       } else {

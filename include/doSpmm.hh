@@ -24,7 +24,7 @@
 #elif defined GPU_ONEMKL
 #include "../oneMKL/GPU/spmm.hh"
 #elif defined GPU_ROCBLAS
-// Todo #include "../rocBLAS/spmm.hh"
+#include "../rocBLAS/spmm.hh"
 #endif
 
 /** `T` represents the type of kernel that will be run - i.e. T=float is for
@@ -638,7 +638,7 @@ private:
 	gpu::spmm_gpu<T> gpu_;
 #endif
 
-    bool print_ = true;
+    bool print_ = false;
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */
     cpuGpu_offloadThreshold cpuGpu_once_;

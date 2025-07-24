@@ -479,7 +479,6 @@ private:
   }
 
   bool initialised_ = false;
-
   bool print_ = false;
 
   rocsparse_mat_info info_;

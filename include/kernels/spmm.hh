@@ -112,8 +112,7 @@ protected:
         }
        if (print_) std::cout << "success " << i << ", ";
       }
-
-
+      
       toSparseFormat();
     }
 

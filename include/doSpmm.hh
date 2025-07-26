@@ -449,15 +449,6 @@ private:
       // - UNIFIED : data passed from host to device (and device to host) as
       //             needed
       if (doGPU_) {
-        if (print_) std::cout << "\tUnified ->\tInitialise";
-        gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity);
-        if (print_) std::cout << std::endl << "\t\t\tCompute";
-        time_checksum_gflop gpuResult_unified = gpu_.compute();
-        if (print_) std::cout << std::endl << "\t\t\tCalculate";
-        gpuResult_unified.gflops =
-        calcGflops(flops, iterations_, gpuResult_unified.runtime);
-        if (print_) std::cout << ".. DONE" << std::endl;
-
         // - ALWAYS: Offload to/from GPU every iteration
         if (print_) std::cout << "\tAlways ->\tInitialise";
         gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity);
@@ -478,6 +469,15 @@ private:
               calcGflops(flops, iterations_, gpuResult_once.runtime);
         if (print_) std::cout << ".. DONE" << std::endl;
         // ToDo -- non-default GPU operations
+        if (print_) std::cout << "\tUnified ->\tInitialise";
+        gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity);
+        if (print_) std::cout << std::endl << "\t\t\tCompute";
+        time_checksum_gflop gpuResult_unified = gpu_.compute();
+        if (print_) std::cout << std::endl << "\t\t\tCalculate";
+        gpuResult_unified.gflops =
+        calcGflops(flops, iterations_, gpuResult_unified.runtime);
+        if (print_) std::cout << ".. DONE" << std::endl;
+
 
         // Write lines to CSV file
         writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, M, K, probSize,

@@ -26,6 +26,15 @@ public:
     using spmm<T>::offload_;
     using spmm<T>::sparsity_;
 
+    ~spmm_gpu() {
+      if (initialised_) {
+        status_ = rocsparse_destroy_handle(handle_);
+        checkStatus("Failed rocsparse_destroy_handle");
+        hipCheckError(hipStreamDestroy(stream_));
+        initialised_ = false;
+      }
+    }
+
     void initialise(gpuOffloadType offload, int m, int n, int k,
                     double sparsity, bool binary = false) override {
       if (print_) {
@@ -103,30 +112,30 @@ public:
         hipCheckError(hipDeviceSynchronize());    
       } else {
         // Host data structures
-        hipCheckError(hipHostMalloc((void**)&A_, sizeof(T) * m_ * k_));
-        hipCheckError(hipHostMalloc((void**)&A_rows_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipHostMalloc((void**)&A_cols_, sizeof(int64_t) * nnzA_));
-        hipCheckError(hipHostMalloc((void**)&A_vals_, sizeof(T) * nnzA_));
-        hipCheckError(hipHostMalloc((void**)&B_, sizeof(T) * k_ * n_));
-        hipCheckError(hipHostMalloc((void**)&B_rows_, sizeof(int64_t) * (k_ + 1)));
-        hipCheckError(hipHostMalloc((void**)&B_cols_, sizeof(int64_t) * nnzB_));
-        hipCheckError(hipHostMalloc((void**)&B_vals_, sizeof(T) * nnzB_));    
-        hipCheckError(hipHostMalloc((void**)&D_rows_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipHostMalloc((void**)&D_cols_, sizeof(int64_t) * 1));
-        hipCheckError(hipHostMalloc((void**)&D_vals_, sizeof(T) * 1));    
+        hipCheckError(hipHostMalloc(&A_, sizeof(T) * m_ * k_));
+        hipCheckError(hipHostMalloc(&A_rows_, sizeof(int64_t) * (m_ + 1)));
+        hipCheckError(hipHostMalloc(&A_cols_, sizeof(int64_t) * nnzA_));
+        hipCheckError(hipHostMalloc(&A_vals_, sizeof(T) * nnzA_));
+        hipCheckError(hipHostMalloc(&B_, sizeof(T) * k_ * n_));
+        hipCheckError(hipHostMalloc(&B_rows_, sizeof(int64_t) * (k_ + 1)));
+        hipCheckError(hipHostMalloc(&B_cols_, sizeof(int64_t) * nnzB_));
+        hipCheckError(hipHostMalloc(&B_vals_, sizeof(T) * nnzB_));
+        hipCheckError(hipHostMalloc(&D_rows_, sizeof(int64_t) * (m_ + 1)));
+        hipCheckError(hipHostMalloc(&D_cols_, sizeof(int64_t) * 1));
+        hipCheckError(hipHostMalloc(&D_vals_, sizeof(T) * 1));
         hipCheckError(hipDeviceSynchronize());    
         
         // GPU data structures
-        hipCheckError(hipMalloc((void**)&A_rows_device_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipMalloc((void**)&A_cols_device_, sizeof(int64_t) * nnzA_));
-        hipCheckError(hipMalloc((void**)&A_vals_device_, sizeof(T) * nnzA_));
-        hipCheckError(hipMalloc((void**)&B_rows_device_, sizeof(int64_t) * (k_ + 1)));
-        hipCheckError(hipMalloc((void**)&B_cols_device_, sizeof(int64_t) * nnzB_));
-        hipCheckError(hipMalloc((void**)&B_vals_device_, sizeof(T) * nnzB_));  
-        hipCheckError(hipMalloc((void**)&D_rows_device_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipMalloc((void**)&D_cols_device_, sizeof(int64_t) * 1));
-        hipCheckError(hipMalloc((void**)&D_vals_device_, sizeof(T) * 1));    
-        hipCheckError(hipDeviceSynchronize());    
+        hipCheckError(hipMalloc(&A_rows_device_, sizeof(int64_t) * (m_ + 1)));
+        hipCheckError(hipMalloc(&A_cols_device_, sizeof(int64_t) * nnzA_));
+        hipCheckError(hipMalloc(&A_vals_device_, sizeof(T) * nnzA_));
+        hipCheckError(hipMalloc(&B_rows_device_, sizeof(int64_t) * (k_ + 1)));
+        hipCheckError(hipMalloc(&B_cols_device_, sizeof(int64_t) * nnzB_));
+        hipCheckError(hipMalloc(&B_vals_device_, sizeof(T) * nnzB_));
+        hipCheckError(hipMalloc(&D_rows_device_, sizeof(int64_t) * (m_ + 1)));
+        hipCheckError(hipMalloc(&D_cols_device_, sizeof(int64_t) * 1));
+        hipCheckError(hipMalloc(&D_vals_device_, sizeof(T) * 1));
+        hipCheckError(hipDeviceSynchronize());
       }
 
 
@@ -298,14 +307,9 @@ private:
           break;
         }
       }
-
-      // Set the pointer mode for rocsparse
-      status_ = rocsparse_set_pointer_mode(handle_,
-                                           rocsparse_pointer_mode_host);
     }
 
     void callSpmm() override {
-      checkCSRMatrices();
       if (print_) std::cout << "Calling spmm kernel" << std::endl;
       switch (offload_) {
         case gpuOffloadType::unified: {
@@ -476,7 +480,7 @@ private:
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipDeviceSynchronize());
-          size_t buffer_size;
+          size_t buffer_size = 0;
 
           if (print_) std::cout << "\tAllocating C rows" << std::endl;
           hipCheckError(hipMalloc((void**)&C_rows_device_, sizeof(int64_t) * (m_ + 1)));
@@ -973,52 +977,6 @@ private:
       if (print_) std::cout << "Calculated nnzC = " << nnzSoFar << std::endl;
       return nnzSoFar;
     }
-
-    void checkCSRMatrices() {
-
-      
-    }
-
-    void printDataStatus(rocsparse_data_status stat) {
-      switch (stat) {
-        case rocsparse_data_status_success: {
-          std::cout << "\t\t\tSuccess" << std::endl;
-          break;
-        }
-        case rocsparse_data_status_inf: {
-          std::cout << "\t\t\tAn inf value detected" << std::endl;
-          break;
-        }
-        case rocsparse_data_status_nan: {
-          std::cout << "\t\t\tAn NaN value detected" << std::endl;
-          break;
-        }
-        case rocsparse_data_status_invalid_offset_ptr: {
-          std::cout << "\t\t\tAn invalid row offset pointer detected" << std::endl;
-          break;
-        }
-        case rocsparse_data_status_invalid_index: {
-          std::cout << "\t\t\tAn invalid row indice detected" << std::endl;
-          break;
-        }
-        case rocsparse_data_status_duplicate_entry: {
-          std::cout << "\t\t\tDuplicate entry detected" << std::endl;
-          break;
-        }
-        case rocsparse_data_status_invalid_sorting: {
-          std::cout << "\t\t\tIncorrect sorting detected" << std::endl;
-          break;
-        }
-        case rocsparse_data_status_invalid_fill: {
-          std::cout << "\t\t\tIncorrect fill mode detected" << std::endl;
-          break;
-        }
-        default: {
-          std::cout << "Unknown data status" << std::endl;
-          break;
-        }
-      }
-    } 
 
     bool print_ = true;
     bool initialised_ = false;

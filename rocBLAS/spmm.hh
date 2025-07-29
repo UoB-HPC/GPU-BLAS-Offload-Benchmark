@@ -106,8 +106,8 @@ public:
         hipCheckError(hipMallocManaged(&B_cols_, sizeof(int64_t) * nnzB_));
         hipCheckError(hipMallocManaged(&B_vals_, sizeof(T) * nnzB_)); 
         hipCheckError(hipMallocManaged(&D_rows_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipMallocManaged(&D_cols_, sizeof(int64_t) * 1));
-        hipCheckError(hipMallocManaged(&D_vals_, sizeof(T) * 1)); 
+        hipCheckError(hipMallocManaged(&D_cols_, sizeof(int64_t) * nnzD_));
+        hipCheckError(hipMallocManaged(&D_vals_, sizeof(T) * nnzD_)); 
    
         hipCheckError(hipDeviceSynchronize());    
       } else {
@@ -121,10 +121,10 @@ public:
         hipCheckError(hipHostMalloc(&B_cols_, sizeof(int64_t) * nnzB_));
         hipCheckError(hipHostMalloc(&B_vals_, sizeof(T) * nnzB_));
         hipCheckError(hipHostMalloc(&D_rows_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipHostMalloc(&D_cols_, sizeof(int64_t) * 1));
-        hipCheckError(hipHostMalloc(&D_vals_, sizeof(T) * 1));
-        hipCheckError(hipDeviceSynchronize());    
-        
+        hipCheckError(hipHostMalloc(&D_cols_, sizeof(int64_t) * nnzD_));
+        hipCheckError(hipHostMalloc(&D_vals_, sizeof(T) * nnzD_));
+        hipCheckError(hipDeviceSynchronize());
+
         // GPU data structures
         hipCheckError(hipMalloc(&A_rows_device_, sizeof(int64_t) * (m_ + 1)));
         hipCheckError(hipMalloc(&A_cols_device_, sizeof(int64_t) * nnzA_));
@@ -133,8 +133,8 @@ public:
         hipCheckError(hipMalloc(&B_cols_device_, sizeof(int64_t) * nnzB_));
         hipCheckError(hipMalloc(&B_vals_device_, sizeof(T) * nnzB_));
         hipCheckError(hipMalloc(&D_rows_device_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipMalloc(&D_cols_device_, sizeof(int64_t) * 1));
-        hipCheckError(hipMalloc(&D_vals_device_, sizeof(T) * 1));
+        hipCheckError(hipMalloc(&D_cols_device_, sizeof(int64_t) * nnzD_));
+        hipCheckError(hipMalloc(&D_vals_device_, sizeof(T) * nnzD_));
         hipCheckError(hipDeviceSynchronize());
       }
 
@@ -145,6 +145,7 @@ public:
         initInputMatrices();
         outputNNZ = calcNNZC();
       }
+      if (print_) printMatrices();
     }
 
 protected:
@@ -977,6 +978,80 @@ private:
       if (print_) std::cout << "Calculated nnzC = " << nnzSoFar << std::endl;
       return nnzSoFar;
     }
+
+    void printMatrices() {
+      std::cout << "================ Printing matrices ================" << std::endl;
+      std::cout << "A matrix dense:" << std::endl;
+      for (size_t i = 0; i < m_; i++) {
+        for (size_t j = 0; j < k_; j++) {
+          std::cout << A_[i * k_ + j] << " ";
+        }
+        std::cout << std::endl;
+      }
+      std::cout << "A matrix CSR:" << std::endl;
+      std::cout << "\tRows: ";
+      for (size_t i = 0; i < m_ + 1; i++) {
+        std::cout << A_rows_[i] << " ";
+      }
+      std::cout << std::endl;
+      std::cout << "\tCols: ";
+      for (size_t i = 0; i < nnzA_; i++) {
+        std::cout << A_cols_[i] << " ";
+      }
+      std::cout << std::endl;
+      std::cout << "\tVals: ";
+      for (size_t i = 0; i < nnzA_; i++) {
+        std::cout << A_vals_[i] << " ";
+      }
+      std::cout << std::endl;
+
+      std::cout << "---------------------------------------------------" << std::endl;
+
+      std::cout << "B matrix dense:" << std::endl;
+      for (size_t i = 0; i < k_; i++) {
+        for (size_t j = 0; j < n_; j++) {
+          std::cout << B_[i * n_ + j] << " ";
+        }
+        std::cout << std::endl;
+      }
+      std::cout << "B matrix CSR:" << std::endl;
+      std::cout << "\tRows: ";
+      for (size_t i = 0; i < k_ + 1; i++) {
+        std::cout << B_rows_[i] << " ";
+      }
+      std::cout << std::endl;
+      std::cout << "\tCols: ";
+      for (size_t i = 0; i < nnzB_; i++) {
+        std::cout << B_cols_[i] << " ";
+      }
+      std::cout << std::endl;
+      std::cout << "\tVals: ";
+      for (size_t i = 0; i < nnzB_; i++) {
+        std::cout << B_vals_[i] << " ";
+      }
+      std::cout << std::endl;
+
+      std::cout << "---------------------------------------------------" << std::endl;
+
+      std::cout << "D matrix CSR:" << std::endl;
+      std::cout << "\tRows: ";
+      for (size_t i = 0; i < m_ + 1; i++) {
+        std::cout << D_rows_[i] << " ";
+      }
+      std::cout << std::endl;
+      std::cout << "\tCols: ";
+      for (size_t i = 0; i < nnzD_; i++) {
+        std::cout << D_cols_[i] << " ";
+      }
+      std::cout << std::endl;
+      std::cout << "\tVals: ";
+      for (size_t i = 0; i < nnzD_; i++) {
+        std::cout << D_vals_[i] << " ";
+      }
+      std::cout << std::endl;
+
+      std::cout << "================ Matrices printed! ================" << std::endl;
+    }  
 
     bool print_ = true;
     bool initialised_ = false;

@@ -100,7 +100,11 @@ endif
 ifeq ($(COMPILER), INTEL)
 # Check if GPU is also using ONEMKL -- if so, use ILP64 for consistency
 ifeq ($(GPU_LIB), ONEMKL)
-override CXXFLAGS += -L$(MKLROOT)/lib -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -liomp5 -lpthread -lm -ldl -DMKL_ILP64
+ifdef TBBROOT
+override CXXFLAGS += -L$(MKLROOT)/lib -Wl,-rpath,$(MKLROOT)/lib -L$(TBBROOT)/lib -Wl,-rpath,$(TBBROOT)/lib -Wl,-rpath,$(MKLROOT)/bin -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -liomp5 -lpthread -lm -ldl -DMKL_ILP64
+else
+override CXXFLAGS += -L$(MKLROOT)/lib -Wl,-rpath,$(MKLROOT)/lib -Wl,-rpath,$(MKLROOT)/bin -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -liomp5 -lpthread -lm -ldl -DMKL_ILP64
+endif
 else
 override CXXFLAGS += -L$(MKLROOT)/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qmkl=parallel -DMKL_INT=int
 endif

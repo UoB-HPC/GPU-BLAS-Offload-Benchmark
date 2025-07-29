@@ -23,6 +23,13 @@ public:
 
     void initialise(gpuOffloadType offload, int m, int n, double sparsity)
     override {
+      std::cout << "ITERATING OVER SYCL PLATFORMS AND DEVICES" << std::endl;
+      for (const auto& p : sycl::platform::get_platforms()) {
+        std::cout << "Platform: " << p.get_info<sycl::info::platform::name>() << std::endl;
+        for (const auto& d : p.get_devices()) {
+            std::cout << "  Device: " << d.get_info<sycl::info::device::name>() << std::endl;
+        }
+      }
       if (!alreadyInitialised_) {
         alreadyInitialised_ = true;
         // Perform set-up which doesn't need to happen every problem size change.

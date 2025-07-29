@@ -145,7 +145,6 @@ public:
         initInputMatrices();
         outputNNZ = calcNNZC();
       }
-      if (print_) printMatrices();
     }
 
 protected:
@@ -959,7 +958,6 @@ private:
             break;
           }
         }
-        exit(1);
       }
     }
 

@@ -59,15 +59,21 @@ public:
 
       nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
 
-      // Set up rocSPARSE type parameters
-      m_roc_ = m_;
-      n_roc_ = n_;
-      nnz_roc_ = nnz_;
 
       // Set up rocSPARSE metadata
-      index_ = rocsparse_index_base_zero;
+      index_ = rocsparse_indextype_i64;
       type_ = rocsparse_matrix_type_general;
       operation_ = rocsparse_operation_none;
+      base_ = rocsparse_index_base_zero;
+      algorithm_ = rocsparse_spmv_alg_default; // There are a couple of CSR algorithms -- investigate which is best!
+      if constexpr (std::is_same_v<T, float>) {
+        dataType_ = rocsparse_datatype_f32_r;
+      } else if constexpr (std::is_same_v<T, double>) {
+        dataType_ = rocsparse_datatype_f64_r;
+      } else {
+        throw std::runtime_error("Unsupported data type for spgemv_gpu");
+      }
+
 
       if (print_) std::cout << "\tAbout to set up handle and hip streams" << std::endl;
       if (!initialised_) {
@@ -148,12 +154,12 @@ private:
           if (print_) std::cout << "\tMoving data to GPU" << std::endl;
           hipCheckError(hipMemcpyAsync(A_rows_device_, 
                                        A_rows_, 
-                                       sizeof(rocsparse_int) * (m_ + 1), 
+                                       sizeof(int64_t) * (m_ + 1), 
                                        hipMemcpyHostToDevice, 
                                        s1_));
           hipCheckError(hipMemcpyAsync(A_cols_device_, 
                                        A_cols_, 
-                                       sizeof(rocsparse_int) * nnz_, 
+                                       sizeof(int64_t) * nnz_, 
                                        hipMemcpyHostToDevice, 
                                        s1_));
           hipCheckError(hipMemcpyAsync(A_vals_device_, 
@@ -176,8 +182,8 @@ private:
         }
         case gpuOffloadType::unified: {
           if (print_) std::cout << "\tMoving data to GPU" << std::endl;
-          hipCheckError(hipMemPrefetchAsync(A_rows_, sizeof(rocsparse_int) * (m_ + 1), gpuDevice_, s1_));
-          hipCheckError(hipMemPrefetchAsync(A_cols_, sizeof(rocsparse_int) * nnz_, gpuDevice_, s1_));
+          hipCheckError(hipMemPrefetchAsync(A_rows_, sizeof(int64_t) * (m_ + 1), gpuDevice_, s1_));
+          hipCheckError(hipMemPrefetchAsync(A_cols_, sizeof(int64_t) * nnz_, gpuDevice_, s1_));
           hipCheckError(hipMemPrefetchAsync(A_vals_, sizeof(T) * nnz_, gpuDevice_, s1_));
           hipCheckError(hipMemPrefetchAsync(x_, sizeof(T) * n_, gpuDevice_, s2_));
           hipCheckError(hipMemPrefetchAsync(y_, sizeof(T) * m_, gpuDevice_, s3_));
@@ -195,12 +201,12 @@ private:
           if (print_) std::cout << "\tMoving data to GPU" << std::endl;
           hipCheckError(hipMemcpyAsync(A_rows_device_, 
                                        A_rows_, 
-                                       sizeof(rocsparse_int) * (m_ + 1), 
+                                       sizeof(int64_t) * (m_ + 1), 
                                        hipMemcpyHostToDevice, 
                                        s1_));
           hipCheckError(hipMemcpyAsync(A_cols_device_, 
                                        A_cols_, 
-                                       sizeof(rocsparse_int) * nnz_, 
+                                       sizeof(int64_t) * nnz_, 
                                        hipMemcpyHostToDevice, 
                                        s1_));
           hipCheckError(hipMemcpyAsync(A_vals_device_, 
@@ -222,87 +228,90 @@ private:
 
           if (print_) std::cout << "\tCreating rocSPARSE structures" << std::endl;
           // Set up the rocSPARSE structures for the GEMV
-          status_ = rocsparse_create_mat_descr(&description_); // The defaults are for base=0, and type=general.  This is okay for us.
-          checkStatus("Failed rocsparse_create_mat_descr");
+          status_ = rocsparse_create_csr_descr(&description_,
+                                               m_,
+                                               n_,
+                                               nnz_,
+                                               A_rows_device_,
+                                               A_cols_device_,
+                                               A_vals_device_,
+                                               index_,
+                                               index_,
+                                               base_,
+                                               dataType_);
+          checkStatus("Failed rocsparse_create_csr_descr");
 
-          status_ = rocsparse_create_mat_info(&info_);
-          checkStatus("Failed rocsparse_create_mat_info");
-          // Now we call the sparse GEMV kernel
-          if constexpr (std::is_same_v<T, float>) {
-            // Do pre-call analysis
-            if (print_) std::cout << "\tDoing analysis" << std::endl;
-            status_ = rocsparse_scsrmv_analysis(handle_, 
-                                                operation_, 
-                                                m_roc_, 
-                                                n_roc_, 
-                                                nnz_roc_, 
-                                                description_, 
-                                                A_vals_device_, 
-                                                A_rows_device_, 
-                                                A_cols_device_, 
-                                                info_);
-            checkStatus("Failed rocsparse_scsrmv_analysis");
-            
-            if (print_) std::cout << "\tDoing computation" << std::endl;
-            // Actual computation
-            status_ = rocsparse_scsrmv(handle_, 
-                                       operation_, 
-                                       m_roc_, 
-                                       n_roc_, 
-                                       nnz_roc_, 
-                                       &alpha, 
-                                       description_, 
-                                       A_vals_device_, 
-                                       A_rows_device_, 
-                                       A_cols_device_, 
-                                       info_, 
-                                       x_device_, 
-                                       &beta, 
-                                       y_device_);
-            checkStatus("Failed rocsparse_scsrmv");
-          } else if constexpr (std::is_same_v<T, double>) {
-            // Do pre-call analysis
-            if (print_) std::cout << "\tDoing analysis" << std::endl;
-            status_ = rocsparse_dcsrmv_analysis(handle_, 
-                                                operation_, 
-                                                m_roc_, 
-                                                n_roc_, 
-                                                nnz_roc_, 
-                                                description_, 
-                                                A_vals_device_, 
-                                                A_rows_device_, 
-                                                A_cols_device_, 
-                                                info_);
-            checkStatus("Failed rocsparse_dcsrmv_analysis");
-            
-            if (print_) std::cout << "\tDoing computation" << std::endl;
-            // Actual computation
-            status_ = rocsparse_dcsrmv(handle_, 
-                                       operation_, 
-                                       m_roc_, 
-                                       n_roc_, 
-                                       nnz_roc_, 
-                                       &alpha, 
-                                       description_, 
-                                       A_vals_device_, 
-                                       A_rows_device_, 
-                                       A_cols_device_, 
-                                       info_, 
-                                       x_device_, 
-                                       &beta, 
-                                       y_device_);
-            checkStatus("Failed rocsparse_dcsrmv");
-          }
+          status_ = rocsparse_create_dnvec_descr(&x_description_,
+                                                 n_,
+                                                 x_device_,
+                                                 dataType_);
+          checkStatus("Failed rocsparse_create_dnvec_descr for x");
+
+          status_ = rocsparse_create_dnvec_descr(&y_description_,
+                                                 m_,
+                                                 y_device_,
+                                                 dataType_);
+          checkStatus("Failed rocsparse_create_dnvec_descr for y");
+          hipCheckError(hipDeviceSynchronize());
+
+          size_t buffer_size = 0;
+          status_ = rocsparse_spmv_ex(handle_,
+                                      operation_,
+                                      &alpha,
+                                      description_,
+                                      x_description_,
+                                      &beta,
+                                      y_description_,
+                                      dataType_,
+                                      algorithm_,
+                                      rocsparse_spmv_stage_buffer_size,
+                                      &buffer_size,
+                                      nullptr);
+          checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_buffer_size");
+          hipCheckError(hipDeviceSynchronize());
+          
+          void* temp_buffer;
+          hipCheckError(hipMalloc(&temp_buffer, buffer_size));
+          hipCheckError(hipDeviceSynchronize());
+
+          status_ = rocsparse_spmv_ex(handle_,
+                                      operation_,
+                                      &alpha,
+                                      description_,
+                                      x_description_,
+                                      &beta,
+                                      y_description_,
+                                      dataType_,
+                                      algorithm_,
+                                      rocsparse_spmv_stage_preprocess,
+                                      &buffer_size,
+                                      temp_buffer);
+          checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_preprocess");
+          hipCheckError(hipDeviceSynchronize());
+
+          status_ = rocsparse_spmv_ex(handle_,
+                                      operation_,
+                                      &alpha,
+                                      description_,
+                                      x_description_,
+                                      &beta,
+                                      y_description_,
+                                      dataType_,
+                                      algorithm_,
+                                      rocsparse_spmv_stage_compute,
+                                      &buffer_size,
+                                      temp_buffer);
+          checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_compute");
+          hipCheckError(hipDeviceSynchronize());
 
           if (print_) std::cout << "\tdestroying rocSPARSE structures" << std::endl;
           // Now clean up
-          status_ = rocsparse_destroy_mat_descr(description_);
-          checkStatus("Failed rocsparse_destroy_mat_descr");
-          status_ = rocsparse_destroy_mat_info(info_);
-          checkStatus("Failed rocsparse_destroy_mat_info");
+          status_ = rocsparse_destroy_spmat_descr(description_);
+          checkStatus("Failed rocsparse_destroy_spmat_descr");
+          hipCheckError(hipFree(temp_buffer));
 
           // Move result back to the CPU
-          if (print_) std::cout << "\tMovin data to CPU" << std::endl;
+          if (print_) std::cout << "\tMoving data to CPU" << std::endl;
           hipCheckError(hipMemcpyAsync(y_, y_device_, sizeof(T) * m_, hipMemcpyDeviceToHost, s3_));
           hipCheckError(hipDeviceSynchronize());
           break;
@@ -310,167 +319,175 @@ private:
         case gpuOffloadType::once: {
           // Set up the rocSPARSE structures for the GEMV
           if (print_) std::cout << "\tCreating rocSPARSE structures" << std::endl;
-          status_ = rocsparse_create_mat_descr(&description_); // The defaults are for base=0, and type=general.  This is okay for us.
-          checkStatus("Failed rocsparse_create_mat_descr");
+          // Set up the rocSPARSE structures for the GEMV
+          status_ = rocsparse_create_csr_descr(&description_,
+                                               m_,
+                                               n_,
+                                               nnz_,
+                                               A_rows_device_,
+                                               A_cols_device_,
+                                               A_vals_device_,
+                                               index_,
+                                               index_,
+                                               base_,
+                                               dataType_);
+          checkStatus("Failed rocsparse_create_csr_descr");
 
-          status_ = rocsparse_create_mat_info(&info_);
-          checkStatus("Failed rocsparse_create_mat_info");
-          // Now we call the sparse GEMV kernel
-          if constexpr (std::is_same_v<T, float>) {
-            // Do pre-call analysis
-            if (print_) std::cout << "\tDoing analysis" << std::endl;
-            status_ = rocsparse_scsrmv_analysis(handle_, 
-                                                operation_, 
-                                                m_roc_, 
-                                                n_roc_, 
-                                                nnz_roc_, 
-                                                description_, 
-                                                A_vals_device_, 
-                                                A_rows_device_, 
-                                                A_cols_device_, 
-                                                info_);
-            checkStatus("Failed rocsparse_scsrmv_analysis");
-            
-            // Actual computation
-            if (print_) std::cout << "\tDoing computation" << std::endl;
-            status_ = rocsparse_scsrmv(handle_, 
-                                       operation_, 
-                                       m_roc_, 
-                                       n_roc_, 
-                                       nnz_roc_, 
-                                       &alpha, 
-                                       description_, 
-                                       A_vals_device_, 
-                                       A_rows_device_, 
-                                       A_cols_device_, 
-                                       info_, 
-                                       x_device_, 
-                                       &beta, 
-                                       y_device_);
-            checkStatus("Failed rocsparse_scsrmv");
-          } else if constexpr (std::is_same_v<T, double>) {
-            // Do pre-call analysis
-            if (print_) std::cout << "\tDoing analysis" << std::endl;
-            status_ = rocsparse_dcsrmv_analysis(handle_, 
-                                                operation_, 
-                                                m_roc_, 
-                                                n_roc_, 
-                                                nnz_roc_, 
-                                                description_, 
-                                                A_vals_device_, 
-                                                A_rows_device_, 
-                                                A_cols_device_, 
-                                                info_);
-            checkStatus("Failed rocsparse_dcsrmv_analysis");
-            
-            // Actual computation
-            if (print_) std::cout << "\tDoing computation" << std::endl;
-            status_ = rocsparse_dcsrmv(handle_, 
-                                       operation_, 
-                                       m_roc_, 
-                                       n_roc_, 
-                                       nnz_roc_, 
-                                       &alpha, 
-                                       description_, 
-                                       A_vals_device_, 
-                                       A_rows_device_, 
-                                       A_cols_device_, 
-                                       info_, 
-                                       x_device_, 
-                                       &beta, 
-                                       y_device_);
-            checkStatus("Failed rocsparse_dcsrmv");
-          }
+          status_ = rocsparse_create_dnvec_descr(&x_description_,
+                                                 n_,
+                                                 x_device_,
+                                                 dataType_);
+          checkStatus("Failed rocsparse_create_dnvec_descr for x");
 
-          // Now clean up
+          status_ = rocsparse_create_dnvec_descr(&y_description_,
+                                                 m_,
+                                                 y_device_,
+                                                 dataType_);
+          checkStatus("Failed rocsparse_create_dnvec_descr for y");
+          hipCheckError(hipDeviceSynchronize());
+
+          size_t buffer_size = 0;
+          status_ = rocsparse_spmv_ex(handle_,
+                                      operation_,
+                                      &alpha,
+                                      description_,
+                                      x_description_,
+                                      &beta,
+                                      y_description_,
+                                      dataType_,
+                                      algorithm_,
+                                      rocsparse_spmv_stage_buffer_size,
+                                      &buffer_size,
+                                      nullptr);
+          checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_buffer_size");
+          hipCheckError(hipDeviceSynchronize());
+          
+          void* temp_buffer;
+          hipCheckError(hipMalloc(&temp_buffer, buffer_size));
+          hipCheckError(hipDeviceSynchronize());
+
+          status_ = rocsparse_spmv_ex(handle_,
+                                      operation_,
+                                      &alpha,
+                                      description_,
+                                      x_description_,
+                                      &beta,
+                                      y_description_,
+                                      dataType_,
+                                      algorithm_,
+                                      rocsparse_spmv_stage_preprocess,
+                                      &buffer_size,
+                                      temp_buffer);
+          checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_preprocess");
+          hipCheckError(hipDeviceSynchronize());
+
+          status_ = rocsparse_spmv_ex(handle_,
+                                      operation_,
+                                      &alpha,
+                                      description_,
+                                      x_description_,
+                                      &beta,
+                                      y_description_,
+                                      dataType_,
+                                      algorithm_,
+                                      rocsparse_spmv_stage_compute,
+                                      &buffer_size,
+                                      temp_buffer);
+          checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_compute");
+          hipCheckError(hipDeviceSynchronize());
+
           if (print_) std::cout << "\tdestroying rocSPARSE structures" << std::endl;
-          status_ = rocsparse_destroy_mat_descr(description_);
-          checkStatus("Failed rocsparse_destroy_mat_descr");
-          status_ = rocsparse_destroy_mat_info(info_);
-          checkStatus("Failed rocsparse_destroy_mat_info");
+          // Now clean up
+          status_ = rocsparse_destroy_spmat_descr(description_);
+          checkStatus("Failed rocsparse_destroy_spmat_descr");
+          hipCheckError(hipFree(temp_buffer));
           break;
         }
         case gpuOffloadType::unified: {
           // Set up the rocSPARSE structures for the GEMV
           if (print_) std::cout << "\tCreating rocSPARSE structures" << std::endl;
-          status_ = rocsparse_create_mat_descr(&description_); // The defaults are for base=0, and type=general.  This is okay for us.
-          checkStatus("Failed rocsparse_create_mat_descr");
+          // Set up the rocSPARSE structures for the GEMV
+          status_ = rocsparse_create_csr_descr(&description_,
+                                               m_,
+                                               n_,
+                                               nnz_,
+                                               A_rows_,
+                                               A_cols_,
+                                               A_vals_,
+                                               index_,
+                                               index_,
+                                               base_,
+                                               dataType_);
+          checkStatus("Failed rocsparse_create_csr_descr");
 
-          status_ = rocsparse_create_mat_info(&info_);
-          checkStatus("Failed rocsparse_create_mat_info");
-          // Now we call the sparse GEMV kernel
-          if constexpr (std::is_same_v<T, float>) {
-            // Do pre-call analysis
-            if (print_) std::cout << "\tDoing analysis" << std::endl;
-            status_ = rocsparse_scsrmv_analysis(handle_, 
-                                                operation_, 
-                                                m_roc_, 
-                                                n_roc_, 
-                                                nnz_roc_, 
-                                                description_, 
-                                                A_vals_, 
-                                                A_rows_, 
-                                                A_cols_, 
-                                                info_);
-            checkStatus("Failed rocsparse_scsrmv_analysis");
-            
-            // Actual computation
-            if (print_) std::cout << "\tDoing computation" << std::endl;
-            status_ = rocsparse_scsrmv(handle_, 
-                                       operation_, 
-                                       m_roc_, 
-                                       n_roc_, 
-                                       nnz_roc_, 
-                                       &alpha, 
-                                       description_, 
-                                       A_vals_, 
-                                       A_rows_, 
-                                       A_cols_, 
-                                       info_, 
-                                       x_, 
-                                       &beta, 
-                                       y_);
-            checkStatus("Failed rocsparse_scsrmv");
-          } else if constexpr (std::is_same_v<T, double>) {
-            // Do pre-call analysis
-            if (print_) std::cout << "\tDoing analysis" << std::endl;
-            status_ = rocsparse_dcsrmv_analysis(handle_, 
-                                                operation_, 
-                                                m_roc_, 
-                                                n_roc_, 
-                                                nnz_roc_, 
-                                                description_, 
-                                                A_vals_, 
-                                                A_rows_, 
-                                                A_cols_, 
-                                                info_);
-            checkStatus("Failed rocsparse_dcsrmv_analysis");
-            
-            // Actual computation
-            if (print_) std::cout << "\tDoing computation" << std::endl;
-            status_ = rocsparse_dcsrmv(handle_, 
-                                       operation_, 
-                                       m_roc_, 
-                                       n_roc_, 
-                                       nnz_roc_, 
-                                       &alpha, 
-                                       description_, 
-                                       A_vals_, 
-                                       A_rows_, 
-                                       A_cols_, 
-                                       info_, 
-                                       x_, 
-                                       &beta, 
-                                       y_);
-            checkStatus("Failed rocsparse_dcsrmv");
-          }
+          status_ = rocsparse_create_dnvec_descr(&x_description_,
+                                                 n_,
+                                                 x_,
+                                                 dataType_);
+          checkStatus("Failed rocsparse_create_dnvec_descr for x");
 
-          // Now clean up
+          status_ = rocsparse_create_dnvec_descr(&y_description_,
+                                                 m_,
+                                                 y_,
+                                                 dataType_);
+          checkStatus("Failed rocsparse_create_dnvec_descr for y");
+          hipCheckError(hipDeviceSynchronize());
+
+          size_t buffer_size = 0;
+          status_ = rocsparse_spmv_ex(handle_,
+                                      operation_,
+                                      &alpha,
+                                      description_,
+                                      x_description_,
+                                      &beta,
+                                      y_description_,
+                                      dataType_,
+                                      algorithm_,
+                                      rocsparse_spmv_stage_buffer_size,
+                                      &buffer_size,
+                                      nullptr);
+          checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_buffer_size");
+          hipCheckError(hipDeviceSynchronize());
+          
+          void* temp_buffer;
+          hipCheckError(hipMalloc(&temp_buffer, buffer_size));
+          hipCheckError(hipDeviceSynchronize());
+
+          status_ = rocsparse_spmv_ex(handle_,
+                                      operation_,
+                                      &alpha,
+                                      description_,
+                                      x_description_,
+                                      &beta,
+                                      y_description_,
+                                      dataType_,
+                                      algorithm_,
+                                      rocsparse_spmv_stage_preprocess,
+                                      &buffer_size,
+                                      temp_buffer);
+          checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_preprocess");
+          hipCheckError(hipDeviceSynchronize());
+
+          status_ = rocsparse_spmv_ex(handle_,
+                                      operation_,
+                                      &alpha,
+                                      description_,
+                                      x_description_,
+                                      &beta,
+                                      y_description_,
+                                      dataType_,
+                                      algorithm_,
+                                      rocsparse_spmv_stage_compute,
+                                      &buffer_size,
+                                      temp_buffer);
+          checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_compute");
+          hipCheckError(hipDeviceSynchronize());
+
           if (print_) std::cout << "\tdestroying rocSPARSE structures" << std::endl;
-          status_ = rocsparse_destroy_mat_descr(description_);
-          checkStatus("Failed rocsparse_destroy_mat_descr");
-          status_ = rocsparse_destroy_mat_info(info_);
-          checkStatus("Failed rocsparse_destroy_mat_info");
+          // Now clean up
+          status_ = rocsparse_destroy_spmat_descr(description_);
+          checkStatus("Failed rocsparse_destroy_spmat_descr");
+          hipCheckError(hipFree(temp_buffer));
           break;
         }
       }
@@ -539,22 +556,26 @@ private:
 
     bool print_ = false;
 
-    rocsparse_mat_info info_;
     rocsparse_status status_;
     rocsparse_operation operation_;
     rocsparse_handle handle_;
-    rocsparse_mat_descr description_;
-    rocsparse_index_base index_;
+    rocsparse_indextype index_;
     rocsparse_matrix_type type_;
+    rocsparse_index_base base_;
+    rocsparse_datatype dataType_;
+    rocsparse_spmv_alg algorithm_;
 
-    rocsparse_int m_roc_, n_roc_, nnz_roc_;
+    rocsparse_spmat_descr description_;
+    rocsparse_dnvec_descr x_description_;
+    rocsparse_dnvec_descr y_description_;
 
-    rocsparse_int* A_rows_;
-    rocsparse_int* A_cols_;
+
+    int64_t* A_rows_;
+    int64_t* A_cols_;
     T* A_vals_;
 
-    rocsparse_int* A_rows_device_;
-    rocsparse_int* A_cols_device_;
+    int64_t* A_rows_device_;
+    int64_t* A_cols_device_;
     T* A_vals_device_;
     T* x_device_;
     T* y_device_;

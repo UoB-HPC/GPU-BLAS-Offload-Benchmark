@@ -38,7 +38,6 @@ public:
   void initialise(gpuOffloadType offload, int m, int n, int k,
               double sparsity, bool binary = false) override {
       // Set up problem parameters
-    print_ = true;
     if (print_) {
       switch (offload) {
         case gpuOffloadType::always: {
@@ -56,24 +55,28 @@ public:
       }
     }
     if (print_) std::cout << "Initialising " << m << "x" << k << " . " << k << "x" << n << std::endl;
-    print_ = false;
     m_ = m;
     n_ = n;
     k_ = k;
     sparsity_ = sparsity;
     offload_ = offload;
-    nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
-    
-    // Set up rocSPARSE type parameters
-    m_roc_ = m_;
-    n_roc_ = n_;
-    k_roc_ = k_;
-    nnz_roc_ = nnz_;
+    nnz_ = 1 + (int64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
 
     // Set up rocSPARSE metadata
-    index_ = rocsparse_index_base_zero;
+    base_ = rocsparse_index_base_zero;
     type_ = rocsparse_matrix_type_general;
     operation_ = rocsparse_operation_none;
+    index_ = rocsparse_indextype_i64;
+    order_ = rocsparse_order_column;
+    algorithm_ = rocsparse_spmm_alg_default; // This is the only algo for this one
+
+    if constexpr (std::is_same_v<T, float>) {
+      dataType_ = rocsparse_datatype_f32_r;
+    } else if constexpr (std::is_same_v<T, double>) {
+      dataType_ = rocsparse_datatype_f64_r;
+    } else {
+      throw std::runtime_error("Unsupported data type for spgemm_gpu");
+    }
 
     if (print_) std::cout << "\tAbout to set up handle and hip streams" << std::endl;
     if (!initialised_) {
@@ -146,12 +149,12 @@ private:
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
         hipCheckError(hipMemcpyAsync(A_rows_device_,
                                      A_rows_,
-                                     sizeof(rocsparse_int) * (m_ + 1),
+                                     sizeof(int64_t) * (m_ + 1),
                                      hipMemcpyHostToDevice,
                                      s1_));
         hipCheckError(hipMemcpyAsync(A_cols_device_,
                                      A_cols_,
-                                     sizeof(rocsparse_int) * nnz_,
+                                     sizeof(int64_t) * nnz_,
                                      hipMemcpyHostToDevice,
                                      s1_));
         hipCheckError(hipMemcpyAsync(A_vals_device_,
@@ -175,11 +178,11 @@ private:
       case gpuOffloadType::unified: {
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
         hipCheckError(hipMemPrefetchAsync(A_rows_, 
-                                          sizeof(rocsparse_int) * (m_ + 1), 
+                                          sizeof(int64_t) * (m_ + 1), 
                                           gpuDevice_, 
                                           s1_));
         hipCheckError(hipMemPrefetchAsync(A_cols_, 
-                                          sizeof(rocsparse_int) * nnz_, 
+                                          sizeof(int64_t) * nnz_, 
                                           gpuDevice_, 
                                           s1_));
         hipCheckError(hipMemPrefetchAsync(A_vals_, 
@@ -206,12 +209,12 @@ private:
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
         hipCheckError(hipMemcpyAsync(A_rows_device_,
                                      A_rows_,
-                                     sizeof(rocsparse_int) * (m_ + 1),
+                                     sizeof(int64_t) * (m_ + 1),
                                      hipMemcpyHostToDevice,
                                      s1_));
         hipCheckError(hipMemcpyAsync(A_cols_device_,
                                      A_cols_,
-                                     sizeof(rocsparse_int) * nnz_,
+                                     sizeof(int64_t) * nnz_,
                                      hipMemcpyHostToDevice,
                                      s1_));
         hipCheckError(hipMemcpyAsync(A_vals_device_,
@@ -234,57 +237,101 @@ private:
 
         if (print_) std::cout << "\tCreating rocSPARSE structures" << std::endl;
         // Set up the rocSPARSE structures for the GEMV
-        status_ = rocsparse_create_mat_descr(&description_); // The defaults are for base=0, and type=general.  This is okay for us.
-        checkStatus("Failed rocsparse_create_mat_descr");
+        status_ = rocsparse_create_csr_descr(&A_description_,
+                                             m_,
+                                             k_,
+                                             nnz_,
+                                             A_rows_device_,
+                                             A_cols_device_,
+                                             A_vals_device_,
+                                             index_,
+                                             index_,
+                                             base_,
+                                             dataType_);
+        checkStatus("Failed rocsparse_create_csr_descr for A");
 
-        status_ = rocsparse_create_mat_info(&info_);
-        checkStatus("Failed rocsparse_create_mat_info");
+        status_ = rocsparse_create_dnmat_descr(&B_description_,
+                                               k_,
+                                               n_,
+                                               k_,
+                                               B_device_,
+                                               dataType_,
+                                               order_);
+        checkStatus("Failed rocsparse_create_dnmat_descr for B");
 
-        if constexpr (std::is_same_v<T, float>) {
-          status_ = rocsparse_scsrmm(handle_, 
-                                     operation_, 
-                                     operation_,  
-                                     m_roc_, 
-                                     n_roc_, 
-                                     k_roc_, 
-                                     nnz_roc_, 
-                                     &alpha, 
-                                     description_, 
-                                     A_vals_device_, 
-                                     A_rows_device_, 
-                                     A_cols_device_, 
-                                     B_device_, 
-                                     k_roc_, // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows 
-                                     &beta, 
-                                     C_device_, 
-                                     m_roc_); // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows
-          checkStatus("Falied rocsparse_scsrmm");
-        } else if constexpr (std::is_same_v<T, double>) {
-          status_ = rocsparse_dcsrmm(handle_, 
-                                     operation_, 
-                                     operation_,  
-                                     m_roc_, 
-                                     n_roc_, 
-                                     k_roc_, 
-                                     nnz_roc_, 
-                                     &alpha, 
-                                     description_, 
-                                     A_vals_device_, 
-                                     A_rows_device_, 
-                                     A_cols_device_, 
-                                     B_device_, 
-                                     k_roc_, // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows 
-                                     &beta, 
-                                     C_device_, 
-                                     m_roc_); // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows
-          checkStatus("Failed rocsparse_dcsrmm");
-        }
+        status_ = rocsparse_create_dnmat_descr(&C_description_,
+                                               m_,
+                                               n_,
+                                               m_,
+                                               C_device_,
+                                               dataType_,
+                                               order_);
+        checkStatus("Failed rocsparse_create_dnmat_descr for C");
+        hipCheckError(hipDeviceSynchronize());
+
+        size_t buffer_size = 0;
+        status_ = rocsparse_spmm(handle_,
+                                 operation_,
+                                 operation_,
+                                 &alpha,
+                                 A_description_,
+                                 B_description_,
+                                 &beta,
+                                 C_description_,
+                                 dataType_,
+                                 algorithm_,
+                                 rocsparse_spmm_stage_buffer_size,
+                                 &buffer_size,
+                                 nullptr);
+        checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_buffer_size");
+
+        hipCheckError(hipDeviceSynchronize());
+        void* buffer;
+        hipCheckError(hipMalloc(&buffer, buffer_size));
+        hipCheckError(hipDeviceSynchronize());
+
+        status_ = rocsparse_spmm(handle_,
+                                 operation_,
+                                 operation_,
+                                 &alpha,
+                                 A_description_,
+                                 B_description_,
+                                 &beta,
+                                 C_description_,
+                                 dataType_,
+                                 algorithm_,
+                                 rocsparse_spmm_stage_preprocess,
+                                 &buffer_size,
+                                 buffer);
+        checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_preprocess");
+
+        hipCheckError(hipDeviceSynchronize());
+        status_ = rocsparse_spmm(handle_,
+                                 operation_,
+                                 operation_,
+                                 &alpha,
+                                 A_description_,
+                                 B_description_,
+                                 &beta,
+                                 C_description_,
+                                 dataType_,
+                                 algorithm_,
+                                 rocsparse_spmm_stage_compute,
+                                 &buffer_size,
+                                 buffer);
+        checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_compute");
+
+        hipCheckError(hipDeviceSynchronize());
         if (print_) std::cout << "\tdestroying rocSPARSE structures" << std::endl;
         // Now clean up
-        status_ = rocsparse_destroy_mat_descr(description_);
-        checkStatus("Failed rocsparse_destroy_mat_descr");
-        status_ = rocsparse_destroy_mat_info(info_);
-        checkStatus("Failed rocsparse_destroy_mat_info");
+        status_ = rocsparse_destroy_spmat_descr(A_description_);
+        checkStatus("Failed rocsparse_destroy_spmat_descr for A");
+        status_ = rocsparse_destroy_dnmat_descr(B_description_);
+        checkStatus("Failed rocsparse_destroy_dnmat_descr for B");
+        status_ = rocsparse_destroy_dnmat_descr(C_description_);
+        checkStatus("Failed rocsparse_destroy_dnmat_descr for C");
+        hipCheckError(hipFree(buffer));
+        hipCheckError(hipDeviceSynchronize());
 
         // Move result back to the CPU
         if (print_) std::cout << "\tMovin data to CPU" << std::endl;
@@ -297,117 +344,203 @@ private:
         break;
       }
       case gpuOffloadType::once: {
-
         if (print_) std::cout << "\tCreating rocSPARSE structures" << std::endl;
         // Set up the rocSPARSE structures for the GEMV
-        status_ = rocsparse_create_mat_descr(&description_); // The defaults are for base=0, and type=general.  This is okay for us.
-        checkStatus("Failed rocsparse_create_mat_descr");
+        status_ = rocsparse_create_csr_descr(&A_description_,
+                                             m_,
+                                             k_,
+                                             nnz_,
+                                             A_rows_device_,
+                                             A_cols_device_,
+                                             A_vals_device_,
+                                             index_,
+                                             index_,
+                                             base_,
+                                             dataType_);
+        checkStatus("Failed rocsparse_create_csr_descr for A");
 
-        status_ = rocsparse_create_mat_info(&info_);
-        checkStatus("Failed rocsparse_create_mat_info");
+        status_ = rocsparse_create_dnmat_descr(&B_description_,
+                                               k_,
+                                               n_,
+                                               k_,
+                                               B_device_,
+                                               dataType_,
+                                               order_);
+        checkStatus("Failed rocsparse_create_dnmat_descr for B");
 
-        if constexpr (std::is_same_v<T, float>) {
-          status_ = rocsparse_scsrmm(handle_, 
-                                     operation_, 
-                                     operation_,  
-                                     m_roc_, 
-                                     n_roc_, 
-                                     k_roc_, 
-                                     nnz_roc_, 
-                                     &alpha, 
-                                     description_, 
-                                     A_vals_device_, 
-                                     A_rows_device_, 
-                                     A_cols_device_, 
-                                     B_device_, 
-                                     k_roc_, // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows 
-                                     &beta, 
-                                     C_device_, 
-                                     m_roc_); // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows
-          checkStatus("Falied rocsparse_scsrmm");
-        } else if constexpr (std::is_same_v<T, double>) {
-          status_ = rocsparse_dcsrmm(handle_, 
-                                     operation_, 
-                                     operation_,  
-                                     m_roc_, 
-                                     n_roc_, 
-                                     k_roc_, 
-                                     nnz_roc_, 
-                                     &alpha, 
-                                     description_, 
-                                     A_vals_device_, 
-                                     A_rows_device_, 
-                                     A_cols_device_, 
-                                     B_device_, 
-                                     k_roc_, // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows 
-                                     &beta, 
-                                     C_device_, 
-                                     m_roc_); // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows
-          checkStatus("Failed rocsparse_dcsrmm");
-        }
+        status_ = rocsparse_create_dnmat_descr(&C_description_,
+                                               m_,
+                                               n_,
+                                               m_,
+                                               C_device_,
+                                               dataType_,
+                                               order_);
+        checkStatus("Failed rocsparse_create_dnmat_descr for C");
+        hipCheckError(hipDeviceSynchronize());
+
+        size_t buffer_size = 0;
+        status_ = rocsparse_spmm(handle_,
+                                 operation_,
+                                 operation_,
+                                 &alpha,
+                                 A_description_,
+                                 B_description_,
+                                 &beta,
+                                 C_description_,
+                                 dataType_,
+                                 algorithm_,
+                                 rocsparse_spmm_stage_buffer_size,
+                                 &buffer_size,
+                                 nullptr);
+        checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_buffer_size");
+
+        hipCheckError(hipDeviceSynchronize());
+        void* buffer;
+        hipCheckError(hipMalloc(&buffer, buffer_size));
+        hipCheckError(hipDeviceSynchronize());
+
+        status_ = rocsparse_spmm(handle_,
+                                 operation_,
+                                 operation_,
+                                 &alpha,
+                                 A_description_,
+                                 B_description_,
+                                 &beta,
+                                 C_description_,
+                                 dataType_,
+                                 algorithm_,
+                                 rocsparse_spmm_stage_preprocess,
+                                 &buffer_size,
+                                 buffer);
+        checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_preprocess");
+
+        hipCheckError(hipDeviceSynchronize());
+        status_ = rocsparse_spmm(handle_,
+                                 operation_,
+                                 operation_,
+                                 &alpha,
+                                 A_description_,
+                                 B_description_,
+                                 &beta,
+                                 C_description_,
+                                 dataType_,
+                                 algorithm_,
+                                 rocsparse_spmm_stage_compute,
+                                 &buffer_size,
+                                 buffer);
+        checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_compute");
+
+        hipCheckError(hipDeviceSynchronize());
         if (print_) std::cout << "\tdestroying rocSPARSE structures" << std::endl;
         // Now clean up
-        status_ = rocsparse_destroy_mat_descr(description_);
-        checkStatus("Failed rocsparse_destroy_mat_descr");
-        status_ = rocsparse_destroy_mat_info(info_);
-        checkStatus("Failed rocsparse_destroy_mat_info");
+        status_ = rocsparse_destroy_spmat_descr(A_description_);
+        checkStatus("Failed rocsparse_destroy_spmat_descr for A");
+        status_ = rocsparse_destroy_dnmat_descr(B_description_);
+        checkStatus("Failed rocsparse_destroy_dnmat_descr for B");
+        status_ = rocsparse_destroy_dnmat_descr(C_description_);
+        checkStatus("Failed rocsparse_destroy_dnmat_descr for C");
+        hipCheckError(hipFree(buffer));
+        hipCheckError(hipDeviceSynchronize());
         break;
       }
       case gpuOffloadType::unified: {
-
         if (print_) std::cout << "\tCreating rocSPARSE structures" << std::endl;
         // Set up the rocSPARSE structures for the GEMV
-        status_ = rocsparse_create_mat_descr(&description_); // The defaults are for base=0, and type=general.  This is okay for us.
-        checkStatus("Failed rocsparse_create_mat_descr");
+        status_ = rocsparse_create_csr_descr(&A_description_,
+                                             m_,
+                                             k_,
+                                             nnz_,
+                                             A_rows_,
+                                             A_cols_,
+                                             A_vals_,
+                                             index_,
+                                             index_,
+                                             base_,
+                                             dataType_);
+        checkStatus("Failed rocsparse_create_csr_descr for A");
 
-        status_ = rocsparse_create_mat_info(&info_);
-        checkStatus("Failed rocsparse_create_mat_info");
+        status_ = rocsparse_create_dnmat_descr(&B_description_,
+                                               k_,
+                                               n_,
+                                               k_,
+                                               B_,
+                                               dataType_,
+                                               order_);
+        checkStatus("Failed rocsparse_create_dnmat_descr for B");
 
-        if constexpr (std::is_same_v<T, float>) {
-          status_ = rocsparse_scsrmm(handle_, 
-                                     operation_, 
-                                     operation_,  
-                                     m_roc_, 
-                                     n_roc_, 
-                                     k_roc_, 
-                                     nnz_roc_, 
-                                     &alpha, 
-                                     description_, 
-                                     A_vals_, 
-                                     A_rows_, 
-                                     A_cols_, 
-                                     B_, 
-                                     k_roc_, // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows 
-                                     &beta, 
-                                     C_, 
-                                     m_roc_); // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows
-          checkStatus("Failed rocsparse_scsrmm");
-        } else if constexpr (std::is_same_v<T, double>) {
-          status_ = rocsparse_dcsrmm(handle_, 
-                                     operation_, 
-                                     operation_,  
-                                     m_roc_, 
-                                     n_roc_, 
-                                     k_roc_, 
-                                     nnz_roc_, 
-                                     &alpha, 
-                                     description_, 
-                                     A_vals_, 
-                                     A_rows_, 
-                                     A_cols_, 
-                                     B_, 
-                                     k_roc_, // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows 
-                                     &beta, 
-                                     C_, 
-                                     m_roc_); // csrmm requires column-major format.  Therefore, leading dimensions are numbers of rows
-          checkStatus("Failed rocsparse_dcsrmm");
-        }
+        status_ = rocsparse_create_dnmat_descr(&C_description_,
+                                               m_,
+                                               n_,
+                                               m_,
+                                               C_,
+                                               dataType_,
+                                               order_);
+        checkStatus("Failed rocsparse_create_dnmat_descr for C");
+        hipCheckError(hipDeviceSynchronize());
+
+        size_t buffer_size = 0;
+        status_ = rocsparse_spmm(handle_,
+                                 operation_,
+                                 operation_,
+                                 &alpha,
+                                 A_description_,
+                                 B_description_,
+                                 &beta,
+                                 C_description_,
+                                 dataType_,
+                                 algorithm_,
+                                 rocsparse_spmm_stage_buffer_size,
+                                 &buffer_size,
+                                 nullptr);
+        checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_buffer_size");
+
+        hipCheckError(hipDeviceSynchronize());
+        void* buffer;
+        hipCheckError(hipMallocManaged(&buffer, buffer_size));
+        hipCheckError(hipDeviceSynchronize());
+
+        status_ = rocsparse_spmm(handle_,
+                                 operation_,
+                                 operation_,
+                                 &alpha,
+                                 A_description_,
+                                 B_description_,
+                                 &beta,
+                                 C_description_,
+                                 dataType_,
+                                 algorithm_,
+                                 rocsparse_spmm_stage_preprocess,
+                                 &buffer_size,
+                                 buffer);
+        checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_preprocess");
+
+        hipCheckError(hipDeviceSynchronize());
+        status_ = rocsparse_spmm(handle_,
+                                 operation_,
+                                 operation_,
+                                 &alpha,
+                                 A_description_,
+                                 B_description_,
+                                 &beta,
+                                 C_description_,
+                                 dataType_,
+                                 algorithm_,
+                                 rocsparse_spmm_stage_compute,
+                                 &buffer_size,
+                                 buffer);
+        checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_compute");
+
+        hipCheckError(hipDeviceSynchronize());
         if (print_) std::cout << "\tdestroying rocSPARSE structures" << std::endl;
         // Now clean up
-        status_ = rocsparse_destroy_mat_descr(description_);
-        checkStatus("Failed rocsparse_destroy_mat_descr");
-        status_ = rocsparse_destroy_mat_info(info_);
-        checkStatus("Failed rocsparse_destroy_mat_info");
+        status_ = rocsparse_destroy_spmat_descr(A_description_);
+        checkStatus("Failed rocsparse_destroy_spmat_descr for A");
+        status_ = rocsparse_destroy_dnmat_descr(B_description_);
+        checkStatus("Failed rocsparse_destroy_dnmat_descr for B");
+        status_ = rocsparse_destroy_dnmat_descr(C_description_);
+        checkStatus("Failed rocsparse_destroy_dnmat_descr for C");
+        hipCheckError(hipFree(buffer));
+        hipCheckError(hipDeviceSynchronize());
         break;
       }
     }
@@ -474,6 +607,67 @@ private:
   void checkStatus(std::string message) {
     if (status_ != rocsparse_status_success) {
       std::cerr << message << std::endl;
+      switch (status_) {
+        case rocsparse_status_success: {
+          std::cerr << "rocsparse_status_success" << std::endl;
+          break;
+        }
+        case rocsparse_status_invalid_handle: {
+          std::cerr << "rocsparse_status_invalid_handle" << std::endl;
+          break;
+        }
+        case rocsparse_status_not_implemented: {
+          std::cerr << "rocsparse_status_not_implemented" << std::endl;
+          break;
+        }
+        case rocsparse_status_invalid_pointer: {
+          std::cerr << "rocsparse_status_invalid_pointer" << std::endl;
+          break;
+        }  
+        case rocsparse_status_invalid_size: {
+          std::cerr << "rocsparse_status_invalid_size" << std::endl;
+          break;
+        }
+        case rocsparse_status_memory_error: {
+          std::cerr << "rocsparse_status_memory_error" << std::endl;
+          break;
+        }
+        case rocsparse_status_internal_error: {
+          std::cerr << "rocsparse_status_internal_error" << std::endl;
+          break;
+        }
+        case rocsparse_status_invalid_value: {
+          std::cerr << "rocsparse_status_invalid_value" << std::endl;
+          break;
+        }
+        case rocsparse_status_arch_mismatch: {
+          std::cerr << "rocsparse_status_arch_mismatch" << std::endl;
+          break;
+        }
+        case rocsparse_status_zero_pivot: {
+          std::cerr << "rocsparse_status_zero_pivot" << std::endl;
+          break;
+        }
+        case rocsparse_status_not_initialized: {
+          std::cerr << "rocsparse_status_not_initialized" << std::endl;
+          break;
+        }
+        case rocsparse_status_type_mismatch: {
+          std::cerr << "rocsparse_status_type_mismatch" << std::endl;
+          break;
+        }
+        case rocsparse_status_requires_sorted_storage: {
+          std::cerr << "rocsparse_status_requires_sorted_storage" << std::endl;
+          break;
+        }
+        case rocsparse_status_thrown_exception: {
+          std::cerr << "rocsparse_status_thrown_exception" << std::endl;
+          break;
+        }
+        default: {
+          std::cerr << "Unknown status code: " << status_ << std::endl;
+        }
+      }
       exit(1);
     }
   }
@@ -481,22 +675,26 @@ private:
   bool initialised_ = false;
   bool print_ = false;
 
-  rocsparse_mat_info info_;
   rocsparse_status status_;
   rocsparse_operation operation_;
   rocsparse_handle handle_;
-  rocsparse_mat_descr description_;
-  rocsparse_index_base index_;
+  rocsparse_index_base base_;
+  rocsparse_datatype dataType_;
   rocsparse_matrix_type type_;
+  rocsparse_indextype index_;
+  rocsparse_spmm_alg algorithm_;
+  rocsparse_order order_;
 
-  rocsparse_int m_roc_, n_roc_, k_roc_, nnz_roc_;
+  rocsparse_spmat_descr A_description_;
+  rocsparse_dnmat_descr B_description_;
+  rocsparse_dnmat_descr C_description_;
 
-  rocsparse_int* A_rows_;
-  rocsparse_int* A_cols_;
+  int64_t* A_rows_;
+  int64_t* A_cols_;
   T* A_vals_;
 
-  rocsparse_int* A_rows_device_;
-  rocsparse_int* A_cols_device_;
+  int64_t* A_rows_device_;
+  int64_t* A_cols_device_;
   T* A_vals_device_;
   T* B_device_;
   T* C_device_;

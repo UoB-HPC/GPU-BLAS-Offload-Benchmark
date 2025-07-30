@@ -98,16 +98,7 @@ $(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Libra
 endif
 # Add INTEL compiler options
 ifeq ($(COMPILER), INTEL)
-# Check if GPU is also using ONEMKL -- if so, use ILP64 for consistency
-ifeq ($(GPU_LIB), ONEMKL)
-ifdef TBBROOT
-override CXXFLAGS += -L$(MKLROOT)/lib -Wl,-rpath,$(MKLROOT)/lib -L$(TBBROOT)/lib -Wl,-rpath,$(TBBROOT)/lib -Wl,-rpath,$(MKLROOT)/bin -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -liomp5 -lpthread -lm -ldl -DMKL_ILP64
-else
-override CXXFLAGS += -L$(MKLROOT)/lib -Wl,-rpath,$(MKLROOT)/lib -Wl,-rpath,$(MKLROOT)/bin -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -liomp5 -lpthread -lm -ldl -DMKL_ILP64
-endif
-else
 override CXXFLAGS += -L$(MKLROOT)/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qmkl=parallel -DMKL_INT=int
-endif
 # Add GNU compiler options
 else ifeq ($(COMPILER), GNU)
 override CXXFLAGS += -m64 -L$(MKLROOT)/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -I"${MKLROOT}/include" -DMKL_INT=int
@@ -197,18 +188,8 @@ ifeq ($(COMPILER), INTEL)
 ifndef MKLROOT
 $(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Library)
 endif
-# Ensure MKLROOT is defined
-ifndef MKLROOT
-$(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL GPU Library)
-endif
-# Check if CPU is also using ONEMKL
-ifeq ($(CPU_LIB), ONEMKL)
-# CPU already added core libraries, just add GPU-specific ones
-override CXXFLAGS += -fsycl -lmkl_sycl_blas -lmkl_sycl_sparse -lsycl -I"$(MKLROOT)/include"
-else
-# Add all libraries
-override CXXFLAGS += -fsycl -L$(MKLROOT)/lib -lmkl_sycl_blas -lmkl_sycl_sparse -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -lsycl -lpthread -lm -ldl -DMKL_ILP64 -I"$(MKLROOT)/include"
-endif
+# Add compiler and link options
+override CXXFLAGS += -fsycl -L$(MKLROOT)/lib -lmkl_sycl_blas  -lmkl_sycl_sparse -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -lsycl -lpthread -lm -ldl  -fsycl -DMKL_ILP64  -I"$(MKLROOT)/include"
 # `lmkl_tbb_thread` can replace `lmkl_sequential`
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
 $(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)

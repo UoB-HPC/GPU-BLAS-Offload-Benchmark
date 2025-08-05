@@ -52,7 +52,7 @@ CXX = $(CXX_$(COMPILER))
 CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_GNU     = -std=c++17 -Wall -Wno-deprecated-declarations -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_INTEL   = -std=c++17 -Wall -fsanitize=address -Ofast -$(ARCHFLAG)=native -Wno-tautological-constant-compare
+CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native -Wno-tautological-constant-compare
 CXXFLAGS_NVIDIA  = -std=c++17 -Wall -O3 -fast -$(ARCHFLAG)=native
 CXXFLAGS_HIP     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 
@@ -189,7 +189,7 @@ ifndef MKLROOT
 $(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Library)
 endif
 # Add compiler and link options
-override CXXFLAGS += -fsycl -L$(MKLROOT)/lib -lmkl_sycl_blas  -lmkl_sycl_sparse -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -lsycl -lpthread -lm -ldl  -fsycl -DMKL_ILP64  -I"$(MKLROOT)/include"
+override CXXFLAGS += -fsycl -L$(MKLROOT)/lib -lmkl_sycl_blas -lmkl_sycl_sparse -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -lsycl -lpthread -lm -ldl  -fsycl -DMKL_ILP64  -I"$(MKLROOT)/include"
 # `lmkl_tbb_thread` can replace `lmkl_sequential`
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
 $(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)

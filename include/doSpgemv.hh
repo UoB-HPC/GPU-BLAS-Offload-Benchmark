@@ -212,6 +212,12 @@ private:
     time_checksum_gflop gpuResult_always;
     time_checksum_gflop gpuResult_unified;
     if (doGPU_) {
+      // - ALWAYS: Offload to/from GPU every iteration
+      gpu_.initialise(gpuOffloadType::always, M, N, SPARSITY);
+      gpuResult_always = gpu_.compute();
+      gpuResult_always.gflops =
+          calcGflops(flops, iterations_, gpuResult_always.runtime);
+
       // - ONCE : Offload to/from GPU once before all iterations and once
       // after
       gpu_.initialise(gpuOffloadType::once, M, N, SPARSITY);
@@ -219,14 +225,8 @@ private:
       gpuResult_once.gflops =
           calcGflops(flops, iterations_, gpuResult_once.runtime);
 
-      // - ALWAYS: Offload to/from GPU every iteration
-      gpu_.initialise(gpuOffloadType::always, M, N, SPARSITY);
-      gpuResult_always = gpu_.compute();
-      gpuResult_always.gflops =
-          calcGflops(flops, iterations_, gpuResult_always.runtime);
-
-      // - UNIFIED : data passed from host to device (and device to host) as
-      //             needed
+      - UNIFIED : data passed from host to device (and device to host) as
+                  needed
       gpu_.initialise(gpuOffloadType::unified, M, N, SPARSITY);
       gpuResult_unified = gpu_.compute();
       gpuResult_unified.gflops =

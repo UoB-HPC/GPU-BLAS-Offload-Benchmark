@@ -46,10 +46,6 @@ public:
       return {time_s.count(), checksum, 0.0};
     }
 
-    int64_t nnzA_ = 0;
-    int64_t nnzB_ = 0;
-    int64_t nnzC_ = 0;
-
 private:
     /** Performs the steps required before calling the SPMM kernel that
      * should be timed */
@@ -68,8 +64,13 @@ private:
 
     /** Calculate a checksum from the result matrix C. */
     constexpr double calcChecksum() {
-      // Todo -- think about how this can sensibly be done for SPMM
-      return 0.0;
+      if (C_nnz_ == 0) {
+        return (double)0.0; // No non-zeros, return zero checksum
+      } else if (C_nnz_ == 1) {
+        return (double)C_vals[0]; // Single non-zero, return its value
+      } else {
+        return (double)C_vals[0] + (double)C_vals[C_nnz_ - 1];
+      }
     }
 
 protected:
@@ -96,16 +97,16 @@ protected:
       std::uniform_real_distribution<double> dist(0.0, 1.0);
 
       // Using a=0.45 and b=c=0.22 as default probabilities
-     if (print_) std::cout << ".. RMAT for A (nnz = " << nnzA_ << "): ";
-      for (int i = 0; i < nnzA_; i++) {
+     if (print_) std::cout << ".. RMAT for A (nnz = " << A_nnz_ << "): ";
+      for (int i = 0; i < A_nnz_; i++) {
         while (!rMat(A_, k_, 0, k_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22, &gen, dist,
                      false)) {
          if (print_) std::cout << "fail,  ";
         }
        if (print_) std::cout << "success " << i << ", ";
       }
-     if (print_) std::cout << ".. RMAT for B (nnz = " << nnzB_ << "): ";
-      for (int i = 0; i < nnzB_; i++) {
+     if (print_) std::cout << ".. RMAT for B (nnz = " << B_nnz_ << "): ";
+      for (int i = 0; i < B_nnz_; i++) {
         while (!rMat(B_, n_, 0, n_ - 1, 0, k_ - 1, 0.45, 0.22, 0.22, &gen, dist,
                      false)) {
          if (print_) std::cout << "fail,  ";
@@ -142,6 +143,15 @@ protected:
 
     /** Dense representation of output matrix C. */
     T* C_;
+
+    /** CSR representation of output matrix C. */
+    int64_t C_nnz_;
+    int64_t* C_rows;
+    int64_t* C_cols;
+    T* C_vals;
+
+    int64_t A_nnz_ = 0;
+    int64_t B_nnz_ = 0;
 
     double sparsity_;
 

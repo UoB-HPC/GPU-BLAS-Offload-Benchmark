@@ -225,8 +225,8 @@ private:
       gpuResult_once.gflops =
           calcGflops(flops, iterations_, gpuResult_once.runtime);
 
-      - UNIFIED : data passed from host to device (and device to host) as
-                  needed
+      // - UNIFIED : data passed from host to device (and device to host) as
+      //             needed
       gpu_.initialise(gpuOffloadType::unified, M, N, SPARSITY);
       gpuResult_unified = gpu_.compute();
       gpuResult_unified.gflops =
@@ -279,30 +279,27 @@ private:
                         time_checksum_gflop gpuResult_unified, const int M,
                         const int N) {
       // Ensure that each checksum difference is less than 0.1%
-//      double hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
-//      if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) *
-//            hundredOverChecksum)) > 0.1 &&
-//          ((std::fabs(cpuResult.checksum - gpuResult_always.checksum) *
-//            hundredOverChecksum)) > 0.1 &&
-//          ((std::fabs(cpuResult.checksum - gpuResult_unified.checksum) *
-//            hundredOverChecksum)) > 0.1) {
-//        std::cerr << "ERROR - " << getKernelName()
-//                  << " kernel checksums do not match:\n\tInput "
-//                     "dimensions: M="
-//                  << M << ", N=" << N << std::endl;
-//        std::cerr << std::setprecision(10)
-//                  << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
-//        std::cerr << std::setprecision(10)
-//                  << "\tGPU (Once) Checksum = " << gpuResult_once.checksum
-//                  << std::endl;
-//        std::cerr << std::setprecision(10)
-//                  << "\tGPU (Always) Checksum = " << gpuResult_always.checksum
-//                  << std::endl;
-//        std::cerr << std::setprecision(10)
-//                  << "\tGPU (Unified) Checksum = " << gpuResult_unified.checksum
-//                  << std::endl;
-//        exit(1);
-//      }
+     double hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
+     if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) * hundredOverChecksum)) > 0.1 &&
+         ((std::fabs(cpuResult.checksum - gpuResult_always.checksum) * hundredOverChecksum)) > 0.1 &&
+         ((std::fabs(cpuResult.checksum - gpuResult_unified.checksum) * hundredOverChecksum)) > 0.1) {
+       std::cerr << "ERROR - " << getKernelName()
+                 << " kernel checksums do not match:\n\tInput "
+                    "dimensions: M="
+                 << M << ", N=" << N << std::endl;
+       std::cerr << std::setprecision(10)
+                 << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
+       std::cerr << std::setprecision(10)
+                 << "\tGPU (Once) Checksum = " << gpuResult_once.checksum
+                 << std::endl;
+       std::cerr << std::setprecision(10)
+                 << "\tGPU (Always) Checksum = " << gpuResult_always.checksum
+                 << std::endl;
+       std::cerr << std::setprecision(10)
+                 << "\tGPU (Unified) Checksum = " << gpuResult_unified.checksum
+                 << std::endl;
+       exit(1);
+     }
     }
 
 

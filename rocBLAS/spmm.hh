@@ -15,8 +15,8 @@ class spmm_gpu : public spmm<T> {
 public:
     using spmm<T>::spmm;
     using spmm<T>::initInputMatrices;
-    using spmm<T>::nnzA_;
-    using spmm<T>::nnzB_;
+    using spmm<T>::A_nnz_;
+    using spmm<T>::B_nnz_;
     using spmm<T>::m_;
     using spmm<T>::n_;
     using spmm<T>::k_;
@@ -62,9 +62,8 @@ public:
       k_ = k;
       sparsity_ = sparsity;
       offload_ = offload;
-      nnzA_ = 1 + (int64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
-      nnzB_ = 1 + (int64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
-            
+      A_nnz_ = 1 + (int64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
+      B_nnz_ = 1 + (int64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
 
       // Set up rocSPARSE metadata
       index_ = rocsparse_indextype_i64;
@@ -99,42 +98,42 @@ public:
       if (offload_ == gpuOffloadType::unified) {
         hipCheckError(hipMallocManaged(&A_, sizeof(T) * m_ * k_));
         hipCheckError(hipMallocManaged(&A_rows_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipMallocManaged(&A_cols_, sizeof(int64_t) * nnzA_));
-        hipCheckError(hipMallocManaged(&A_vals_, sizeof(T) * nnzA_));
+        hipCheckError(hipMallocManaged(&A_cols_, sizeof(int64_t) * A_nnz_));
+        hipCheckError(hipMallocManaged(&A_vals_, sizeof(T) * A_nnz_));
         hipCheckError(hipMallocManaged(&B_, sizeof(T) * k_ * n_));
         hipCheckError(hipMallocManaged(&B_rows_, sizeof(int64_t) * (k_ + 1)));
-        hipCheckError(hipMallocManaged(&B_cols_, sizeof(int64_t) * nnzB_));
-        hipCheckError(hipMallocManaged(&B_vals_, sizeof(T) * nnzB_)); 
+        hipCheckError(hipMallocManaged(&B_cols_, sizeof(int64_t) * B_nnz_));
+        hipCheckError(hipMallocManaged(&B_vals_, sizeof(T) * B_nnz_));
         hipCheckError(hipMallocManaged(&D_rows_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipMallocManaged(&D_cols_, sizeof(int64_t) * nnzD_));
-        hipCheckError(hipMallocManaged(&D_vals_, sizeof(T) * nnzD_)); 
-   
-        hipCheckError(hipDeviceSynchronize());    
+        hipCheckError(hipMallocManaged(&D_cols_, sizeof(int64_t) * D_nnz_));
+        hipCheckError(hipMallocManaged(&D_vals_, sizeof(T) * D_nnz_));
+
+        hipCheckError(hipDeviceSynchronize());
       } else {
         // Host data structures
         hipCheckError(hipHostMalloc(&A_, sizeof(T) * m_ * k_));
         hipCheckError(hipHostMalloc(&A_rows_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipHostMalloc(&A_cols_, sizeof(int64_t) * nnzA_));
-        hipCheckError(hipHostMalloc(&A_vals_, sizeof(T) * nnzA_));
+        hipCheckError(hipHostMalloc(&A_cols_, sizeof(int64_t) * A_nnz_));
+        hipCheckError(hipHostMalloc(&A_vals_, sizeof(T) * A_nnz_));
         hipCheckError(hipHostMalloc(&B_, sizeof(T) * k_ * n_));
         hipCheckError(hipHostMalloc(&B_rows_, sizeof(int64_t) * (k_ + 1)));
-        hipCheckError(hipHostMalloc(&B_cols_, sizeof(int64_t) * nnzB_));
-        hipCheckError(hipHostMalloc(&B_vals_, sizeof(T) * nnzB_));
+        hipCheckError(hipHostMalloc(&B_cols_, sizeof(int64_t) * B_nnz_));
+        hipCheckError(hipHostMalloc(&B_vals_, sizeof(T) * B_nnz_));
         hipCheckError(hipHostMalloc(&D_rows_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipHostMalloc(&D_cols_, sizeof(int64_t) * nnzD_));
-        hipCheckError(hipHostMalloc(&D_vals_, sizeof(T) * nnzD_));
+        hipCheckError(hipHostMalloc(&D_cols_, sizeof(int64_t) * D_nnz_));
+        hipCheckError(hipHostMalloc(&D_vals_, sizeof(T) * D_nnz_));
         hipCheckError(hipDeviceSynchronize());
 
         // GPU data structures
         hipCheckError(hipMalloc(&A_rows_device_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipMalloc(&A_cols_device_, sizeof(int64_t) * nnzA_));
-        hipCheckError(hipMalloc(&A_vals_device_, sizeof(T) * nnzA_));
+        hipCheckError(hipMalloc(&A_cols_device_, sizeof(int64_t) * A_nnz_));
+        hipCheckError(hipMalloc(&A_vals_device_, sizeof(T) * A_nnz_));
         hipCheckError(hipMalloc(&B_rows_device_, sizeof(int64_t) * (k_ + 1)));
-        hipCheckError(hipMalloc(&B_cols_device_, sizeof(int64_t) * nnzB_));
-        hipCheckError(hipMalloc(&B_vals_device_, sizeof(T) * nnzB_));
+        hipCheckError(hipMalloc(&B_cols_device_, sizeof(int64_t) * B_nnz_));
+        hipCheckError(hipMalloc(&B_vals_device_, sizeof(T) * B_nnz_));
         hipCheckError(hipMalloc(&D_rows_device_, sizeof(int64_t) * (m_ + 1)));
-        hipCheckError(hipMalloc(&D_cols_device_, sizeof(int64_t) * nnzD_));
-        hipCheckError(hipMalloc(&D_vals_device_, sizeof(T) * nnzD_));
+        hipCheckError(hipMalloc(&D_cols_device_, sizeof(int64_t) * D_nnz_));
+        hipCheckError(hipMalloc(&D_vals_device_, sizeof(T) * D_nnz_));
         hipCheckError(hipDeviceSynchronize());
       }
 
@@ -168,9 +167,9 @@ protected:
       }
 
       // Verify A conversion
-      if (nnz_encountered != nnzA_) {
-        std::cerr << "Warning: A matrix has " << nnz_encountered << " non-zeros, expected " << nnzA_ << std::endl;
-        nnzA_ = nnz_encountered;  // Update to actual count
+      if (nnz_encountered != A_nnz_) {
+        std::cerr << "Warning: A matrix has " << nnz_encountered << " non-zeros, expected " << A_nnz_ << std::endl;
+        A_nnz_ = nnz_encountered;  // Update to actual count
       }
 
       if (print_) std::cout << "\tB into CSR" << std::endl;
@@ -191,9 +190,9 @@ protected:
       }
 
       // Verify B conversion
-      if (nnz_encountered != nnzB_) {
-        std::cerr << "Warning: B matrix has " << nnz_encountered << " non-zeros, expected " << nnzB_ << std::endl;
-        nnzB_ = nnz_encountered;  // Update to actual count
+      if (nnz_encountered != B_nnz_) {
+        std::cerr << "Warning: B matrix has " << nnz_encountered << " non-zeros, expected " << B_nnz_ << std::endl;
+        B_nnz_ = nnz_encountered;  // Update to actual count
       }
 
       // Make D a possible matrix
@@ -224,12 +223,12 @@ private:
                                        stream_));
           hipCheckError(hipMemcpyAsync(A_cols_device_,
                                        A_cols_,
-                                       sizeof(int64_t) * nnzA_,
+                                       sizeof(int64_t) * A_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipMemcpyAsync(A_vals_device_,
                                        A_vals_,
-                                       sizeof(T) * nnzA_,
+                                       sizeof(T) * A_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipMemcpyAsync(B_rows_device_,
@@ -239,12 +238,12 @@ private:
                                        stream_));
           hipCheckError(hipMemcpyAsync(B_cols_device_,
                                        B_cols_,
-                                       sizeof(int64_t) * nnzB_,
+                                       sizeof(int64_t) * B_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipMemcpyAsync(B_vals_device_,
                                        B_vals_,
-                                       sizeof(T) * nnzB_,
+                                       sizeof(T) * B_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipMemcpyAsync(D_rows_device_,
@@ -254,17 +253,16 @@ private:
                                        stream_));
           hipCheckError(hipMemcpyAsync(D_cols_device_,
                                        D_cols_,
-                                       sizeof(int64_t) * nnzD_,
+                                       sizeof(int64_t) * D_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipMemcpyAsync(D_vals_device_,
                                        D_vals_,
-                                       sizeof(T) * nnzD_,
+                                       sizeof(T) * D_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipDeviceSynchronize());
           break;
-        }
         case gpuOffloadType::unified: {
           if (print_) std::cout << "\tMoving data to GPU" << std::endl;
           hipCheckError(hipMemPrefetchAsync(A_rows_, 
@@ -272,11 +270,11 @@ private:
                                             gpuDevice_, 
                                             stream_));
           hipCheckError(hipMemPrefetchAsync(A_cols_, 
-                                            sizeof(int64_t) * nnzA_, 
+                                            sizeof(int64_t) * A_nnz_, 
                                             gpuDevice_, 
                                             stream_));
           hipCheckError(hipMemPrefetchAsync(A_vals_, 
-                                            sizeof(T) * nnzA_, 
+                                            sizeof(T) * A_nnz_, 
                                             gpuDevice_, 
                                             stream_));
           hipCheckError(hipMemPrefetchAsync(B_rows_, 
@@ -284,11 +282,11 @@ private:
                                             gpuDevice_, 
                                             stream_));
           hipCheckError(hipMemPrefetchAsync(B_cols_, 
-                                            sizeof(int64_t) * nnzB_, 
+                                            sizeof(int64_t) * B_nnz_, 
                                             gpuDevice_, 
                                             stream_));
           hipCheckError(hipMemPrefetchAsync(B_vals_, 
-                                            sizeof(T) * nnzB_, 
+                                            sizeof(T) * B_nnz_, 
                                             gpuDevice_, 
                                             stream_));
           hipCheckError(hipMemPrefetchAsync(D_rows_, 
@@ -296,11 +294,11 @@ private:
                                             gpuDevice_, 
                                             stream_));
           hipCheckError(hipMemPrefetchAsync(D_cols_, 
-                                            sizeof(int64_t) * nnzD_, 
+                                            sizeof(int64_t) * D_nnz_, 
                                             gpuDevice_, 
                                             stream_));
           hipCheckError(hipMemPrefetchAsync(D_vals_, 
-                                            sizeof(T) * nnzD_, 
+                                            sizeof(T) * D_nnz_, 
                                             gpuDevice_, 
                                             stream_));
           hipCheckError(hipDeviceSynchronize());
@@ -327,16 +325,16 @@ private:
 
           // Set up the rocSPARSE structures for the MM
           if (print_) std::cout << "\tCreating csr descriptions" << std::endl;
-          status_ = rocsparse_create_csr_descr(&description_A_, m_, k_, nnzA_, A_rows_, A_cols_,
+          status_ = rocsparse_create_csr_descr(&description_A_, m_, k_, A_nnz_, A_rows_, A_cols_,
                                                A_vals_, index_, index_, base_, dataType_);
           checkStatus("Failed rocsparse_create_csr_descr");
-          status_ = rocsparse_create_csr_descr(&description_B_, k_, n_, nnzB_, B_rows_, B_cols_,
+          status_ = rocsparse_create_csr_descr(&description_B_, k_, n_, B_nnz_, B_rows_, B_cols_,
                                                B_vals_, index_, index_, base_, dataType_);
           checkStatus("Failed rocsparse_create_csr_descr");
           status_ = rocsparse_create_csr_descr(&description_C_, m_, n_, 0, C_rows_, nullptr,
                                                nullptr, index_, index_, base_, dataType_);
           checkStatus("Failed rocsparse_create_csr_descr");
-          status_ = rocsparse_create_csr_descr(&description_D_, m_, n_, nnzD_, D_rows_, D_cols_,
+          status_ = rocsparse_create_csr_descr(&description_D_, m_, n_, D_nnz_, D_rows_, D_cols_,
                                                D_vals_, index_, index_, base_, dataType_);
           checkStatus("Failed rocsparse_create_csr_descr");
           hipCheckError(hipDeviceSynchronize());
@@ -386,11 +384,11 @@ private:
 
           if (print_) std::cout << "\tAllocating rows and vals" << std::endl;
           int64_t rowC, colC;
-          status_ = rocsparse_spmat_get_size(description_C_, &rowC, &colC, &nnzC_);
+          status_ = rocsparse_spmat_get_size(description_C_, &rowC, &colC, &C_nnz_);
           checkStatus("Failed rocsparse_spmat_get_size");
 
-          hipCheckError(hipMallocManaged(&C_cols_, sizeof(int64_t) * nnzC_));
-          hipCheckError(hipMallocManaged(&C_vals_, sizeof(T) * nnzC_));
+          hipCheckError(hipMallocManaged(&C_cols_, sizeof(int64_t) * C_nnz_));
+          hipCheckError(hipMallocManaged(&C_vals_, sizeof(T) * C_nnz_));
           hipCheckError(hipDeviceSynchronize());
 
           status_ = rocsparse_csr_set_pointers(description_C_, C_rows_, C_cols_, C_vals_);
@@ -441,12 +439,12 @@ private:
                                        stream_));
           hipCheckError(hipMemcpyAsync(A_cols_device_,
                                        A_cols_,
-                                       sizeof(int64_t) * nnzA_,
+                                       sizeof(int64_t) * A_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipMemcpyAsync(A_vals_device_,
                                        A_vals_,
-                                       sizeof(T) * nnzA_,
+                                       sizeof(T) * A_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipMemcpyAsync(B_rows_device_,
@@ -456,12 +454,12 @@ private:
                                        stream_));
           hipCheckError(hipMemcpyAsync(B_cols_device_,
                                        B_cols_,
-                                       sizeof(int64_t) * nnzB_,
+                                       sizeof(int64_t) * B_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipMemcpyAsync(B_vals_device_,
                                        B_vals_,
-                                       sizeof(T) * nnzB_,
+                                       sizeof(T) * B_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipMemcpyAsync(D_rows_device_,
@@ -471,12 +469,12 @@ private:
                                        stream_));
           hipCheckError(hipMemcpyAsync(D_cols_device_,
                                        D_cols_,
-                                       sizeof(int64_t) * nnzD_,
+                                       sizeof(int64_t) * D_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipMemcpyAsync(D_vals_device_,
                                        D_vals_,
-                                       sizeof(T) * nnzD_,
+                                       sizeof(T) * D_nnz_,
                                        hipMemcpyHostToDevice,
                                        stream_));
           hipCheckError(hipDeviceSynchronize());
@@ -488,16 +486,16 @@ private:
 
           // Set up the rocSPARSE structures for the MM
           if (print_) std::cout << "\tCreating csr descriptions" << std::endl;
-          status_ = rocsparse_create_csr_descr(&description_A_, m_, k_, nnzA_, A_rows_device_, A_cols_device_,
+          status_ = rocsparse_create_csr_descr(&description_A_, m_, k_, A_nnz_, A_rows_device_, A_cols_device_,
                                                A_vals_device_, index_, index_, base_, dataType_);
           checkStatus("Failed rocsparse_create_csr_descr");
-          status_ = rocsparse_create_csr_descr(&description_B_, k_, n_, nnzB_, B_rows_device_, B_cols_device_,
+          status_ = rocsparse_create_csr_descr(&description_B_, k_, n_, B_nnz_, B_rows_device_, B_cols_device_,
                                                B_vals_device_, index_, index_, base_, dataType_);
           checkStatus("Failed rocsparse_create_csr_descr");
           status_ = rocsparse_create_csr_descr(&description_C_, m_, n_, 0, C_rows_device_, nullptr,
                                                nullptr, index_, index_, base_, dataType_);
           checkStatus("Failed rocsparse_create_csr_descr");
-          status_ = rocsparse_create_csr_descr(&description_D_, m_, n_, nnzD_, D_rows_device_, D_cols_device_,
+          status_ = rocsparse_create_csr_descr(&description_D_, m_, n_, D_nnz_, D_rows_device_, D_cols_device_,
                                                D_vals_device_, index_, index_, base_, dataType_);
           checkStatus("Failed rocsparse_create_csr_descr");
 
@@ -544,11 +542,11 @@ private:
 
           if (print_) std::cout << "\tAllocating rows and vals" << std::endl;
           int64_t rowC, colC;
-          status_ = rocsparse_spmat_get_size(description_C_, &rowC, &colC, &nnzC_);
+          status_ = rocsparse_spmat_get_size(description_C_, &rowC, &colC, &C_nnz_);
           checkStatus("Failed rocsparse_spmat_get_size");
 
-          hipCheckError(hipMalloc((void**)&C_cols_device_, sizeof(int64_t) * nnzC_));
-          hipCheckError(hipMalloc((void**)&C_vals_device_, sizeof(T) * nnzC_));
+          hipCheckError(hipMalloc((void**)&C_cols_device_, sizeof(int64_t) * C_nnz_));
+          hipCheckError(hipMalloc((void**)&C_vals_device_, sizeof(T) * C_nnz_));
 
           status_ = rocsparse_csr_set_pointers(description_C_,
                                                C_rows_device_,
@@ -590,8 +588,8 @@ private:
           if (print_) std::cout << "\tAllocating host C arrays" << std::endl;
           // Allocate host arrays for C
           hipCheckError(hipHostMalloc((void**)&C_rows_, sizeof(int64_t) * (m_ + 1)));
-          hipCheckError(hipHostMalloc((void**)&C_cols_, sizeof(int64_t) * nnzC_));
-          hipCheckError(hipHostMalloc((void**)&C_vals_, sizeof(T) * nnzC_));
+          hipCheckError(hipHostMalloc((void**)&C_cols_, sizeof(int64_t) * C_nnz_));
+          hipCheckError(hipHostMalloc((void**)&C_vals_, sizeof(T) * C_nnz_));
           hipCheckError(hipDeviceSynchronize());
 
           // Moving data to CPU
@@ -603,12 +601,12 @@ private:
                                        stream_));
           hipCheckError(hipMemcpyAsync(C_cols_,
                                        C_cols_device_,
-                                       sizeof(int64_t) * nnzC_,
+                                       sizeof(int64_t) * C_nnz_,
                                        hipMemcpyDeviceToHost,
                                        stream_));
           hipCheckError(hipMemcpyAsync(C_vals_,
                                        C_vals_device_,
-                                       sizeof(T) * nnzC_,
+                                       sizeof(T) * C_nnz_,
                                        hipMemcpyDeviceToHost,
                                        stream_));
           hipCheckError(hipDeviceSynchronize());
@@ -643,7 +641,7 @@ private:
           status_ = rocsparse_create_csr_descr(&description_A_,
                                                m_,
                                                k_,
-                                               nnzA_,
+                                               A_nnz_,
                                                A_rows_device_,
                                                A_cols_device_,
                                                A_vals_device_,
@@ -655,7 +653,7 @@ private:
           status_ = rocsparse_create_csr_descr(&description_B_,
                                                k_,
                                                n_,
-                                               nnzB_,
+                                               B_nnz_,
                                                B_rows_device_,
                                                B_cols_device_,
                                                B_vals_device_,
@@ -679,7 +677,7 @@ private:
           status_ = rocsparse_create_csr_descr(&description_D_,
                                                m_,
                                                n_,
-                                               nnzD_,
+                                               D_nnz_,
                                                D_rows_device_,
                                                D_cols_device_,
                                                D_vals_device_,
@@ -731,11 +729,11 @@ private:
 
           if (print_) std::cout << "\tAllocating rows and vals" << std::endl;
           int64_t rowC, colC;
-          status_ = rocsparse_spmat_get_size(description_C_, &rowC, &colC, &nnzC_);
+          status_ = rocsparse_spmat_get_size(description_C_, &rowC, &colC, &C_nnz_);
           checkStatus("Failed rocsparse_spmat_get_size");
 
-          hipCheckError(hipMalloc((void**)&C_cols_device_, sizeof(int64_t) * nnzC_));
-          hipCheckError(hipMalloc((void**)&C_vals_device_, sizeof(T) * nnzC_));
+          hipCheckError(hipMalloc((void**)&C_cols_device_, sizeof(int64_t) * C_nnz_));
+          hipCheckError(hipMalloc((void**)&C_vals_device_, sizeof(T) * C_nnz_));
 
           status_ = rocsparse_csr_set_pointers(description_C_,
                                                C_rows_device_,
@@ -789,8 +787,8 @@ private:
           if (print_) std::cout << "\tAllocating host arrays for C" << std::endl;
           // Allocate host arrays for C
           hipCheckError(hipHostMalloc((void**)&C_rows_, sizeof(int64_t) * (m_ + 1)));
-          hipCheckError(hipHostMalloc((void**)&C_cols_, sizeof(int64_t) * nnzC_));
-          hipCheckError(hipHostMalloc((void**)&C_vals_, sizeof(T) * nnzC_));
+          hipCheckError(hipHostMalloc((void**)&C_cols_, sizeof(int64_t) * C_nnz_));
+          hipCheckError(hipHostMalloc((void**)&C_vals_, sizeof(T) * C_nnz_));
           hipCheckError(hipDeviceSynchronize());
 
 
@@ -803,12 +801,12 @@ private:
                                        stream_));
           hipCheckError(hipMemcpyAsync(C_cols_,
                                        C_cols_device_,
-                                       sizeof(int64_t) * nnzC_,
+                                       sizeof(int64_t) * C_nnz_,
                                        hipMemcpyDeviceToHost,
                                        stream_));
           hipCheckError(hipMemcpyAsync(C_vals_,
                                        C_vals_device_,
-                                       sizeof(T) * nnzC_,
+                                       sizeof(T) * C_nnz_,
                                        hipMemcpyDeviceToHost,
                                        stream_));
           hipCheckError(hipDeviceSynchronize());
@@ -831,11 +829,11 @@ private:
                                             hipCpuDeviceId,
                                             stream_));
           hipCheckError(hipMemPrefetchAsync(C_cols_,
-                                            sizeof(int64_t) * nnzC_,
+                                            sizeof(int64_t) * C_nnz_,
                                             hipCpuDeviceId,
                                             stream_));
           hipCheckError(hipMemPrefetchAsync(C_vals_,
-                                            sizeof(T) * nnzC_,
+                                            sizeof(T) * C_nnz_,
                                             hipCpuDeviceId,
                                             stream_));
           hipCheckError(hipDeviceSynchronize());
@@ -993,12 +991,12 @@ private:
       }
       std::cout << std::endl;
       std::cout << "\tCols: ";
-      for (size_t i = 0; i < nnzA_; i++) {
+      for (size_t i = 0; i < A_nnz_; i++) {
         std::cout << A_cols_[i] << " ";
       }
       std::cout << std::endl;
       std::cout << "\tVals: ";
-      for (size_t i = 0; i < nnzA_; i++) {
+      for (size_t i = 0; i < A_nnz_; i++) {
         std::cout << A_vals_[i] << " ";
       }
       std::cout << std::endl;
@@ -1019,12 +1017,12 @@ private:
       }
       std::cout << std::endl;
       std::cout << "\tCols: ";
-      for (size_t i = 0; i < nnzB_; i++) {
+      for (size_t i = 0; i < B_nnz_; i++) {
         std::cout << B_cols_[i] << " ";
       }
       std::cout << std::endl;
       std::cout << "\tVals: ";
-      for (size_t i = 0; i < nnzB_; i++) {
+      for (size_t i = 0; i < B_nnz_; i++) {
         std::cout << B_vals_[i] << " ";
       }
       std::cout << std::endl;
@@ -1073,10 +1071,6 @@ private:
     int64_t* B_rows_;
     int64_t* B_cols_;
     T* B_vals_;
-    int64_t* C_rows_;
-    int64_t* C_cols_;
-    T* C_vals_;
-    int64_t nnzC_;
 
     int64_t* A_rows_device_;
     int64_t* A_cols_device_;

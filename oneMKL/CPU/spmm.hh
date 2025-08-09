@@ -24,9 +24,12 @@ public:
     using spmm<T>::B_;
     using spmm<T>::C_;
     using spmm<T>::sparsity_;
-    using spmm<T>::nnzA_;
-    using spmm<T>::nnzB_;
-    using spmm<T>::nnzC_;
+    using spmm<T>::A_nnz_;
+    using spmm<T>::B_nnz_;
+    using spmm<T>::C_nnz_;
+    using spmm<T>::C_rows_;
+    using spmm<T>::C_cols_;
+    using spmm<T>::C_vals_;
 
     void initialise(int m, int n, int k, double sparsity,
                     bool binary = false) {
@@ -42,8 +45,8 @@ public:
       sparsity_ = sparsity;
 
       /** Determine the number of nnz elements in A and B */
-      nnzA_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
-      nnzB_ = 1 + (uint64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
+      A_nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
+      B_nnz_ = 1 + (uint64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
 
 //      std::cout << ".. making data structures";
       A_ = (T*)mkl_malloc(sizeof(T) * m_ * k_, 64);
@@ -58,8 +61,8 @@ public:
 protected:
     void toSparseFormat() override {
 //      std::cout << ".. to sparse format";
-      A_vals_ = new T[nnzA_];
-      A_cols_ = new MKL_INT[nnzA_];
+      A_vals_ = new T[A_nnz_];
+      A_cols_ = new MKL_INT[A_nnz_];
       A_rowsb_ = new MKL_INT[m_ + 1];
       A_rowse_ = new MKL_INT[m_ + 1];
 
@@ -81,8 +84,8 @@ protected:
       }
 
 
-      B_vals_ = new T[nnzB_];
-      B_cols_ = new MKL_INT[nnzB_];
+      B_vals_ = new T[B_nnz_];
+      B_cols_ = new MKL_INT[B_nnz_];
       B_rowsb_ = new MKL_INT[k_ + 1];
       B_rowse_ = new MKL_INT[k_ + 1];
 
@@ -219,7 +222,6 @@ private:
     MKL_INT* B_rowsb_;
     MKL_INT* B_rowse_;
 
-    T* C_vals_;
     MKL_INT* C_cols_;
     MKL_INT* C_rowsb_;
     MKL_INT* C_rowse_;

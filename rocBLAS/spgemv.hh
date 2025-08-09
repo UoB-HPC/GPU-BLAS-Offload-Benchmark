@@ -77,15 +77,18 @@ public:
 
       if (print_) std::cout << "\tAbout to set up handle and hip streams" << std::endl;
       if (!initialised_) {
-        status_ = rocsparse_create_handle(&handle_);
-        checkStatus("Failed rocsparse_create_handle");
-
         // Get the GPU
+        if (print_) std::cout << "\t\tGetting GPU device" << std::endl;
         hipCheckError(hipGetDevice(&gpuDevice_));
         // Make streams for asynchronous GPU comunication
+        if (print_) std::cout << "\t\tCreating GPU streams" << std::endl;
         hipCheckError(hipStreamCreate(&s1_));
         hipCheckError(hipStreamCreate(&s2_));
         hipCheckError(hipStreamCreate(&s3_));
+
+        if (print_) std::cout << "\t\tSetting up GPU handle" << std::endl;
+        status_ = rocsparse_create_handle(&handle_);
+        checkStatus("Failed rocsparse_create_handle");
       }
 
       if (print_) std::cout << "\tAbout to malloc arrays" << std::endl;
@@ -255,7 +258,7 @@ private:
           hipCheckError(hipDeviceSynchronize());
 
           size_t buffer_size = 0;
-          status_ = rocsparse_spmv_ex(handle_,
+          status_ = rocsparse_spmv(handle_,
                                       operation_,
                                       &alpha,
                                       description_,
@@ -274,7 +277,7 @@ private:
           hipCheckError(hipMalloc(&temp_buffer, buffer_size));
           hipCheckError(hipDeviceSynchronize());
 
-          status_ = rocsparse_spmv_ex(handle_,
+          status_ = rocsparse_spmv(handle_,
                                       operation_,
                                       &alpha,
                                       description_,
@@ -289,7 +292,7 @@ private:
           checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_preprocess");
           hipCheckError(hipDeviceSynchronize());
 
-          status_ = rocsparse_spmv_ex(handle_,
+          status_ = rocsparse_spmv(handle_,
                                       operation_,
                                       &alpha,
                                       description_,
@@ -347,7 +350,7 @@ private:
           hipCheckError(hipDeviceSynchronize());
 
           size_t buffer_size = 0;
-          status_ = rocsparse_spmv_ex(handle_,
+          status_ = rocsparse_spmv(handle_,
                                       operation_,
                                       &alpha,
                                       description_,
@@ -366,7 +369,7 @@ private:
           hipCheckError(hipMalloc(&temp_buffer, buffer_size));
           hipCheckError(hipDeviceSynchronize());
 
-          status_ = rocsparse_spmv_ex(handle_,
+          status_ = rocsparse_spmv(handle_,
                                       operation_,
                                       &alpha,
                                       description_,
@@ -381,7 +384,7 @@ private:
           checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_preprocess");
           hipCheckError(hipDeviceSynchronize());
 
-          status_ = rocsparse_spmv_ex(handle_,
+          status_ = rocsparse_spmv(handle_,
                                       operation_,
                                       &alpha,
                                       description_,
@@ -434,7 +437,7 @@ private:
           hipCheckError(hipDeviceSynchronize());
 
           size_t buffer_size = 0;
-          status_ = rocsparse_spmv_ex(handle_,
+          status_ = rocsparse_spmv(handle_,
                                       operation_,
                                       &alpha,
                                       description_,
@@ -453,7 +456,7 @@ private:
           hipCheckError(hipMalloc(&temp_buffer, buffer_size));
           hipCheckError(hipDeviceSynchronize());
 
-          status_ = rocsparse_spmv_ex(handle_,
+          status_ = rocsparse_spmv(handle_,
                                       operation_,
                                       &alpha,
                                       description_,
@@ -468,7 +471,7 @@ private:
           checkStatus("Failed rocsparse_spmv_ex with rocsparse_spmv_stage_preprocess");
           hipCheckError(hipDeviceSynchronize());
 
-          status_ = rocsparse_spmv_ex(handle_,
+          status_ = rocsparse_spmv(handle_,
                                       operation_,
                                       &alpha,
                                       description_,
@@ -554,7 +557,7 @@ private:
 
     bool initialised_ = false;
 
-    bool print_ = false;
+    bool print_ = true;
 
     rocsparse_status status_;
     rocsparse_operation operation_;

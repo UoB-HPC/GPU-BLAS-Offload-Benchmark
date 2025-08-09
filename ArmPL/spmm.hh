@@ -24,8 +24,12 @@ class spmm_cpu : public spmm<T> {
   using spmm<T>::A_;
   using spmm<T>::B_;
   using spmm<T>::C_;
-  using spmm<T>::nnzA_;
-  using spmm<T>::nnzB_;
+  using spmm<T>::A_nnz_;
+  using spmm<T>::B_nnz_;
+  using spmm<T>::C_rows_;
+  using spmm<T>::C_cols_;
+  using spmm<T>::C_vals_;
+  using spmm<T>::C_nnz_;
 
  protected:
   void toSparseFormat() override {
@@ -38,8 +42,8 @@ class spmm_cpu : public spmm<T> {
 
     // Move A to CSR
     A_armpl_row_ptr_ = new armpl_int_t[m_ + 1];
-    A_armpl_col_index_ = new armpl_int_t[nnzA_];
-    A_vals_ = new T[nnzA_];
+    A_armpl_col_index_ = new armpl_int_t[A_nnz_];
+    A_vals_ = new T[A_nnz_];
     A_armpl_row_ptr_[0] = 0;
     int nnz_encountered = 0;
 
@@ -353,7 +357,9 @@ class spmm_cpu : public spmm<T> {
     delete [] B_vals_;
     delete [] C_armpl_row_ptr_;
     delete [] C_armpl_col_index_;
-    delete [] C_vals_;
+    // Move correct value into C_nnz_
+    // Don't delete C_vals_ yet -- needed for checksum
+    // delete [] C_vals_;
 
   }
 

@@ -67,8 +67,9 @@ private:
 
     /** Calculate a checksum from the result matrix C. */
     constexpr double calcChecksum() {
-      // Todo -- think about how this can sensibly be done for SPMM
-      return 0.0;
+      // Checksum for GEMM calculated by summing all four corners of C together
+      return ((double)C_[0] + (double)C_[m_ - 1] + (double)C_[(m_ * (n_ - 1))] +
+              (double)C_[m_ * n_ - 1]);
     }
 
 protected:

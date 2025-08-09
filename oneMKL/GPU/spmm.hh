@@ -13,14 +13,18 @@ class spmm_gpu : public spmm<T> {
 public:
     using spmm<T>::spmm;
     using spmm<T>::initInputMatrices;
-    using spmm<T>::nnzA_;
-    using spmm<T>::nnzB_;
+    using spmm<T>::A_nnz_;
+    using spmm<T>::B_nnz_;
+    using spmm<T>::C_nnz_;
     using spmm<T>::m_;
     using spmm<T>::n_;
     using spmm<T>::k_;
     using spmm<T>::A_;
     using spmm<T>::B_;
     using spmm<T>::C_;
+    using spmm<T>::C_rows_;
+    using spmm<T>::C_cols_;
+    using spmm<T>::C_vals_;
     using spmm<T>::offload_;
     using spmm<T>::sparsity_;
 
@@ -59,8 +63,8 @@ public:
         gpuQueue_ = sycl::queue(myGpu_, exception_handler);
       }
 
-      nnzA_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
-      nnzB_ = 1 + (uint64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
+      A_nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
+      B_nnz_ = 1 + (uint64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
 
       // Setting MKL metadata
       // Todo 
@@ -68,13 +72,13 @@ public:
       if (print_) std::cout << "\tMallocing" << std::endl;
       if (offload_ == gpuOffloadType::unified) {
         A_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * k_, gpuQueue_);
-        A_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnzA_, gpuQueue_);
-        A_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnzA_, gpuQueue_);
+        A_vals_ = (T*)sycl::malloc_shared(sizeof(T) * A_nnz_, gpuQueue_);
+        A_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * A_nnz_, gpuQueue_);
         A_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (m_ + 1), gpuQueue_);
 
         B_ = (T*)sycl::malloc_shared(sizeof(T) * k_ * n_, gpuQueue_);
-        B_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnzB_, gpuQueue_);
-        B_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnzB_, gpuQueue_);
+        B_vals_ = (T*)sycl::malloc_shared(sizeof(T) * B_nnz_, gpuQueue_);
+        B_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * B_nnz_, gpuQueue_);
         B_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (k_ + 1), gpuQueue_);
 
         C_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * n_, gpuQueue_);
@@ -82,23 +86,23 @@ public:
         gpuQueue_.wait();
       } else {
         A_ = (T*)sycl::malloc_host<T>(m_ * k_, gpuQueue_);
-        A_vals_ = (T*)sycl::malloc_host(sizeof(T) * nnzA_, gpuQueue_);
-        A_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * nnzA_, gpuQueue_);
+        A_vals_ = (T*)sycl::malloc_host(sizeof(T) * A_nnz_, gpuQueue_);
+        A_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * A_nnz_, gpuQueue_);
         A_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (m_ + 1), gpuQueue_);
 
         B_ = (T*)sycl::malloc_host(sizeof(T) * k_ * n_, gpuQueue_);
-        B_vals_ = (T*)sycl::malloc_host(sizeof(T) * nnzB_, gpuQueue_);
-        B_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * nnzB_, gpuQueue_);
+        B_vals_ = (T*)sycl::malloc_host(sizeof(T) * B_nnz_, gpuQueue_);
+        B_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * B_nnz_, gpuQueue_);
         B_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (k_ + 1), gpuQueue_);
 
         C_ = (T*)sycl::malloc_host(sizeof(T) * m_ * n_, gpuQueue_);
 
-        A_vals_device_ = (T*)sycl::malloc_device(sizeof(T) * nnzA_, gpuQueue_);
-        A_cols_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * nnzA_, gpuQueue_);
+        A_vals_device_ = (T*)sycl::malloc_device(sizeof(T) * A_nnz_, gpuQueue_);
+        A_cols_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * A_nnz_, gpuQueue_);
         A_rows_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * (m_ + 1), gpuQueue_);
 
-        B_vals_device_ = (T*)sycl::malloc_device(sizeof(T) * nnzB_, gpuQueue_);
-        B_cols_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * nnzB_, gpuQueue_);
+        B_vals_device_ = (T*)sycl::malloc_device(sizeof(T) * B_nnz_, gpuQueue_);
+        B_cols_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * B_nnz_, gpuQueue_);
         B_rows_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * (k_ + 1), gpuQueue_);
         gpuQueue_.wait();
       }
@@ -128,9 +132,9 @@ protected:
       }
 
       // Verify A conversion
-      if (nnz_encountered != nnzA_) {
-        std::cerr << "Warning: A matrix has " << nnz_encountered << " non-zeros, expected " << nnzA_ << std::endl;
-        nnzA_ = nnz_encountered;  // Update to actual count
+      if (nnz_encountered != A_nnz_) {
+        std::cerr << "Warning: A matrix has " << nnz_encountered << " non-zeros, expected " << A_nnz_ << std::endl;
+        A_nnz_ = nnz_encountered;  // Update to actual count
       }
 
       if (print_) std::cout << "\tB into CSR" << std::endl;
@@ -151,9 +155,9 @@ protected:
       }
 
       // Verify B conversion
-      if (nnz_encountered != nnzB_) {
-        std::cerr << "Warning: B matrix has " << nnz_encountered << " non-zeros, expected " << nnzB_ << std::endl;
-        nnzB_ = nnz_encountered;  // Update to actual count
+      if (nnz_encountered != B_nnz_) {
+        std::cerr << "Warning: B matrix has " << nnz_encountered << " non-zeros, expected " << B_nnz_ << std::endl;
+        B_nnz_ = nnz_encountered;  // Update to actual count
       }
 
       // Ensure synchronization for unified memory
@@ -169,12 +173,12 @@ private:
         case gpuOffloadType::once:
           // Copy A and B over to the GPU
           if (print_) std::cout << "\tCopying data over to GPU" << std::endl;
-          gpuQueue_.copy<T>(A_vals_, A_vals_device_, nnzA_);
-          gpuQueue_.copy<int64_t>(A_cols_, A_cols_device_, nnzA_);
+          gpuQueue_.copy<T>(A_vals_, A_vals_device_, A_nnz_);
+          gpuQueue_.copy<int64_t>(A_cols_, A_cols_device_, A_nnz_);
           gpuQueue_.copy<int64_t>(A_rows_, A_rows_device_, m_ + 1);
 
-          gpuQueue_.copy<T>(B_vals_, B_vals_device_, nnzB_);
-          gpuQueue_.copy<int64_t>(B_cols_, B_cols_device_, nnzB_);
+          gpuQueue_.copy<T>(B_vals_, B_vals_device_, B_nnz_);
+          gpuQueue_.copy<int64_t>(B_cols_, B_cols_device_, B_nnz_);
           gpuQueue_.copy<int64_t>(B_rows_, B_rows_device_, k_ + 1);
           gpuQueue_.wait();
 
@@ -192,12 +196,12 @@ private:
         case gpuOffloadType::always: {
           // Copy A and B over to the GPU
           if (print_) std::cout << "\tCopying data over to the GPU" << std::endl;
-          gpuQueue_.copy<T>(A_vals_, A_vals_device_, nnzA_);
-          gpuQueue_.copy<int64_t>(A_cols_, A_cols_device_, nnzA_);
+          gpuQueue_.copy<T>(A_vals_, A_vals_device_, A_nnz_);
+          gpuQueue_.copy<int64_t>(A_cols_, A_cols_device_, A_nnz_);
           gpuQueue_.copy<int64_t>(A_rows_, A_rows_device_, m_ + 1);
 
-          gpuQueue_.copy<T>(B_vals_, B_vals_device_, nnzB_);
-          gpuQueue_.copy<int64_t>(B_cols_, B_cols_device_, nnzB_);
+          gpuQueue_.copy<T>(B_vals_, B_vals_device_, B_nnz_);
+          gpuQueue_.copy<int64_t>(B_cols_, B_cols_device_, B_nnz_);
           gpuQueue_.copy<int64_t>(B_rows_, B_rows_device_, k_ + 1);
           gpuQueue_.wait();
 
@@ -309,7 +313,7 @@ private:
 
           if (print_) std::cout << "\tGetting nnz for C" << std::endl;
           // get NNZ for C
-          nnzC_ = (int64_t*)sycl::malloc_host(sizeof(int64_t), gpuQueue_);
+          C_nnz_ = (int64_t*)sycl::malloc_host(sizeof(int64_t), gpuQueue_);
           request_ = oneapi::mkl::sparse::matmat_request::get_nnz;
           auto matmat5 = oneapi::mkl::sparse::matmat(gpuQueue_,
                                                      A_handle_,
@@ -317,15 +321,15 @@ private:
                                                      C_handle_,
                                                      request_,
                                                      description_,
-                                                     nnzC_,
+                                                     C_nnz_,
                                                      nullptr,
                                                      {matmat4});
           matmat5.wait();
 
-          // Make sure that nnzC_ is non-zero.  If it isn't then clean up and return -- no computation to be done
-          if (print_) std::cout << "\t\tnnzC_ = " << *nnzC_ << std::endl;
-          if (*nnzC_ == 0) {
-            oneapi::mkl::sparse::release_matmat_descr(&description_);          
+          // Make sure that C_nnz_ is non-zero.  If it isn't then clean up and return -- no computation to be done
+          if (print_) std::cout << "\t\tC_nnz_ = " << *C_nnz_ << std::endl;
+          if (*C_nnz_ == 0) {
+            oneapi::mkl::sparse::release_matmat_descr(&description_);
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_handle_);
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_handle_);
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_handle_);
@@ -336,14 +340,14 @@ private:
             sycl::free(sizeTempBuffer2, gpuQueue_);
             sycl::free(tempBuffer2, gpuQueue_);
             sycl::free(C_rows_device_, gpuQueue_); 
-            sycl::free(nnzC_, gpuQueue_);
+            sycl::free(C_nnz_, gpuQueue_);
             gpuQueue_.wait();
             return;
           }
           
           if (print_) std::cout << "\tAllocating C structures" << std::endl;
-          C_cols_device_ = (int64_t*)sycl::malloc_device(*nnzC_ * sizeof(int64_t), gpuQueue_);
-          C_vals_device_ = (T*)sycl::malloc_device(*nnzC_ * sizeof(T), gpuQueue_);
+          C_cols_device_ = (int64_t*)sycl::malloc_device(*C_nnz_ * sizeof(int64_t), gpuQueue_);
+          C_vals_device_ = (T*)sycl::malloc_device(*C_nnz_ * sizeof(T), gpuQueue_);
           gpuQueue_.wait();
           setC = oneapi::mkl::sparse::set_csr_data(gpuQueue_, 
                                                    C_handle_,
@@ -377,12 +381,12 @@ private:
           if (print_) std::cout << "\tCopying data back to CPU" << std::endl;
           // Copy data back to host
           C_rows_ = (int64_t*)sycl::malloc_host((m_ + 1) * sizeof(int64_t), gpuQueue_);
-          C_cols_ = (int64_t*)sycl::malloc_host(*nnzC_ * sizeof(int64_t), gpuQueue_);
-          C_vals_ = (T*)sycl::malloc_host(*nnzC_ * sizeof(T), gpuQueue_);
+          C_cols_ = (int64_t*)sycl::malloc_host(*C_nnz_ * sizeof(int64_t), gpuQueue_);
+          C_vals_ = (T*)sycl::malloc_host(*C_nnz_ * sizeof(T), gpuQueue_);
           gpuQueue_.wait();
           gpuQueue_.copy(C_rows_device_, C_rows_, (m_ + 1) * sizeof(int64_t));
-          gpuQueue_.copy(C_cols_device_, C_cols_, *nnzC_ * sizeof(int64_t));
-          gpuQueue_.copy(C_vals_device_, C_vals_, *nnzC_ * sizeof(int64_t));
+          gpuQueue_.copy(C_cols_device_, C_cols_, *C_nnz_ * sizeof(int64_t));
+          gpuQueue_.copy(C_vals_device_, C_vals_, *C_nnz_ * sizeof(int64_t));
           gpuQueue_.wait();
 
           if (print_) std::cout << "\tCleaning up temp allocations" << std::endl;
@@ -403,7 +407,7 @@ private:
           sycl::free(C_rows_, gpuQueue_);
           sycl::free(C_cols_, gpuQueue_);
           sycl::free(C_vals_, gpuQueue_);
-          sycl::free(nnzC_, gpuQueue_);
+          sycl::free(C_nnz_, gpuQueue_);
           gpuQueue_.wait();
           break;
         }
@@ -413,7 +417,7 @@ private:
           if (!onceFirst_) sycl::free(C_rows_device_, gpuQueue_); 
           if (!onceFirst_) sycl::free(C_cols_device_, gpuQueue_);
           if (!onceFirst_) sycl::free(C_vals_device_, gpuQueue_);
-          if (!onceFirst_) sycl::free(nnzC_, gpuQueue_);
+          if (!onceFirst_) sycl::free(C_nnz_, gpuQueue_);
 
           // Allocate space for the C rows array
           C_rows_device_ = (int64_t*)sycl::malloc_device((m_ + 1) * sizeof(int64_t), gpuQueue_);
@@ -526,7 +530,7 @@ private:
 
           // get NNZ for C
           if (print_) std::cout << "\tGetting nnz for C" << std::endl;
-          nnzC_ = (int64_t*)sycl::malloc_host(sizeof(int64_t), gpuQueue_);
+          C_nnz_ = (int64_t*)sycl::malloc_host(sizeof(int64_t), gpuQueue_);
           request_ = oneapi::mkl::sparse::matmat_request::get_nnz;
           auto matmat5  =oneapi::mkl::sparse::matmat(gpuQueue_,
                                                      A_handle_,
@@ -534,14 +538,14 @@ private:
                                                      C_handle_,
                                                      request_,
                                                      description_,
-                                                     nnzC_,
+                                                     C_nnz_,
                                                      nullptr,
                                                      {matmat4});
           matmat5.wait();
 
-          // Exit early if nnzC_ is zero -- no calculation to be done
-          if (print_) std::cout << "\t\tnnzC_ = " << *nnzC_ << std::endl;
-          if (*nnzC_ == 0) {
+          // Exit early if C_nnz_ is zero -- no calculation to be done
+          if (print_) std::cout << "\t\tC_nnz_ = " << *C_nnz_ << std::endl;
+          if (*C_nnz_ == 0) {
             oneapi::mkl::sparse::release_matmat_descr(&description_);       
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_handle_);
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_handle_);
@@ -557,8 +561,8 @@ private:
           }
 
           if (print_) std::cout << "\tAllocating C structures" << std::endl;
-          C_cols_device_ = (int64_t*)sycl::malloc_device(*nnzC_ * sizeof(int64_t), gpuQueue_);
-          C_vals_device_ = (T*)sycl::malloc_device(*nnzC_ * sizeof(T), gpuQueue_);
+          C_cols_device_ = (int64_t*)sycl::malloc_device(*C_nnz_ * sizeof(int64_t), gpuQueue_);
+          C_vals_device_ = (T*)sycl::malloc_device(*C_nnz_ * sizeof(T), gpuQueue_);
           gpuQueue_.wait();
           setC = oneapi::mkl::sparse::set_csr_data(gpuQueue_, 
                                                    C_handle_,
@@ -720,22 +724,22 @@ private:
           if (print_) std::cout << "\tCalculation of nnz for C" << std::endl;
           // get NNZ for C
           request_ = oneapi::mkl::sparse::matmat_request::get_nnz;
-          nnzC_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t), gpuQueue_);
+          C_nnz_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t), gpuQueue_);
           auto matmat5 = oneapi::mkl::sparse::matmat(gpuQueue_,
                                                      A_handle_,
                                                      B_handle_,
                                                      C_handle_,
                                                      request_,
                                                      description_,
-                                                     nnzC_,
+                                                     C_nnz_,
                                                      nullptr,
                                                      {matmat4});
           matmat5.wait();
 
-          // If nnzC_ is zero, exit early as no calculation to be done
-          if (print_) std::cout << "\t\tnnzC_ = " << *nnzC_ << std::endl;
-          if (*nnzC_ == 0) {
-            oneapi::mkl::sparse::release_matmat_descr(&description_);          
+          // If C_nnz_ is zero, exit early as no calculation to be done
+          if (print_) std::cout << "\t\tC_nnz_ = " << *C_nnz_ << std::endl;
+          if (*C_nnz_ == 0) {
+            oneapi::mkl::sparse::release_matmat_descr(&description_);
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_handle_);
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &B_handle_);
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &C_handle_);
@@ -746,14 +750,14 @@ private:
             sycl::free(sizeTempBuffer2, gpuQueue_);
             sycl::free(tempBuffer2, gpuQueue_);
             sycl::free(C_rows_, gpuQueue_);
-            sycl::free(nnzC_, gpuQueue_);
+            sycl::free(C_nnz_, gpuQueue_);
             gpuQueue_.wait();
             return;
           }
 
           if (print_) std::cout << "\tAllocating C structures" << std::endl;
-          C_cols_ = (int64_t*)sycl::malloc_shared(*nnzC_ * sizeof(int64_t), gpuQueue_);
-          C_vals_ = (T*)sycl::malloc_shared(*nnzC_ * sizeof(T), gpuQueue_);
+          C_cols_ = (int64_t*)sycl::malloc_shared(*C_nnz_ * sizeof(int64_t), gpuQueue_);
+          C_vals_ = (T*)sycl::malloc_shared(*C_nnz_ * sizeof(T), gpuQueue_);
           gpuQueue_.wait();
           setC = oneapi::mkl::sparse::set_csr_data(gpuQueue_, 
                                                    C_handle_,
@@ -798,7 +802,7 @@ private:
           sycl::free(C_rows_, gpuQueue_);
           sycl::free(C_cols_, gpuQueue_);
           sycl::free(C_vals_, gpuQueue_);
-          sycl::free(nnzC_, gpuQueue_);
+          sycl::free(C_nnz_, gpuQueue_);
           gpuQueue_.wait();
           break;
         }
@@ -815,12 +819,12 @@ private:
           // Copy data back to host
           if (print_) std::cout << "\tMoving data back to the CPU" << std::endl;
           C_rows_ = (int64_t*)sycl::malloc_host((m_ + 1) * sizeof(int64_t), gpuQueue_);
-          C_cols_ = (int64_t*)sycl::malloc_host(*nnzC_ * sizeof(int64_t), gpuQueue_);
-          C_vals_ = (T*)sycl::malloc_host(*nnzC_ * sizeof(T), gpuQueue_);
+          C_cols_ = (int64_t*)sycl::malloc_host(*C_nnz_ * sizeof(int64_t), gpuQueue_);
+          C_vals_ = (T*)sycl::malloc_host(*C_nnz_ * sizeof(T), gpuQueue_);
           gpuQueue_.wait();
           gpuQueue_.copy(C_rows_device_, C_rows_, (m_ + 1) * sizeof(int64_t));
-          gpuQueue_.copy(C_cols_device_, C_cols_, *nnzC_ * sizeof(int64_t));
-          gpuQueue_.copy(C_vals_device_, C_vals_, *nnzC_ * sizeof(T));
+          gpuQueue_.copy(C_cols_device_, C_cols_, *C_nnz_ * sizeof(int64_t));
+          gpuQueue_.copy(C_vals_device_, C_vals_, *C_nnz_ * sizeof(T));
           gpuQueue_.wait();
           // Now free everything
           if (print_) std::cout << "\tCleaning up memory" << std::endl;
@@ -896,10 +900,6 @@ private:
     int64_t* B_cols_ = nullptr;
     int64_t* B_rows_ = nullptr;
 
-    T* C_vals_ = nullptr;
-    int64_t* C_cols_ = nullptr;
-    int64_t* C_rows_ = nullptr;
-
     // Device memory pointers (for 'once' and 'always' modes)
     T* A_vals_device_ = nullptr;
     int64_t* A_cols_device_ = nullptr;
@@ -912,8 +912,6 @@ private:
     T* C_vals_device_ = nullptr;
     int64_t* C_cols_device_ = nullptr;
     int64_t* C_rows_device_ = nullptr;
-
-    int64_t* nnzC_;
 
     // Matrix handles
     oneapi::mkl::sparse::matrix_handle_t A_handle_ = nullptr;

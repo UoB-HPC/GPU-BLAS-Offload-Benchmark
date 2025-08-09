@@ -24,9 +24,13 @@ public:
     using spmm<T>::B_;
     using spmm<T>::C_;
     using spmm<T>::sparsity_;
-    using spmm<T>::nnzA_;
-    using spmm<T>::nnzB_;
+    using spmm<T>::A_nnz_;
+    using spmm<T>::B_nnz_;
     using spmm<T>::iterations_;
+    using spmm<T>::C_rows_;
+    using spmm<T>::C_cols_;
+    using spmm<T>::C_vals_;
+    using spmm<T>::C_nnz_;
 
     void initialise(int m, int n, int k, double sparsity, bool binary = false) {
       if (print_) std::cout << "setting up metadata" << std::endl;
@@ -40,8 +44,8 @@ public:
     
       uint64_t total_elements_A = (uint64_t)m_ * (uint64_t)k_;
       uint64_t total_elements_B = (uint64_t)k_ * (uint64_t)n_;
-      nnzA_aocl_ = nnzA_ = 1 + (uint64_t)((double)total_elements_A * (1.0 - sparsity));
-      nnzB_aocl_ = nnzB_ = 1 + (uint64_t)((double)total_elements_B * (1.0 - sparsity));
+      nnzA_aocl_ = A_nnz_ = 1 + (uint64_t)((double)total_elements_A * (1.0 - sparsity));
+      nnzB_aocl_ = B_nnz_ = 1 + (uint64_t)((double)total_elements_B * (1.0 - sparsity));
       
       if (print_) std::cout << "Allocating dense matrix arrays" << std::endl;
       
@@ -82,7 +86,7 @@ protected:
     
       if (actual_nnz != nnzA_aocl_) {
         if (print_) std::cerr << "Warning: Actual nnzA (" << actual_nnz << ") differs from expected nnzA (" << nnzA_aocl_ << ")" << std::endl;
-        nnzA_ = nnzA_aocl_ = actual_nnz; // Update nnz_aocl_ to reflect actual count
+        A_nnz_ = nnzA_aocl_ = actual_nnz; // Update nnz_aocl_ to reflect actual count
       }
 
       // Initialise datastructures for the CSR format
@@ -171,7 +175,7 @@ protected:
     
       if (actual_nnz != nnzB_aocl_) {
         if (print_) std::cerr << "Warning: Actual nnzB (" << actual_nnz << ") differs from expected nnzB (" << nnzB_aocl_ << ")" << std::endl;
-        nnzB_ = nnzB_aocl_ = actual_nnz; // Update nnz_aocl_ to reflect actual count
+        B_nnz_ = nnzB_aocl_ = actual_nnz; // Update nnz_aocl_ to reflect actual count
       }
 
       // Initialise datastructures for the CSR format
@@ -310,6 +314,7 @@ private:
     }
 
     void postLoopRequirements() override {
+      C_nnz_ = nnzC_aocl_;
     }
 
     void postCallKernelCleanup() override {
@@ -420,9 +425,8 @@ private:
     T* B_vals_;
 
     aoclsparse_matrix C_aocl_;
-    aoclsparse_int* C_rows_;
-    aoclsparse_int* C_cols_;
-    T* C_vals_;
+    aoclsparse_int* C_rows_aocl_;
+    aoclsparse_int* C_cols_aocl_;
 
     aoclsparse_int m_aocl_;
     aoclsparse_int n_aocl_;

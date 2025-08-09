@@ -74,8 +74,8 @@ public:
       if (print_) std::cout << "Allocating arrays" << std::endl;
       switch (offload_) {
         case gpuOffloadType::unified: {
-          A_cols_ = (int32_t*)sycl::malloc_shared(sizeof(int32_t) * nnz_, gpuQueue_);
-          A_rows_ = (int32_t*)sycl::malloc_shared(sizeof(int32_t) * (m_ + 1), gpuQueue_);
+          A_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnz_, gpuQueue_);
+          A_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (m_ + 1), gpuQueue_);
           A_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * n_, gpuQueue_);
           A_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnz_, gpuQueue_);
           x_ = (T*)sycl::malloc_shared(sizeof(T) * n_, gpuQueue_);
@@ -91,9 +91,9 @@ public:
         case gpuOffloadType::once: {
           A_ = (T*)sycl::malloc_host(sizeof(T) * m_ * n_, gpuQueue_);
           A_vals_ = (T*)sycl::malloc_host(sizeof(T) * nnz_, gpuQueue_);
-          A_cols_ = (int32_t*)sycl::malloc_host(sizeof(int32_t) * nnz_,
+          A_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * nnz_,
                                                 gpuQueue_);
-          A_rows_ = (int32_t*)sycl::malloc_host(sizeof(int32_t) * (m_ + 1),
+          A_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (m_ + 1),
                                                 gpuQueue_);
           x_ = (T*)sycl::malloc_host(sizeof(T) * n_, gpuQueue_);
           y_ = (T*)sycl::malloc_host(sizeof(T) * m_, gpuQueue_);
@@ -103,8 +103,8 @@ public:
           }
 
           A_vals_device_ = (T*)sycl::malloc_device(sizeof(T) * nnz_, gpuQueue_);
-          A_cols_device_ = (int32_t*)sycl::malloc_device(sizeof(int32_t) * nnz_, gpuQueue_);
-          A_rows_device_ = (int32_t*)sycl::malloc_device(sizeof(int32_t) * (m_ + 1), gpuQueue_);
+          A_cols_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * nnz_, gpuQueue_);
+          A_rows_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * (m_ + 1), gpuQueue_);
           x_device_ = (T*)sycl::malloc_device(sizeof(T) * n_, gpuQueue_);
           y_device_ = (T*)sycl::malloc_device(sizeof(T) * m_, gpuQueue_);
           if (!A_vals_device_ || !A_cols_device_ || !A_rows_device_ || !x_device_ || !y_device_) {
@@ -132,8 +132,8 @@ protected:
 
       constexpr double eps = 1e-12;
 
-      for (int32_t row = 0; row < m_; row++) {
-        for (int32_t col = 0; col < n_; col++) {
+      for (int64_t row = 0; row < m_; row++) {
+        for (int64_t col = 0; col < n_; col++) {
           double val = A_[(row * n_) + col];
           if (std::abs(val) > eps) {
             A_cols_[nnz_encountered] = col;
@@ -150,8 +150,8 @@ private:
       if (offload_ == gpuOffloadType::once) {
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
         gpuQueue_.memcpy(A_vals_device_, A_vals_, sizeof(T) * nnz_);
-        gpuQueue_.memcpy(A_cols_device_, A_cols_, sizeof(int32_t) * nnz_);
-        gpuQueue_.memcpy(A_rows_device_, A_rows_, sizeof(int32_t) * (m_ + 1));
+        gpuQueue_.memcpy(A_cols_device_, A_cols_, sizeof(int64_t) * nnz_);
+        gpuQueue_.memcpy(A_rows_device_, A_rows_, sizeof(int64_t) * (m_ + 1));
         gpuQueue_.memcpy(x_device_, x_, sizeof(T) * n_);
         gpuQueue_.wait_and_throw();
       }
@@ -162,8 +162,8 @@ private:
         case gpuOffloadType::always: {
           if (print_) std::cout << "Moving data to GPU" << std::endl;
           gpuQueue_.memcpy(A_vals_device_, A_vals_, sizeof(T) * nnz_);
-          gpuQueue_.memcpy(A_cols_device_, A_cols_, sizeof(int32_t) * nnz_);
-          gpuQueue_.memcpy(A_rows_device_, A_rows_, sizeof(int32_t) * (m_ + 1));
+          gpuQueue_.memcpy(A_cols_device_, A_cols_, sizeof(int64_t) * nnz_);
+          gpuQueue_.memcpy(A_rows_device_, A_rows_, sizeof(int64_t) * (m_ + 1));
           gpuQueue_.memcpy(x_device_, x_, sizeof(T) * n_);
           gpuQueue_.wait_and_throw();
           // Do computation
@@ -175,7 +175,7 @@ private:
               exit(1);
             }
             gpuQueue_.wait_and_throw();
-            auto set_csrs = oneapi::mkl::sparse::set_csr_data(gpuQueue_,
+            auto set = oneapi::mkl::sparse::set_csr_data(gpuQueue_,
                                                               handle_,
                                                               m_,
                                                               n_,
@@ -184,7 +184,13 @@ private:
                                                               A_cols_,
                                                               A_vals_,
                                                               {});
-            gpuQueue_.wait_and_throw();
+            
+            if (print_) std::cout << "Optimising handle" << std::endl;
+            auto optimise = oneapi::mkl::sparse::optimize_gemv(gpuQueue_,
+                                                               operation_,
+                                                               handle_,
+                                                               {set});
+
             if (print_) std::cout << "Calling SPGEMV kernel" << std::endl;
             auto gemv = oneapi::mkl::sparse::gemv(gpuQueue_,
                                                   operation_,
@@ -193,12 +199,12 @@ private:
                                                   x_device_,
                                                   beta,
                                                   y_device_,
-                                                  {set_csrs});
-            gpuQueue_.wait_and_throw();
+                                                  {optimise});
+                                                  
             if (print_) std::cout << "Releasing matrix handle" << std::endl;
             auto release = oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_, {gemv});
+            release.wait_and_throw();
             handle_ = nullptr; // Reset handle to avoid double free
-            gpuQueue_.wait_and_throw();
           } catch (sycl::exception const& e) {std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;}
           gpuQueue_.memcpy(y_, y_device_, sizeof(T) * m_);
           break;
@@ -221,7 +227,13 @@ private:
                                                          A_cols_,
                                                          A_vals_,
                                                          {});
-            gpuQueue_.wait_and_throw();
+            
+            if (print_) std::cout << "Optimising handle" << std::endl;
+            auto optimise = oneapi::mkl::sparse::optimize_gemv(gpuQueue_,
+                                                               operation_,
+                                                               handle_,
+                                                               {set});
+
             if (print_) std::cout << "Calling SPGEMV kernel" << std::endl;
             auto gemv = oneapi::mkl::sparse::gemv(gpuQueue_,
                                                   operation_,
@@ -230,17 +242,17 @@ private:
                                                   x_device_,
                                                   beta,
                                                   y_device_,
-                                                  {set});
-            gpuQueue_.wait_and_throw();
+                                                  {optimise});
             auto release = oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_, {gemv});
+            release.wait_and_throw();
+            
             handle_ = nullptr; // Reset handle to avoid double free
-            gpuQueue_.wait_and_throw();
           } catch (sycl::exception const& e) {std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;}
           break;
         }
         case gpuOffloadType::unified: {
           try {
-            std::vector<int32_t*> int_ptr_vec;
+            std::vector<int64_t*> int_ptr_vec;
             int_ptr_vec.push_back(A_cols_);
             int_ptr_vec.push_back(A_rows_);
             std::vector<T*> float_ptr_vec;
@@ -257,6 +269,7 @@ private:
               exit(1);
             }
             gpuQueue_.wait_and_throw();
+
             auto set = oneapi::mkl::sparse::set_csr_data(gpuQueue_,
                                                          handle_,
                                                          m_,
@@ -266,7 +279,13 @@ private:
                                                          A_cols_,
                                                          A_vals_,
                                                          {});
-            gpuQueue_.wait_and_throw();
+            
+            if (print_) std::cout << "Optimising handle" << std::endl;
+            auto optimise = oneapi::mkl::sparse::optimize_gemv(gpuQueue_,
+                                                               operation_,
+                                                               handle_,
+                                                               {set});
+
             if (print_) std::cout << "Calling SPGEMV kernel" << std::endl;
             auto gemv = oneapi::mkl::sparse::gemv(gpuQueue_,
                                                   operation_,
@@ -275,11 +294,12 @@ private:
                                                   x_,
                                                   beta,
                                                   y_,
-                                                  {set});
-            gpuQueue_.wait_and_throw();
+                                                  {optimise});
+
             auto release = oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_, {gemv});
+            release.wait_and_throw();
+
             handle_ = nullptr; // Reset handle to avoid double free
-            gpuQueue_.wait_and_throw();
           } catch (sycl::exception const& e) {std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Unified):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;}
           break;
         }
@@ -333,14 +353,14 @@ private:
     oneapi::mkl::transpose operation_;
 
     T* A_vals_;
-    int32_t* A_cols_;
-    int32_t* A_rows_;
+    int64_t* A_cols_;
+    int64_t* A_rows_;
 
     oneapi::mkl::sparse::matrix_handle_t handle_;
 
     T* A_vals_device_;
-    int32_t* A_cols_device_;
-    int32_t* A_rows_device_;
+    int64_t* A_cols_device_;
+    int64_t* A_rows_device_;
     T* x_device_;
     T* y_device_;
 

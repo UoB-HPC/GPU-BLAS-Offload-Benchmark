@@ -478,7 +478,7 @@ private:
         checkStatus("Failed rocsparse_create_dnmat_descr for C");
         hipCheckError(hipDeviceSynchronize());
 
-        size_t buffer_size = 0;
+        size_t buffer_size;
         status_ = rocsparse_spmm(handle_,
                                  operation_,
                                  operation_,
@@ -494,10 +494,9 @@ private:
                                  nullptr);
         checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_buffer_size");
 
-        hipCheckError(hipDeviceSynchronize());
         void* buffer;
+        if (print_) std::cout << "\tAllocating buffer with buffer_size = " << buffer_size << std::endl;
         hipCheckError(hipMallocManaged(&buffer, buffer_size));
-        hipCheckError(hipDeviceSynchronize());
 
         status_ = rocsparse_spmm(handle_,
                                  operation_,
@@ -673,7 +672,7 @@ private:
   }
 
   bool initialised_ = false;
-  bool print_ = false;
+  bool print_ = true;
 
   rocsparse_status status_;
   rocsparse_operation operation_;

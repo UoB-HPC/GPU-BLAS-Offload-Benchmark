@@ -25,6 +25,10 @@ public:
     using spmm<T>::C_;
     using spmm<T>::offload_;
     using spmm<T>::sparsity_;
+    using spmm<T>::C_nnz_;
+    using spmm<T>::C_vals_;
+    using spmm<T>::C_rows_;
+    using spmm<T>::C_cols_;
 
     ~spmm_gpu() {
       if (initialised_) {
@@ -263,6 +267,7 @@ private:
                                        stream_));
           hipCheckError(hipDeviceSynchronize());
           break;
+        }
         case gpuOffloadType::unified: {
           if (print_) std::cout << "\tMoving data to GPU" << std::endl;
           hipCheckError(hipMemPrefetchAsync(A_rows_, 
@@ -1036,12 +1041,12 @@ private:
       }
       std::cout << std::endl;
       std::cout << "\tCols: ";
-      for (size_t i = 0; i < nnzD_; i++) {
+      for (size_t i = 0; i < D_nnz_; i++) {
         std::cout << D_cols_[i] << " ";
       }
       std::cout << std::endl;
       std::cout << "\tVals: ";
-      for (size_t i = 0; i < nnzD_; i++) {
+      for (size_t i = 0; i < D_nnz_; i++) {
         std::cout << D_vals_[i] << " ";
       }
       std::cout << std::endl;
@@ -1088,7 +1093,7 @@ private:
     int64_t* D_rows_device_;
     int64_t* D_cols_device_;
     T* D_vals_device_;
-    int64_t nnzD_ = 1;
+    int64_t D_nnz_ = 1;
 
     int gpuDevice_;
     hipStream_t stream_;
@@ -1096,6 +1101,6 @@ private:
     const T alpha = ALPHA;
     const T beta = BETA;
 };
-}
+} // namespace gpu
 
 #endif

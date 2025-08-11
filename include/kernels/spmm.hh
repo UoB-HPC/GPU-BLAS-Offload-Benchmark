@@ -67,9 +67,9 @@ private:
       if (C_nnz_ == 0) {
         return (double)0.0; // No non-zeros, return zero checksum
       } else if (C_nnz_ == 1) {
-        return (double)C_vals[0]; // Single non-zero, return its value
+        return (double)C_vals_[0]; // Single non-zero, return its value
       } else {
-        return (double)C_vals[0] + (double)C_vals[C_nnz_ - 1];
+        return (double)C_vals_[0] + (double)C_vals_[C_nnz_ - 1];
       }
     }
 
@@ -146,9 +146,9 @@ protected:
 
     /** CSR representation of output matrix C. */
     int64_t C_nnz_;
-    int64_t* C_rows;
-    int64_t* C_cols;
-    T* C_vals;
+    int64_t* C_rows_;
+    int64_t* C_cols_;
+    T* C_vals_;
 
     int64_t A_nnz_ = 0;
     int64_t B_nnz_ = 0;

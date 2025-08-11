@@ -43,10 +43,28 @@ class gemv_gpu : public gemv<T> {
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
   void initialise(gpuOffloadType offload, int m, int n) override {
+    if (print_) {
+      switch (offload) {
+        case gpuOffloadType::always: {
+          std::cout << "===========  ALWAYS  ===========" << std::endl;
+          break;
+        }
+        case gpuOffloadType::once: {
+          std::cout << "===========   ONCE   ===========" << std::endl;
+          break;
+        }
+        case gpuOffloadType::unified: {
+          std::cout << "===========  UNIFIED ===========" << std::endl;
+          break;
+        }
+      }
+    }
+
     if (!alreadyInitialised_) {
       alreadyInitialised_ = true;
       // Perform set-up which doesn't need to happen every problem size change.
       // Create a handle for rocBLAS
+      if (print_) std::cout << "Creating handle" << std::endl;
       rocblas_status status = rocblas_create_handle(&handle_);
       if (status != rocblas_status_success) {
         std::cout << "Failed to make rocBLAS handle: " << status << std::endl;
@@ -54,7 +72,12 @@ class gemv_gpu : public gemv<T> {
       }
 
       // Get device identifier
+      int count;
+      hipGetDeviceCount(&count);
+      if (print_) std::cout << "Number of devices: " << count << std::endl;
+      if (print_) std::cout << "Getting device ID" << std::endl;
       hipCheckError(hipGetDevice(&gpuDevice_));
+      if (print_) std::cout << "Device ID: " << gpuDevice_ << std::endl;
 
       // Initialise 3 streams to asynchronously move data between host and
       // device
@@ -63,6 +86,7 @@ class gemv_gpu : public gemv<T> {
       hipCheckError(hipStreamCreate(&s3_));
 
       // Enable passing alpha parameter from pointer to host memory
+      if (print_) std::cout << "Setting pointer mode to host" << std::endl;
       status = rocblas_set_pointer_mode(handle_, rocblas_pointer_mode_host);
       if (status != rocblas_status_success) {
         std::cout << "Failed to set rocBLAS pointer mode: " << status
@@ -76,15 +100,18 @@ class gemv_gpu : public gemv<T> {
     n_ = n;
 
     if (offload_ == gpuOffloadType::unified) {
+      if (print_) std::cout << "\tAllocating unified memory" << std::endl;
       hipCheckError(hipMallocManaged(&A_, sizeof(T) * m_ * n_));
       hipCheckError(hipMallocManaged(&x_, sizeof(T) * n_));
       hipCheckError(hipMallocManaged(&y_, sizeof(T) * m_));
     } else {
       // Allocate matrices on host
+      if (print_) std::cout << "\tAllocating host memory" << std::endl;
       hipCheckError(hipHostMalloc((void**)&A_, sizeof(T) * m_ * n_));
       hipCheckError(hipHostMalloc((void**)&x_, sizeof(T) * n_));
       hipCheckError(hipHostMalloc((void**)&y_, sizeof(T) * m_));
       // Allocate matrices on device
+      if (print_) std::cout << "\tAllocating device memory" << std::endl;
       hipCheckError(hipMalloc((void**)&A_device_, sizeof(T) * m_ * n_));
       hipCheckError(hipMalloc((void**)&x_device_, sizeof(T) * n_));
       hipCheckError(hipMalloc((void**)&y_device_, sizeof(T) * m_));
@@ -104,6 +131,7 @@ class gemv_gpu : public gemv<T> {
         break;
       }
       case gpuOffloadType::once: {
+        if (print_) std::cout << "\tMoving data to GPU" << std::endl;
         // Offload input data from host to the device.
         hipCheckError(hipMemcpyAsync(A_device_, A_, sizeof(T) * m_ * n_,
                                      hipMemcpyHostToDevice, s1_));
@@ -114,9 +142,9 @@ class gemv_gpu : public gemv<T> {
         break;
       }
       case gpuOffloadType::unified: {
+        if (print_) std::cout << "\tPrefetching data to GPU" << std::endl;
         // Prefetch input data to device
-        hipCheckError(
-            hipMemPrefetchAsync(A_, sizeof(T) * m_ * n_, gpuDevice_, s1_));
+        hipCheckError(hipMemPrefetchAsync(A_, sizeof(T) * m_ * n_, gpuDevice_, s1_));
         hipCheckError(hipMemPrefetchAsync(x_, sizeof(T) * n_, gpuDevice_, s2_));
         hipCheckError(hipMemPrefetchAsync(y_, sizeof(T) * m_, gpuDevice_, s3_));
         break;
@@ -128,6 +156,7 @@ class gemv_gpu : public gemv<T> {
   void callGemv() override {
     switch (offload_) {
       case gpuOffloadType::always: {
+        if (print_) std::cout << "\tMoving data to GPU" << std::endl;
         // Offload input data from host to the device.
         hipCheckError(hipMemcpyAsync(A_device_, A_, sizeof(T) * m_ * n_,
                                      hipMemcpyHostToDevice, s1_));
@@ -136,6 +165,7 @@ class gemv_gpu : public gemv<T> {
         hipCheckError(hipMemcpyAsync(y_device_, y_, sizeof(T) * m_,
                                      hipMemcpyHostToDevice, s3_));
         // Call rocBLAS GEMV kernel
+        if (print_) std::cout << "\tCalling rocBLAS GEMV kernel" << std::endl;
         if constexpr (std::is_same_v<T, float>) {
           rocblas_status stat = rocblas_sgemv(
               handle_, transA_, m_, n_, &alpha, A_device_, std::max(1, m_),
@@ -155,6 +185,7 @@ class gemv_gpu : public gemv<T> {
             exit(1);
           }
         }
+        if (print_) std::cout << "\tMoving data to CPU" << std::endl;
         // Offload output data from device to host
         hipCheckError(hipMemcpyAsync(y_, y_device_, sizeof(T) * m_,
                                      hipMemcpyDeviceToHost, s3_));
@@ -164,6 +195,7 @@ class gemv_gpu : public gemv<T> {
       }
       case gpuOffloadType::once: {
         // Call rocBLAS GEMV kernel
+        if (print_) std::cout << "\tCalling rocBLAS GEMV kernel" << std::endl;
         if constexpr (std::is_same_v<T, float>) {
           rocblas_status stat = rocblas_sgemv(
               handle_, transA_, m_, n_, &alpha, A_device_, std::max(1, m_),
@@ -187,6 +219,7 @@ class gemv_gpu : public gemv<T> {
       }
       case gpuOffloadType::unified: {
         // Call rocBLAS GEMV kernel
+        if (print_) std::cout << "\tCalling rocBLAS GEMV kernel" << std::endl;
         if constexpr (std::is_same_v<T, float>) {
           rocblas_status stat = rocblas_sgemv(
               handle_, transA_, m_, n_, &alpha, A_, std::max(1, m_), x_,
@@ -220,6 +253,7 @@ class gemv_gpu : public gemv<T> {
         break;
       }
       case gpuOffloadType::once: {
+        if (print_) std::cout << "\tMoving data to CPU" << std::endl;
         // Offload output data from device to host
         hipCheckError(hipMemcpyAsync(y_, y_device_, sizeof(T) * m_,
                                      hipMemcpyDeviceToHost, s3_));
@@ -228,6 +262,7 @@ class gemv_gpu : public gemv<T> {
         break;
       }
       case gpuOffloadType::unified: {
+        if (print_) std::cout << "\tMoving data to CPU" << std::endl;
         // Ensure all output data resides on host once work has completed
         hipCheckError(
             hipMemPrefetchAsync(y_, sizeof(T) * m_, hipCpuDeviceId, s3_));
@@ -242,19 +277,24 @@ class gemv_gpu : public gemv<T> {
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
     if (offload_ == gpuOffloadType::unified) {
+      if (print_) std::cout << "\tFreeing unified memory arrays" << std::endl;
       hipCheckError(hipFree(A_));
       hipCheckError(hipFree(x_));
       hipCheckError(hipFree(y_));
     } else {
       // Free the memory held on host and device
+      if (print_) std::cout << "\tFreeing host memory arrays" << std::endl;
       hipCheckError(hipHostFree((void*)A_));
       hipCheckError(hipHostFree((void*)x_));
       hipCheckError(hipHostFree((void*)y_));
+      if (print_) std::cout << "\tFreeing device memory arrays" << std::endl;
       hipCheckError(hipFree(A_device_));
       hipCheckError(hipFree(x_device_));
       hipCheckError(hipFree(y_device_));
     }
   }
+
+  bool print_ = true;
 
   /** Whether the initialise function has been called before. */
   bool alreadyInitialised_ = false;

@@ -78,8 +78,14 @@ public:
       if (print_) std::cout << "\tAbout to set up handle and hip streams" << std::endl;
       if (!initialised_) {
         // Get the GPU
+        int count;
+        hipGetDeviceCount(&count);
+        if (print_) std::cout << "Number of devices: " << count << std::endl;
+        if (print_) std::cout << "Getting device ID" << std::endl;
         if (print_) std::cout << "\t\tGetting GPU device" << std::endl;
         hipCheckError(hipGetDevice(&gpuDevice_));
+        if (print_) std::cout << "Device ID: " << gpuDevice_ << std::endl;
+        
         // Make streams for asynchronous GPU comunication
         if (print_) std::cout << "\t\tCreating GPU streams" << std::endl;
         hipCheckError(hipStreamCreate(&s1_));

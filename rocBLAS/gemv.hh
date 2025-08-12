@@ -73,7 +73,7 @@ class gemv_gpu : public gemv<T> {
 
       // Get device identifier
       int count;
-      hipGetDeviceCount(&count);
+      hipCheckError(hipGetDeviceCount(&count));
       if (print_) std::cout << "Number of devices: " << count << std::endl;
       if (print_) std::cout << "Getting device ID" << std::endl;
       hipCheckError(hipGetDevice(&gpuDevice_));

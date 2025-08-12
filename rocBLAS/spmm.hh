@@ -961,6 +961,7 @@ private:
             break;
           }
         }
+        exit(1);
       }
     }
 

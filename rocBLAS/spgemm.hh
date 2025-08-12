@@ -68,7 +68,7 @@ public:
     operation_ = rocsparse_operation_none;
     index_ = rocsparse_indextype_i64;
     order_ = rocsparse_order_column;
-    algorithm_ = rocsparse_spmm_alg_default; // This is the only algo for this one
+    algorithm_ = rocsparse_spmm_alg_csr_nnz_split; // This is the only algo for this one
 
     if constexpr (std::is_same_v<T, float>) {
       dataType_ = rocsparse_datatype_f32_r;
@@ -204,6 +204,7 @@ private:
   }
 
   void callSpgemm() override {
+    if (print_) std::cout << "callSpgemm" << std::endl;
     switch (offload_) {
       case gpuOffloadType::always: {
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
@@ -237,35 +238,17 @@ private:
 
         if (print_) std::cout << "\tCreating rocSPARSE structures" << std::endl;
         // Set up the rocSPARSE structures for the GEMV
-        status_ = rocsparse_create_csr_descr(&A_description_,
-                                             m_,
-                                             k_,
-                                             nnz_,
-                                             A_rows_device_,
-                                             A_cols_device_,
-                                             A_vals_device_,
-                                             index_,
-                                             index_,
-                                             base_,
-                                             dataType_);
+        status_ = rocsparse_create_csr_descr(&A_description_, m_, k_, nnz_, A_rows_device_,
+                                             A_cols_device_, A_vals_device_, index_, index_,
+                                             base_, dataType_);
         checkStatus("Failed rocsparse_create_csr_descr for A");
 
-        status_ = rocsparse_create_dnmat_descr(&B_description_,
-                                               k_,
-                                               n_,
-                                               k_,
-                                               B_device_,
-                                               dataType_,
-                                               order_);
+        status_ = rocsparse_create_dnmat_descr(&B_description_, k_, n_, k_, B_device_,
+                                               dataType_, order_);
         checkStatus("Failed rocsparse_create_dnmat_descr for B");
 
-        status_ = rocsparse_create_dnmat_descr(&C_description_,
-                                               m_,
-                                               n_,
-                                               m_,
-                                               C_device_,
-                                               dataType_,
-                                               order_);
+        status_ = rocsparse_create_dnmat_descr(&C_description_, m_, n_, m_, C_device_,
+                                               dataType_, order_);
         checkStatus("Failed rocsparse_create_dnmat_descr for C");
         hipCheckError(hipDeviceSynchronize());
 
@@ -285,10 +268,9 @@ private:
                                  nullptr);
         checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_buffer_size");
 
-        hipCheckError(hipDeviceSynchronize());
-        void* buffer;
-        hipCheckError(hipMalloc(&buffer, buffer_size));
-        hipCheckError(hipDeviceSynchronize());
+        void* buffer = nullptr;
+        if (print_) std::cout << "\tAllocating buffer with buffer_size = " << buffer_size << std::endl;
+        if (buffer_size > 0) hipCheckError(hipMalloc(&buffer, buffer_size));
 
         status_ = rocsparse_spmm(handle_,
                                  operation_,
@@ -330,11 +312,11 @@ private:
         checkStatus("Failed rocsparse_destroy_dnmat_descr for B");
         status_ = rocsparse_destroy_dnmat_descr(C_description_);
         checkStatus("Failed rocsparse_destroy_dnmat_descr for C");
-        hipCheckError(hipFree(buffer));
+        if (buffer != nullptr) hipCheckError(hipFree(buffer));
         hipCheckError(hipDeviceSynchronize());
 
         // Move result back to the CPU
-        if (print_) std::cout << "\tMovin data to CPU" << std::endl;
+        if (print_) std::cout << "\tMoving data to CPU" << std::endl;
         hipCheckError(hipMemcpyAsync(C_, 
                                      C_device_, 
                                      sizeof(T) * m_ * n_, 
@@ -394,10 +376,9 @@ private:
                                  nullptr);
         checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_buffer_size");
 
-        hipCheckError(hipDeviceSynchronize());
-        void* buffer;
-        hipCheckError(hipMalloc(&buffer, buffer_size));
-        hipCheckError(hipDeviceSynchronize());
+        void* buffer = nullptr;
+        if (print_) std::cout << "\tAllocating buffer with buffer_size = " << buffer_size << std::endl;
+        if (buffer_size > 0) hipCheckError(hipMalloc(&buffer, buffer_size));
 
         status_ = rocsparse_spmm(handle_,
                                  operation_,
@@ -439,7 +420,7 @@ private:
         checkStatus("Failed rocsparse_destroy_dnmat_descr for B");
         status_ = rocsparse_destroy_dnmat_descr(C_description_);
         checkStatus("Failed rocsparse_destroy_dnmat_descr for C");
-        hipCheckError(hipFree(buffer));
+        if (buffer) hipCheckError(hipFree(buffer));
         hipCheckError(hipDeviceSynchronize());
         break;
       }
@@ -494,9 +475,9 @@ private:
                                  nullptr);
         checkStatus("Failed rocsparse_spmm with stage=rocsparse_spmm_stage_buffer_size");
 
-        void* buffer;
+        void* buffer = nullptr;
         if (print_) std::cout << "\tAllocating buffer with buffer_size = " << buffer_size << std::endl;
-        hipCheckError(hipMallocManaged(&buffer, buffer_size));
+        if (buffer_size > 0) hipCheckError(hipMallocManaged(&buffer, buffer_size));
 
         status_ = rocsparse_spmm(handle_,
                                  operation_,
@@ -538,7 +519,7 @@ private:
         checkStatus("Failed rocsparse_destroy_dnmat_descr for B");
         status_ = rocsparse_destroy_dnmat_descr(C_description_);
         checkStatus("Failed rocsparse_destroy_dnmat_descr for C");
-        hipCheckError(hipFree(buffer));
+        if (buffer) hipCheckError(hipFree(buffer));
         hipCheckError(hipDeviceSynchronize());
         break;
       }
@@ -552,7 +533,7 @@ private:
       }
       case gpuOffloadType::once: {
         // Move result back to the CPU
-        if (print_) std::cout << "\tMovin data to CPU" << std::endl;
+        if (print_) std::cout << "\tMoving data to CPU" << std::endl;
         hipCheckError(hipMemcpyAsync(C_, 
                                      C_device_, 
                                      sizeof(T) * m_ * n_, 
@@ -563,7 +544,7 @@ private:
       }
       case gpuOffloadType::unified: {
         // Ensure all output data resides on host once work has completed
-        if (print_) std::cout << "\tMovin data to CPU" << std::endl;
+        if (print_) std::cout << "\tMoving data to CPU" << std::endl;
         hipCheckError(hipMemPrefetchAsync(C_, 
                                           sizeof(T) * m_ * n_, 
                                           hipCpuDeviceId, 
@@ -672,7 +653,7 @@ private:
   }
 
   bool initialised_ = false;
-  bool print_ = true;
+  bool print_ = false;
 
   rocsparse_status status_;
   rocsparse_operation operation_;

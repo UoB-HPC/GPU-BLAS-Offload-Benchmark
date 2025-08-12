@@ -79,7 +79,7 @@ public:
       if (!initialised_) {
         // Get the GPU
         int count;
-        hipGetDeviceCount(&count);
+        hipCheckError(hipGetDeviceCount(&count));
         if (print_) std::cout << "Number of devices: " << count << std::endl;
         if (print_) std::cout << "Getting device ID" << std::endl;
         if (print_) std::cout << "\t\tGetting GPU device" << std::endl;
@@ -563,7 +563,7 @@ private:
 
     bool initialised_ = false;
 
-    bool print_ = true;
+    bool print_ = false;
 
     rocsparse_status status_;
     rocsparse_operation operation_;

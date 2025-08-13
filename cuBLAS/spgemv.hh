@@ -38,7 +38,7 @@ class spgemv_gpu : public spgemv<T> {
 
   void initialise(gpuOffloadType offload, int m, int n, 
                   double sparsity) override {
-    if (print_) {
+    if (print_ || debug) {
       switch (offload) {
         case gpuOffloadType::always:
           std::cout << "========== ALWAYS  ==========" << std::endl;
@@ -50,8 +50,8 @@ class spgemv_gpu : public spgemv<T> {
           std::cout << "==========  ONCE   ==========" << std::endl;
           break;
       }
-      std::cout << "Initialise" << std::endl;
     }
+    if (print_) std::cout << "Initialise" << std::endl;
 
     offload_ = offload;
 
@@ -73,70 +73,117 @@ class spgemv_gpu : public spgemv<T> {
     index_ = CUSPARSE_INDEX_64I;
     base_ = CUSPARSE_INDEX_BASE_ZERO;
 
-
     m_ = m;
     n_ = n;
+    nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
+
+    A_ = (T*)malloc(sizeof(T) * m_ * n_);
 
     // Initialise 3 streams to asynchronously move data between host and device
     cudaCheckError(cudaStreamCreate(&s1_));
     cudaCheckError(cudaStreamCreate(&s2_));
     cudaCheckError(cudaStreamCreate(&s3_));
 
-    std::cout << "\tcuda streams created" << std::endl;
-
-
-    vals_size_ = sizeof(T) * nnz_;
-    cols_size_ = sizeof(int64_t) * nnz_;
-    rows_size_ = sizeof(int64_t) * (m_ + 1);
-    x_size_ = sizeof(T) * n_;
-    y_size_ = sizeof(T) * m_;
+    if (print_) std::cout << "\tcuda streams created" << std::endl;
 
     if (offload_ == gpuOffloadType::unified) {
       if (print_) std::cout << "\tAllocating arrays in unified memory" << std::endl;
-      cudaCheckError(cudaMallocManaged(&A_vals_, vals_size_));
-      cudaCheckError(cudaMallocManaged(&A_cols_, cols_size_));
-      cudaCheckError(cudaMallocManaged(&A_rows_, rows_size_));
-
-      cudaCheckError(cudaMallocManaged(&x_, x_size_));
-
-      cudaCheckError(cudaMallocManaged(&y_, y_size_));
+      cudaCheckError(cudaMallocManaged(&A_vals_, nnz_ * sizeof(T)));
+      cudaCheckError(cudaMallocManaged(&A_cols_, nnz_ * sizeof(int64_t)));
+      cudaCheckError(cudaMallocManaged(&A_rows_, (m_ + 1) * sizeof(int64_t)));
+      cudaCheckError(cudaMallocManaged(&x_, n_ * sizeof(T)));
+      cudaCheckError(cudaMallocManaged(&y_, m_ * sizeof(T)));
+      cudaCheckError(cudaDeviceSynchronize());
     } else {
       if (print_) std::cout << "\tAllocating arrays in local memory" << std::endl;
-      A_vals_ = (T*)malloc(vals_size_);
-      A_cols_ = (int64_t*)malloc(cols_size_);
-      A_rows_ = (int64_t*)malloc(rows_size_);
-      x_ = (T*)malloc(x_size_);
-      y_ = (T*)malloc(y_size_);
+      A_vals_ = (T*)malloc(nnz_ * sizeof(T));
+      A_cols_ = (int64_t*)malloc(nnz_ * sizeof(int64_t));
+      A_rows_ = (int64_t*)malloc((m_ + 1) * sizeof(int64_t));
+      x_ = (T*)malloc(n_ * sizeof(T));
+      y_ = (T*)malloc(m_ * sizeof(T));
 
       if (print_) std::cout << "\tAllocating arrays in GPU memory" << std::endl;
-      cudaCheckError(cudaMalloc((void**)&A_vals_dev_, vals_size_));
-      cudaCheckError(cudaMalloc((void**)&A_cols_dev_, cols_size_));
-      cudaCheckError(cudaMalloc((void**)&A_rows_dev_, rows_size_));
-      cudaCheckError(cudaMalloc((void**)&x_dev_, x_size_));
-      cudaCheckError(cudaMalloc((void**)&y_dev_, y_size_));
+      cudaCheckError(cudaMalloc((void**)&A_vals_dev_, nnz_ * sizeof(T)));
+      cudaCheckError(cudaMalloc((void**)&A_cols_dev_, nnz_ * sizeof(int64_t)));
+      cudaCheckError(cudaMalloc((void**)&A_rows_dev_, (m_ + 1) * sizeof(int64_t)));
+      cudaCheckError(cudaMalloc((void**)&x_dev_, n_ * sizeof(T)));
+      cudaCheckError(cudaMalloc((void**)&y_dev_, m_ * sizeof(T)));
+      cudaCheckError(cudaDeviceSynchronize());
     }
-
-    A_ = (T*)malloc(sizeof(T) * m_ * n_);
 
     if (print_) std::cout << "\tInitialising input matrix and vector" << std::endl;
     initInputMatrixVector();
+    if (debug) {
+      std::cout << "===============Initialised=================" << std::endl;
+      std::cout << "___________________________________________" << std::endl;
+      std::cout << "A =" << std::endl;
+      std::cout << "[";
+      for (int64_t i = 0; i < (m_ * n_); i++) {
+        std::cout << A_[i];
+        if ((i % n_) < (n_ - 1)) std::cout << ", ";
+        else if (i != ((m_ * n_) - 1)) std::cout << std::endl;
+      }
+      std::cout << "]" << std::endl;
+
+      std::cout << "x =" << std::endl;
+      std::cout << "[";
+      for (int64_t i = 0; i < n_; i++) {
+        std::cout << x_[i];
+        if (i < (n_ - 1)) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      
+      std::cout << "y =" << std::endl;
+      std::cout << "[";
+      for (int64_t i = 0; i < m_; i++) {
+        std::cout << y_[i];
+        if (i < (m_ - 1)) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      std::cout << "___________________________________________" << std::endl;
+      std::cout << "===============Sparsified==================" << std::endl;
+      std::cout << "___________________________________________" << std::endl;
+      std::cout << "A rows = [";
+      for (int64_t i = 0; i < (m_ + 1); i++) {
+        std::cout << A_rows_[i];
+        if (i < m_) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      std::cout << "A cols = [";
+      for (int64_t i = 0; i < nnz_; i++) {
+        std::cout << A_cols_[i];
+        if (i < (nnz_ - 1)) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      std::cout << "A vals = [";
+      for (int64_t i = 0; i < nnz_; i++) {
+        std::cout << A_vals_[i];
+        if (i < (nnz_ - 1)) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      std::cout << "___________________________________________" << std::endl;
+    }
   }
 
 protected:
 
   void toSparseFormat() override {
     if (print_) std::cout << "\tConverting matrix to sparse format" << std::endl;
-    int64_t nnz_encountered = 0;
-    for (int64_t row = 0; row < m_; row++) {
+    int nnz_encountered = 0;
+    for (int row = 0; row < m_; row++) {
       A_rows_[row] = nnz_encountered;
-      for (int64_t col = 0; col < n_; col++) {
+      int nnz_row = 0;
+      for (int col = 0; col < n_; col++) {
         if (A_[(row * n_) + col] != 0.0) {
+          nnz_row++;
           A_cols_[nnz_encountered] = col;
           A_vals_[nnz_encountered] = A_[(row * n_) + col];
           nnz_encountered++;
         }
       }
     }
+    A_rows_[m_] = nnz_encountered;
+    cudaCheckError(cudaDeviceSynchronize());
   }
 
  private:
@@ -148,30 +195,22 @@ protected:
       }
       case gpuOffloadType::once: {
         if (print_) std::cout << "\tCopying data to device" << std::endl;
-        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, vals_size_,
-                                  cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, cols_size_,
-                                  cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, rows_size_,
-                                  cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(x_dev_, x_, x_size_,
-                                       cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(y_dev_, y_, y_size_,
-                                       cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, nnz_ * sizeof(T), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, nnz_ * sizeof(int64_t), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, (m_ + 1) * sizeof(int64_t), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(x_dev_, x_, n_ * sizeof(T), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(y_dev_, y_, m_ * sizeof(T), cudaMemcpyHostToDevice));
         cudaCheckError(cudaDeviceSynchronize());
         break;
       }
       case gpuOffloadType::unified: {
         if (print_) std::cout << "\tPrefetching memory to device" << std::endl;
         // Prefetch memory to device
-        cudaCheckError(cudaMemPrefetchAsync(A_vals_, vals_size_, gpuDevice_,
-                                            s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_cols_, cols_size_, gpuDevice_,
-                                            s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_rows_, rows_size_, gpuDevice_,
-                                            s1_));
-        cudaCheckError(cudaMemPrefetchAsync(x_, x_size_, gpuDevice_, s2_));
-        cudaCheckError(cudaMemPrefetchAsync(y_, y_size_, gpuDevice_, s3_));
+        cudaCheckError(cudaMemPrefetchAsync(A_vals_, nnz_ * sizeof(T), gpuDevice_, s1_));
+        cudaCheckError(cudaMemPrefetchAsync(A_cols_, nnz_ * sizeof(int64_t), gpuDevice_, s1_));
+        cudaCheckError(cudaMemPrefetchAsync(A_rows_, (m_ + 1) * sizeof(int64_t), gpuDevice_, s1_));
+        cudaCheckError(cudaMemPrefetchAsync(x_, n_ * sizeof(T), gpuDevice_, s2_));
+        cudaCheckError(cudaMemPrefetchAsync(y_, m_ * sizeof(T), gpuDevice_, s3_));
         cudaCheckError(cudaDeviceSynchronize());
         break;
       }
@@ -184,14 +223,14 @@ protected:
     switch(offload_) {
       case gpuOffloadType::always: {
         if (print_) std::cout << "\tCopying data to device" << std::endl;
-        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, vals_size_,
+        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, nnz_ * sizeof(T),
                                   cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, cols_size_,
+        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, nnz_ * sizeof(int64_t),
                                   cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, rows_size_,
+        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, (m_ + 1) * sizeof(int64_t),
                                   cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(x_dev_, x_, x_size_, cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(y_dev_, y_, y_size_, cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(x_dev_, x_, n_ * sizeof(T), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(y_dev_, y_, m_ * sizeof(T), cudaMemcpyHostToDevice));
 
         if (print_) std::cout << "\tMaking descriptors" << std::endl;
         cusparseCheckError(cusparseCreateCsr(&A_descr_,
@@ -254,7 +293,7 @@ protected:
         cudaCheckError(cudaFree(dBuffer));
 
         if (print_) std::cout << "\tCopying data back to host" << std::endl;
-        cudaCheckError(cudaMemcpy(y_, y_dev_, y_size_, cudaMemcpyDeviceToHost));
+        cudaCheckError(cudaMemcpy(y_, y_dev_, m_ * sizeof(T), cudaMemcpyDeviceToHost));
         break;
       }
       case gpuOffloadType::once: {
@@ -399,9 +438,38 @@ protected:
       }
       case gpuOffloadType::unified: {
         if (print_) std::cout << "\tPrefetching result back to CPU" << std::endl;
-        cudaCheckError(cudaMemPrefetchAsync(y_, y_size_, cudaCpuDeviceId, s3_));
+        cudaCheckError(cudaMemPrefetchAsync(y_, m_ * sizeof(T), cudaCpuDeviceId, s3_));
         break;
       }
+    }
+    cudaCheckError(cudaDeviceSynchronize());
+    if (print_) {
+      std::cout << "___________________________________________" << std::endl;
+      std::cout << "A =" << std::endl;
+      std::cout << "[";
+      for (int64_t i = 0; i < (m_ * n_); i++) {
+        std::cout << A_[i];
+        if ((i % n_) < (n_ - 1)) std::cout << ", ";
+        else if (i != ((m_ * n_) - 1)) std::cout << std::endl;
+      }
+      std::cout << "]" << std::endl;
+
+      std::cout << "x =" << std::endl;
+      std::cout << "[";
+      for (int64_t i = 0; i < n_; i++) {
+        std::cout << x_[i];
+        if (i < (n_ - 1)) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      
+      std::cout << "y =" << std::endl;
+      std::cout << "[";
+      for (int64_t i = 0; i < m_; i++) {
+        std::cout << y_[i];
+        if (i < (m_ - 1)) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      std::cout << "___________________________________________" << std::endl;
     }
   }
 
@@ -468,6 +536,8 @@ protected:
   }
 
   bool print_ = false;
+  bool debug = false;
+
 
   /**
    * ################################
@@ -516,11 +586,7 @@ protected:
   /** CSR format vectors on the device. */
 	T* A_vals_dev_;
 	int64_t* A_cols_dev_;
-	int64_t* A_rows_dev_;
-  /** Metadata */
-  uint64_t vals_size_;
-  uint64_t cols_size_;
-  uint64_t rows_size_;
+	int64_t* A_rows_dev_; 
 
   /**
    * ################################
@@ -533,9 +599,6 @@ protected:
   /** Vectors on the device */
   T* x_dev_;
   T* y_dev_;
-  /** Metadata */
-  uint64_t x_size_;
-  uint64_t y_size_;
 };
 }  // namespace gpu
 #endif

@@ -101,7 +101,7 @@ protected:
 
       // Random number generator for R-MAT
       std::default_random_engine gen;
-      gen.seed(std::chrono::system_clock::now().time_since_epoch().count());
+      gen.seed(SEED);
       std::uniform_real_distribution<double> dist(0.0, 1.0);
 
       // Generate sparse matrix using R-MAT

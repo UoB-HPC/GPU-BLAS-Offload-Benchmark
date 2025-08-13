@@ -290,22 +290,22 @@ private:
 
       if constexpr (std::is_same_v<T, float>) {
         status_ = aoclsparse_export_scsr(C_aocl_, 
-                                        &base_,
-                                        &C_M,
-                                        &C_N,
-                                        &nnzC_aocl_,
-                                        &C_rows_,
-                                        &C_cols_,
-                                        &C_vals_);
+                                         &base_,
+                                         &C_M,
+                                         &C_N,
+                                         &nnzC_aocl_,
+                                         &C_rows_aocl_,
+                                         &C_cols_aocl_,
+                                         &C_vals_);
       } else if constexpr (std::is_same_v<T, double>) {
         status_ = aoclsparse_export_dcsr(C_aocl_, 
-                                        &base_,
-                                        &C_M,
-                                        &C_N,
-                                        &nnzC_aocl_,
-                                        &C_rows_,
-                                        &C_cols_,
-                                        &C_vals_);
+                                         &base_,
+                                         &C_M,
+                                         &C_N,
+                                         &nnzC_aocl_,
+                                         &C_rows_aocl_,
+                                         &C_cols_aocl_,
+                                         &C_vals_);
       }
       if (status_ != aoclsparse_status_success) {
         std::cerr << "aoclsparse_export_zcsr failing" << std::endl;

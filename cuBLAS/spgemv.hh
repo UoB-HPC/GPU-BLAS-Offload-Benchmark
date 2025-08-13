@@ -36,43 +36,11 @@ class spgemv_gpu : public spgemv<T> {
     cudaCheckError(cudaStreamDestroy(s3_));
   }
 
-	// ToDo -- No checksum for sparse yet.  Need to do
-
-  /** Initialise the required data structures.
-   * `offload` refers to the data offload type:
-   *  - Once:    Move data from host to device before all iterations & move from
-   *             device to host after all iterations
-   *  - Always:  Move data from host to device and device to host each iteration
-   *  - Unified: Initialise data as unified memory; no data movement semantics
-   *             required */
-  void initialise(gpuOffloadType offload, int m, int n, float sparsity)
-  override {
-//    std::cout << std::endl << "##############################" << std::endl
-//              << "\tCUSPARSE GEMV\t\tInitialising n = " << n << "\tOffload"
-//              << " type = " <<
-//              (((offload == gpuOffloadType::unified) ? "Unified" : (offload
-//              == gpuOffloadType::always) ? "Always" : "Once"))
-//              << std::endl
-//              << "##############################" << std::endl;
+  void initialise(gpuOffloadType offload, int m, int n, 
+                  double sparsity) override {
     offload_ = offload;
 
     sparsity_ = sparsity;
-
-
-    /**
-     *
-     * 	T* A_val_;
-     * 	int *A_col_, *A_row_;
-     * 	T* A_val_dev_;
-     * 	int *A_col_dev_, *A_row_dev_;
-     * 	uint64_t A_nnz_, vals_size_, cols_size_, rows_size_;
-     *
-     *
-     * 	T * x_host_, *y_host_;
-     * 	T *x_dev_, *y_dev_;
-     * 	uint64_t x_size_, y_size_;
-     *
-     */
 
     // Create a handle for cuSPARSE
     cusparseCheckError(cusparseCreate(&handle_));
@@ -149,37 +117,29 @@ class spgemv_gpu : public spgemv<T> {
 
     std::cout << "\tinputs made" << std::endl;
 
-//    std::cout << "_____Matrix A_____" << std::endl;
-//    printDenseMatrix(A_, n_, n_);
-//    std::cout << std::endl << std::endl;
-//    printCSR(A_val_, A_col_, A_row_, nnz_, n_, n_);
+
 
     std::cout << "\tInitialising done!" << std::endl;
   }
 
 protected:
 
-    void toSparseFormat() override {
-      int nnz_encountered = 0;
-      for (int row = 0; row < m_; row++) {
-        A_row_[row] = nnz_encountered;
-        for (int col = 0; col < n_; col++) {
-          if (A_[(row * n_) + col] != 0.0) {
-            A_col_[nnz_encountered] = col;
-            A_val_[nnz_encountered] = A_[(row * n_) + col];
-            nnz_encountered++;
-          }
+  void toSparseFormat() override {
+    int nnz_encountered = 0;
+    for (int row = 0; row < m_; row++) {
+      A_row_[row] = nnz_encountered;
+      for (int col = 0; col < n_; col++) {
+        if (A_[(row * n_) + col] != 0.0) {
+          A_col_[nnz_encountered] = col;
+          A_val_[nnz_encountered] = A_[(row * n_) + col];
+          nnz_encountered++;
         }
       }
-		};
+    }
+  };
 
  private:
-  /** Perform any required steps before calling the GEMM kernel that should
-   * be timed. */
   void preLoopRequirements() override {
-    std::cout << std::endl << "##############################" << std::endl
-              << "\tPreloop Requirements" << std::endl
-              << "##############################" << std::endl;
     switch(offload_) {
       case gpuOffloadType::always: {
         // Make matrix descriptor
@@ -251,10 +211,7 @@ protected:
   }
 
   /** Make a call to the BLAS Library Kernel. */
-  void callGemv() override {
-    std::cout << std::endl << "##############################" << std::endl
-              << "\tCalling GEMV" << std::endl
-              << "##############################" << std::endl;
+  void callSpgemv() override {
     switch(offload_) {
       case gpuOffloadType::always: {
         cudaCheckError(cudaMemcpy(A_val_dev_, A_val_, vals_size_,
@@ -292,17 +249,6 @@ protected:
         cudaCheckError(cudaMalloc((void**)&buffer_, buffer_size_));
         std::cout << "\tbuffer allocated" << std::endl;
 
-        cusparseCheckError(cusparseSpMV_preprocess(handle_,
-                                                   opA_,
-                                                   &alpha,
-                                                   descrA_,
-                                                   descrx_,
-                                                   &beta,
-                                                   descry_,
-                                                   cudaDataType_,
-                                                   alg_,
-                                                   buffer_));
-        std::cout << "\tpreProcess run" << std::endl;
         cusparseCheckError(cusparseSpMV(handle_,
                                         opA_,
                                         &alpha,
@@ -354,19 +300,6 @@ protected:
         cudaCheckError(cudaMalloc(&buffer_, buffer_size_));
         std::cout << "\tbuffer allocated" << std::endl;
 
-        // ToDo -- only preprocess once?
-        cusparseCheckError(
-                cusparseSpMV_preprocess(handle_,
-                                        opA_,
-                                        &alpha,
-                                        descrA_,
-                                        descrx_,
-                                        &beta,
-                                        descry_,
-                                        cudaDataType_,
-                                        alg_,
-                                        buffer_));
-        std::cout << "\tpreProcess run" << std::endl;
         cusparseCheckError(
                 cusparseSpMV(handle_,
                              opA_,
@@ -401,18 +334,6 @@ protected:
         cudaCheckError(cudaMallocManaged((void**)&buffer_, buffer_size_));
         std::cout << "\tbuffer allocated" << std::endl;
 
-        cusparseCheckError(cusparseSpMV_preprocess(handle_,
-                                                   opA_,
-                                                   &alpha,
-                                                   descrA_,
-                                                   descrx_,
-                                                   &beta,
-                                                   descry_,
-                                                   cudaDataType_,
-                                                   alg_,
-                                                   buffer_));
-        std::cout << "\tpreProcess run" << std::endl;
-
         cusparseCheckError(cusparseSpMV(handle_,
                                         opA_,
                                         &alpha,
@@ -436,9 +357,6 @@ protected:
   /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {
-    std::cout << std::endl << "##############################" << std::endl
-              << "\tpostloop Requirements" << std::endl
-              << "##############################" << std::endl;
     switch(offload_) {
       case gpuOffloadType::always: {
         break;

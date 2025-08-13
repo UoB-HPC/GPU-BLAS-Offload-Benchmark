@@ -118,7 +118,7 @@ endif
 HEADER_FILES+= $(wildcard oneMKL/CPU/*.hh)
 
 else ifeq ($(CPU_LIB), AOCL)
-override CXXFLAGS += -laoclutils -lblis-mt -lflame -laoclsparse
+override CXXFLAGS += -laoclutils -lblis -lflame -laoclsparse
 ifeq ($(COMPILER), INTEL)
 override CXXFLAGS += -qopenmp
 else

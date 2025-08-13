@@ -36,7 +36,7 @@ public:
   }
 
   void initialise(gpuOffloadType offload, int m, int n, int k,
-              double sparsity, bool binary = false) override {
+                  double sparsity, bool binary = false) override {
       // Set up problem parameters
     if (print_) {
       switch (offload) {

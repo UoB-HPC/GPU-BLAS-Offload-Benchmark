@@ -38,6 +38,21 @@ class spgemv_gpu : public spgemv<T> {
 
   void initialise(gpuOffloadType offload, int m, int n, 
                   double sparsity) override {
+    if (print_) {
+      switch (offload) {
+        case gpuOffloadType::always:
+          std::cout << "========== ALWAYS  ==========" << std::endl;
+          break;
+        case gpuOffloadType::unified:
+          std::cout << "========== UNIFIED ==========" << std::endl;
+          break;
+        case gpuOffloadType::once:
+          std::cout << "==========  ONCE   ==========" << std::endl;
+          break;
+      }
+      std::cout << "Initialise" << std::endl;
+    }
+
     offload_ = offload;
 
     sparsity_ = sparsity;
@@ -46,12 +61,19 @@ class spgemv_gpu : public spgemv<T> {
     cusparseCheckError(cusparseCreate(&handle_));
     cudaCheckError(cudaGetDevice(&gpuDevice_));
 
-    if (std::is_same_v<T, float>) cudaDataType_ = CUDA_R_32F;
-    else if (std::is_same_v<T, double>) cudaDataType_ = CUDA_R_64F;
+    // Setting cusparse metadata
+    if (std::is_same_v<T, float>) dataType_ = CUDA_R_32F;
+    else if (std::is_same_v<T, double>) dataType_ = CUDA_R_64F;
     else {
       std::cout << "INVALID DATA TYPE PASSED TO cuSPARSE" << std::endl;
       exit(1);
     }
+    opA_ = opB_ = CUSPARSE_OPERATION_NON_TRANSPOSE;
+    alg_ = CUSPARSE_SPMV_CSR_ALG2;
+    index_ = CUSPARSE_INDEX_64I;
+    base_ = CUSPARSE_INDEX_BASE_ZERO;
+
+
     m_ = m;
     n_ = n;
 
@@ -64,146 +86,92 @@ class spgemv_gpu : public spgemv<T> {
 
 
     vals_size_ = sizeof(T) * nnz_;
-    cols_size_ = sizeof(int) * nnz_;
-    rows_size_ = sizeof(int) * (m_ + 1);
+    cols_size_ = sizeof(int64_t) * nnz_;
+    rows_size_ = sizeof(int64_t) * (m_ + 1);
     x_size_ = sizeof(T) * n_;
     y_size_ = sizeof(T) * m_;
 
     if (offload_ == gpuOffloadType::unified) {
-      // Get device identifier
-      cudaCheckError(cudaMallocManaged(&A_val_, vals_size_));
-      cudaCheckError(cudaMallocManaged(&A_col_, cols_size_));
-      cudaCheckError(cudaMallocManaged(&A_row_, rows_size_));
+      if (print_) std::cout << "\tAllocating arrays in unified memory" << std::endl;
+      cudaCheckError(cudaMallocManaged(&A_vals_, vals_size_));
+      cudaCheckError(cudaMallocManaged(&A_cols_, cols_size_));
+      cudaCheckError(cudaMallocManaged(&A_rows_, rows_size_));
 
       cudaCheckError(cudaMallocManaged(&x_, x_size_));
 
       cudaCheckError(cudaMallocManaged(&y_, y_size_));
     } else {
-      A_val_ = (T*)malloc(vals_size_);
-      A_col_ = (int*)malloc(cols_size_);
-      A_row_ = (int*)malloc(rows_size_);
-
-      std::cout << "\tA_ local csr arrays made" << std::endl;
-
+      if (print_) std::cout << "\tAllocating arrays in local memory" << std::endl;
+      A_vals_ = (T*)malloc(vals_size_);
+      A_cols_ = (int64_t*)malloc(cols_size_);
+      A_rows_ = (int64_t*)malloc(rows_size_);
       x_ = (T*)malloc(x_size_);
       y_ = (T*)malloc(y_size_);
 
-      std::cout << "\tx_ and y_ local arrays made" << std::endl;
-
-      cudaCheckError(cudaMalloc((void**)&A_val_dev_, vals_size_));
-      cudaCheckError(cudaMalloc((void**)&A_col_dev_, cols_size_));
-      cudaCheckError(cudaMalloc((void**)&A_row_dev_, rows_size_));
-
-      std::cout << "\tA_ dev csr arrays made" << std::endl;
-
+      if (print_) std::cout << "\tAllocating arrays in GPU memory" << std::endl;
+      cudaCheckError(cudaMalloc((void**)&A_vals_dev_, vals_size_));
+      cudaCheckError(cudaMalloc((void**)&A_cols_dev_, cols_size_));
+      cudaCheckError(cudaMalloc((void**)&A_rows_dev_, rows_size_));
       cudaCheckError(cudaMalloc((void**)&x_dev_, x_size_));
-
       cudaCheckError(cudaMalloc((void**)&y_dev_, y_size_));
-
-      std::cout << "\tx_ and y_ dev arrays made" << std::endl;
     }
 
-    // Initialise the host matricies
-    // cusparseSpGEMM() works on CSR format only.  This helpfully makes our
-    // sparse matrix format decision for us!
-
-    // Initialise the matrices
-    // Set initial values to 0
     A_ = (T*)malloc(sizeof(T) * m_ * n_);
 
-    std::cout << "\tA_ dense array made" << std::endl;
-
+    if (print_) std::cout << "\tInitialising input matrix and vector" << std::endl;
     initInputMatrixVector();
-
-    std::cout << "\tinputs made" << std::endl;
-
-
-
-    std::cout << "\tInitialising done!" << std::endl;
   }
 
 protected:
 
   void toSparseFormat() override {
-    int nnz_encountered = 0;
-    for (int row = 0; row < m_; row++) {
-      A_row_[row] = nnz_encountered;
-      for (int col = 0; col < n_; col++) {
+    if (print_) std::cout << "\tConverting matrix to sparse format" << std::endl;
+    int64_t nnz_encountered = 0;
+    for (int64_t row = 0; row < m_; row++) {
+      A_rows_[row] = nnz_encountered;
+      for (int64_t col = 0; col < n_; col++) {
         if (A_[(row * n_) + col] != 0.0) {
-          A_col_[nnz_encountered] = col;
-          A_val_[nnz_encountered] = A_[(row * n_) + col];
+          A_cols_[nnz_encountered] = col;
+          A_vals_[nnz_encountered] = A_[(row * n_) + col];
           nnz_encountered++;
         }
       }
     }
-  };
+  }
 
  private:
   void preLoopRequirements() override {
+    if (print_) std::cout << "Pre-loop stuff" << std::endl;
     switch(offload_) {
       case gpuOffloadType::always: {
-        // Make matrix descriptor
-        cusparseCheckError(
-                cusparseCreateCsr(&descrA_, m_, n_, nnz_, A_row_dev_,
-                                  A_col_dev_, A_val_dev_, rType_, cType_,
-                                  indType_, cudaDataType_));
-        std::cout << "\tA_ description made" << std::endl;
-        // Create vector descriptor
-        cusparseCheckError(cusparseCreateDnVec(&descrx_, n_, x_dev_,
-                                               cudaDataType_));
-        std::cout << "\tx_ description made" << std::endl;
-        cusparseCheckError(cusparseCreateDnVec(&descry_, m_, NULL,
-                                               cudaDataType_));
-        std::cout << "\ty_ description made" << std::endl;
         break;
       }
       case gpuOffloadType::once: {
-        cudaCheckError(cudaMemcpy(A_val_dev_, A_val_, vals_size_,
+        if (print_) std::cout << "\tCopying data to device" << std::endl;
+        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, vals_size_,
                                   cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_col_dev_, A_col_, cols_size_,
+        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, cols_size_,
                                   cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_row_dev_, A_row_, rows_size_,
+        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, rows_size_,
                                   cudaMemcpyHostToDevice));
-        std::cout << "\tA_ csr dev arrays sunc" << std::endl;
-
         cudaCheckError(cudaMemcpy(x_dev_, x_, x_size_,
                                        cudaMemcpyHostToDevice));
-        std::cout << "\tx_ dev array sunc" << std::endl;
-
         cudaCheckError(cudaMemcpy(y_dev_, y_, y_size_,
                                        cudaMemcpyHostToDevice));
-        std::cout << "\ty_ dev array sunc" << std::endl;
-
-        // Create matrix descriptor
-        cusparseCheckError(
-                cusparseCreateCsr(&descrA_, m_, n_, nnz_, A_row_dev_,
-                                  A_col_dev_, A_val_dev_, rType_, cType_,
-                                  indType_, cudaDataType_));
-        std::cout << "\tA_ description made" << std::endl;
-        // Create vector descriptor
-        cusparseCheckError(cusparseCreateDnVec(&descrx_, n_, x_dev_,
-                                               cudaDataType_));
-        std::cout << "\tx_ description made" << std::endl;
-        cusparseCheckError(cusparseCreateDnVec(&descry_, m_, NULL,
-                                               cudaDataType_));
-        std::cout << "\ty_ description made" << std::endl;
+        cudaCheckError(cudaDeviceSynchronize());
         break;
       }
       case gpuOffloadType::unified: {
+        if (print_) std::cout << "\tPrefetching memory to device" << std::endl;
         // Prefetch memory to device
-        cudaCheckError(cudaMemPrefetchAsync(A_val_, vals_size_, gpuDevice_,
+        cudaCheckError(cudaMemPrefetchAsync(A_vals_, vals_size_, gpuDevice_,
                                             s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_col_, cols_size_, gpuDevice_,
+        cudaCheckError(cudaMemPrefetchAsync(A_cols_, cols_size_, gpuDevice_,
                                             s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_row_, rows_size_, gpuDevice_,
+        cudaCheckError(cudaMemPrefetchAsync(A_rows_, rows_size_, gpuDevice_,
                                             s1_));
-        std::cout << "\tA_ csr dev arrays sunc" << std::endl;
-
         cudaCheckError(cudaMemPrefetchAsync(x_, x_size_, gpuDevice_, s2_));
-        std::cout << "\tx_ dev array sunc" << std::endl;
-
         cudaCheckError(cudaMemPrefetchAsync(y_, y_size_, gpuDevice_, s3_));
-        std::cout << "\ty_ dev array sunc" << std::endl;
         cudaCheckError(cudaDeviceSynchronize());
         break;
       }
@@ -212,143 +180,205 @@ protected:
 
   /** Make a call to the BLAS Library Kernel. */
   void callSpgemv() override {
+    if (print_) std::cout << "Calling SpMV kernel" << std::endl;
     switch(offload_) {
       case gpuOffloadType::always: {
-        cudaCheckError(cudaMemcpy(A_val_dev_, A_val_, vals_size_,
+        if (print_) std::cout << "\tCopying data to device" << std::endl;
+        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, vals_size_,
                                   cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_col_dev_, A_col_, cols_size_,
+        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, cols_size_,
                                   cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_row_dev_, A_row_, rows_size_,
+        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, rows_size_,
                                   cudaMemcpyHostToDevice));
-        std::cout << "\tA_ csr dev arrays sunc" << std::endl;
-
         cudaCheckError(cudaMemcpy(x_dev_, x_, x_size_, cudaMemcpyHostToDevice));
-        std::cout << "\tx_ dev array sunc" << std::endl;
-
         cudaCheckError(cudaMemcpy(y_dev_, y_, y_size_, cudaMemcpyHostToDevice));
-        std::cout << "\ty_ dev array sunc" << std::endl;
 
-        /**
+        if (print_) std::cout << "\tMaking descriptors" << std::endl;
+        cusparseCheckError(cusparseCreateCsr(&A_descr_,
+                                             n_,
+                                             m_,
+                                             nnz_,
+                                             A_rows_dev_,
+                                             A_cols_dev_,
+                                             A_vals_dev_,
+                                             index_,
+                                             index_,
+                                             base_,
+                                             dataType_));
+        cusparseCheckError(cusparseCreateDnVec(&x_descr_,
+                                               n_,
+                                               x_dev_,
+                                               dataType_));
+        cusparseCheckError(cusparseCreateDnVec(&y_descr_,
+                                               m_,
+                                               y_dev_,
+                                               dataType_));
+        /*
          * Workflow is :
          *    cusparseSpMV_bufferSize
-         *    cisparseSpMV_preprocess
          *    cusparseSpMV
          */
+        if (print_) std::cout << "\tCalling bufferSize" << std::endl;
+        size_t bufferSize;
+        void* dBuffer;
         cusparseCheckError(cusparseSpMV_bufferSize(handle_,
                                                    opA_,
                                                    &alpha,
-                                                   descrA_,
-                                                   descrx_,
+                                                   A_descr_,
+                                                   x_descr_,
                                                    &beta,
-                                                   descry_,
-                                                   cudaDataType_,
+                                                   y_descr_,
+                                                   dataType_,
                                                    alg_,
-                                                   &buffer_size_));
+                                                   &bufferSize));
 
-        std::cout << "\tbufferSize run" << std::endl;
-        cudaCheckError(cudaMalloc((void**)&buffer_, buffer_size_));
-        std::cout << "\tbuffer allocated" << std::endl;
+        if (print_) std::cout << "\tAllocating buffer" << std::endl;
+        cudaCheckError(cudaMalloc(&dBuffer, bufferSize));
 
+        if (print_) std::cout << "\tCalling SpMV" << std::endl;
         cusparseCheckError(cusparseSpMV(handle_,
                                         opA_,
                                         &alpha,
-                                        descrA_,
-                                        descrx_,
+                                        A_descr_,
+                                        x_descr_,
                                         &beta,
-                                        descry_,
-                                        cudaDataType_,
+                                        y_descr_,
+                                        dataType_,
                                         alg_,
-                                        buffer_));
-        std::cout << "\tSpMV run" << std::endl;
+                                        dBuffer));
 
-        cudaCheckError(cudaMemcpy(A_val_, A_val_dev_, vals_size_,
-                                  cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(A_col_, A_col_dev_, cols_size_,
-                                  cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(A_row_, A_row_dev_, rows_size_,
-                                  cudaMemcpyDeviceToHost));
+        if (print_) std::cout << "\tDestroying descriptors" << std::endl;
+        cusparseCheckError(cusparseDestroySpMat(A_descr_));
+        cusparseCheckError(cusparseDestroyDnVec(x_descr_));
+        cusparseCheckError(cusparseDestroyDnVec(y_descr_));
+        cudaCheckError(cudaFree(dBuffer));
 
-        std::cout << "\tA_ csr host arrays sunc" << std::endl;
-
-        cudaCheckError(cudaMemcpy(x_, x_dev_, x_size_, cudaMemcpyDeviceToHost));
-        std::cout << "\tx_ host array sunc" << std::endl;
-
+        if (print_) std::cout << "\tCopying data back to host" << std::endl;
         cudaCheckError(cudaMemcpy(y_, y_dev_, y_size_, cudaMemcpyDeviceToHost));
-        std::cout << "\ty_ host array sunc" << std::endl;
-
-
-        // Freeing memory
-        cudaCheckError(cudaFree(buffer_));
-        std::cout << "\tBuffer 1 freed" << std::endl;
-        buffer_size_ = 0;
         break;
       }
       case gpuOffloadType::once: {
-        cusparseCheckError(
-                cusparseSpMV_bufferSize(handle_,
-                                        opA_,
-                                        &alpha,
-                                        descrA_,
-                                        descrx_,
-                                        &beta,
-                                        descry_,
-                                        cudaDataType_,
-                                        alg_,
-                                        &buffer_size_));
-        std::cout << "\tbufferSize run" << std::endl;
-
-        cudaCheckError(cudaMalloc(&buffer_, buffer_size_));
-        std::cout << "\tbuffer allocated" << std::endl;
-
-        cusparseCheckError(
-                cusparseSpMV(handle_,
-                             opA_,
-                             &alpha,
-                             descrA_,
-                             descrx_,
-                             &beta,
-                             descry_,
-                             cudaDataType_,
-                             alg_,
-                             buffer_));
-        std::cout << "\tSpMV run" << std::endl;
-
-        // Freeing memory
-        cudaCheckError(cudaFree(buffer_));
-        std::cout << "\tBuffer 1 freed" << std::endl;
-        break;
-      }
-      case gpuOffloadType::unified: {
+        if (print_) std::cout << "\tMaking descriptors" << std::endl;
+        cusparseCheckError(cusparseCreateCsr(&A_descr_,
+                                             n_,
+                                             m_,
+                                             nnz_,
+                                             A_rows_dev_,
+                                             A_cols_dev_,
+                                             A_vals_dev_,
+                                             index_,
+                                             index_,
+                                             base_,
+                                             dataType_));
+        cusparseCheckError(cusparseCreateDnVec(&x_descr_,
+                                               n_,
+                                               x_dev_,
+                                               dataType_));
+        cusparseCheckError(cusparseCreateDnVec(&y_descr_,
+                                               m_,
+                                               y_dev_,
+                                               dataType_));
+        /*
+         * Workflow is :
+         *    cusparseSpMV_bufferSize
+         *    cusparseSpMV
+         */
+        if (print_) std::cout << "\tCalling bufferSize" << std::endl;
+        size_t bufferSize;
+        void* dBuffer;
         cusparseCheckError(cusparseSpMV_bufferSize(handle_,
                                                    opA_,
                                                    &alpha,
-                                                   descrA_,
-                                                   descrx_,
+                                                   A_descr_,
+                                                   x_descr_,
                                                    &beta,
-                                                   descry_,
-                                                   cudaDataType_,
+                                                   y_descr_,
+                                                   dataType_,
                                                    alg_,
-                                                   &buffer_size_));
-        std::cout << "\tbufferSize run" << std::endl;
+                                                   &bufferSize));
 
-        cudaCheckError(cudaMallocManaged((void**)&buffer_, buffer_size_));
-        std::cout << "\tbuffer allocated" << std::endl;
+        if (print_) std::cout << "\tAllocating buffer" << std::endl;
+        cudaCheckError(cudaMalloc(&dBuffer, bufferSize));
 
+        if (print_) std::cout << "\tCalling SpMV" << std::endl;
         cusparseCheckError(cusparseSpMV(handle_,
                                         opA_,
                                         &alpha,
-                                        descrA_,
-                                        descrx_,
+                                        A_descr_,
+                                        x_descr_,
                                         &beta,
-                                        descry_,
-                                        cudaDataType_,
+                                        y_descr_,
+                                        dataType_,
                                         alg_,
-                                        buffer_));
-        std::cout << "\tSpMV run" << std::endl;
+                                        dBuffer));
 
-        // Freeing memory
-        cudaCheckError(cudaFree(buffer_));
-        buffer_size_ = 0;
+        if (print_) std::cout << "\tDestroying descriptors" << std::endl;
+        cusparseCheckError(cusparseDestroySpMat(A_descr_));
+        cusparseCheckError(cusparseDestroyDnVec(x_descr_));
+        cusparseCheckError(cusparseDestroyDnVec(y_descr_));
+        cudaCheckError(cudaFree(dBuffer));
+        break;
+      }
+      case gpuOffloadType::unified: {
+        if (print_) std::cout << "\tMaking descriptors" << std::endl;
+        cusparseCheckError(cusparseCreateCsr(&A_descr_,
+                                             n_,
+                                             m_,
+                                             nnz_,
+                                             A_rows_,
+                                             A_cols_,
+                                             A_vals_,
+                                             index_,
+                                             index_,
+                                             base_,
+                                             dataType_));
+        cusparseCheckError(cusparseCreateDnVec(&x_descr_,
+                                               n_,
+                                               x_,
+                                               dataType_));
+        cusparseCheckError(cusparseCreateDnVec(&y_descr_,
+                                               m_,
+                                               y_,
+                                               dataType_));
+        /*
+         * Workflow is :
+         *    cusparseSpMV_bufferSize
+         *    cusparseSpMV
+         */
+        if (print_) std::cout << "\tCalling bufferSize" << std::endl;
+        size_t bufferSize;
+        void* dBuffer;
+        cusparseCheckError(cusparseSpMV_bufferSize(handle_,
+                                                   opA_,
+                                                   &alpha,
+                                                   A_descr_,
+                                                   x_descr_,
+                                                   &beta,
+                                                   y_descr_,
+                                                   dataType_,
+                                                   alg_,
+                                                   &bufferSize));
+
+        if (print_) std::cout << "\tAllocating buffer" << std::endl;
+        cudaCheckError(cudaMalloc(&dBuffer, bufferSize));
+
+        if (print_) std::cout << "\tCalling SpMV" << std::endl;
+        cusparseCheckError(cusparseSpMV(handle_,
+                                        opA_,
+                                        &alpha,
+                                        A_descr_,
+                                        x_descr_,
+                                        &beta,
+                                        y_descr_,
+                                        dataType_,
+                                        alg_,
+                                        dBuffer));
+
+        if (print_) std::cout << "\tDestroying descriptors" << std::endl;
+        cusparseCheckError(cusparseDestroySpMat(A_descr_));
+        cusparseCheckError(cusparseDestroyDnVec(x_descr_));
+        cusparseCheckError(cusparseDestroyDnVec(y_descr_));
+        cudaCheckError(cudaFree(dBuffer));
         break;
       }
     }
@@ -362,50 +392,14 @@ protected:
         break;
       }
       case gpuOffloadType::once: {
-        cudaCheckError(cudaMemcpy(A_val_, A_val_dev_, vals_size_,
-                                  cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(A_col_, A_col_dev_, cols_size_,
-                                  cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(A_row_, A_row_dev_, rows_size_,
-                                  cudaMemcpyDeviceToHost));
-        std::cout << "\tA_ csr host arrays sunc" << std::endl;
-
-        cudaCheckError(cudaMemcpy(x_, x_dev_, x_size_, cudaMemcpyDeviceToHost));
-        std::cout << "\tx_ host array sunc" << std::endl;
-
-        cudaCheckError(cudaMemcpy(y_, y_dev_, y_size_,
-                                       cudaMemcpyDeviceToHost));
-        std::cout << "\ty_ host array sunc" << std::endl;
-
-        cusparseCheckError(cusparseDestroySpMat(descrA_));
-        cusparseCheckError(cusparseDestroyDnVec(descrx_));
-        cusparseCheckError(cusparseDestroyDnVec(descry_));
+        if (print_) std::cout << "\tCopying result back to CPU" << std::endl;
+        cudaCheckError(cudaMemcpyAsync(y_, y_dev_, sizeof(T) * m_,
+                                       cudaMemcpyDeviceToHost, s3_));
         break;
       }
       case gpuOffloadType::unified: {
-        // Ensure all data resides on host once work has completed
-        cudaCheckError(cudaMemPrefetchAsync(A_val_, vals_size_,
-                                            cudaCpuDeviceId, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_col_, cols_size_,
-                                            cudaCpuDeviceId, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_row_, rows_size_,
-                                            cudaCpuDeviceId, s1_));
-        std::cout << "\tA_ csr arrays sunc" << std::endl;
-
-        cudaCheckError(cudaMemPrefetchAsync(x_, x_size_, cudaCpuDeviceId, s2_));
-        std::cout << "\tx_ array sunc" << std::endl;
-
+        if (print_) std::cout << "\tPrefetching result back to CPU" << std::endl;
         cudaCheckError(cudaMemPrefetchAsync(y_, y_size_, cudaCpuDeviceId, s3_));
-        std::cout << "\ty_ array sunc" << std::endl;
-
-
-        // Ensure device has finished all work.
-        cudaCheckError(cudaDeviceSynchronize());
-        std::cout << "\tdevice and host sunc" << std::endl;
-
-        cusparseCheckError(cusparseDestroySpMat(descrA_));
-        cusparseCheckError(cusparseDestroyDnVec(descrx_));
-        cusparseCheckError(cusparseDestroyDnVec(descry_));
         break;
       }
     }
@@ -414,19 +408,24 @@ protected:
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
-
     free(A_);
     if (offload_ == gpuOffloadType::unified) {
-      cudaCheckError(cudaFree(A_val_));
-      cudaCheckError(cudaFree(A_col_));
-      cudaCheckError(cudaFree(A_row_));
+      cudaCheckError(cudaFree(A_vals_));
+      cudaCheckError(cudaFree(A_cols_));
+      cudaCheckError(cudaFree(A_rows_));
+      cudaCheckError(cudaFree(x_));
+      cudaCheckError(cudaFree(y_));
     } else {
-      free(A_val_);
-      free(A_col_);
-      free(A_row_);
-      cudaCheckError(cudaFree(A_val_dev_));
-      cudaCheckError(cudaFree(A_col_dev_));
-      cudaCheckError(cudaFree(A_row_dev_));
+      free(A_vals_);
+      free(A_cols_);
+      free(A_rows_);
+      free(x_);
+      free(y_);
+      cudaCheckError(cudaFree(A_vals_dev_));
+      cudaCheckError(cudaFree(A_cols_dev_));
+      cudaCheckError(cudaFree(A_rows_dev_));
+      cudaCheckError(cudaFree(x_dev_));
+      cudaCheckError(cudaFree(y_dev_));
     }
 
     // Destroy the handle
@@ -451,7 +450,7 @@ protected:
     }
   }
 
-  void printCSR(T* values, int* col_indices, int* row_pointers, int nnz,
+  void printCSR(T* values, int64_t* col_indices, int64_t* row_pointers, int nnz,
                 int rows, int cols) {
     std::cout << "\tRow pointers__" << std::endl;
     for (int p = 0; p < (rows + 1); p++) {
@@ -467,6 +466,8 @@ protected:
     }
     std::cout << std::endl;
   }
+
+  bool print_ = false;
 
   /**
    * ################################
@@ -486,21 +487,16 @@ protected:
   int gpuDevice_;
 
 	// Create descriptors for matrices A->C
-	cusparseSpMatDescr_t descrA_;
-  cusparseDnVecDescr_t descrx_, descry_;
+	cusparseSpMatDescr_t A_descr_;
+  cusparseDnVecDescr_t x_descr_, y_descr_;
 
-	// Data type depends on kernel being run
-	cudaDataType_t cudaDataType_;
-
-	size_t buffer_size_ = 0;
-  void* buffer_ = NULL;
-
-  cusparseOperation_t opA_ = CUSPARSE_OPERATION_NON_TRANSPOSE;
-  cusparseOperation_t opB_ = CUSPARSE_OPERATION_NON_TRANSPOSE;
-  cusparseSpMVAlg_t alg_ = CUSPARSE_SPMV_CSR_ALG2;
-  cusparseIndexType_t rType_ = CUSPARSE_INDEX_32I;
-  cusparseIndexType_t cType_ = CUSPARSE_INDEX_32I;
-  cusparseIndexBase_t indType_ = CUSPARSE_INDEX_BASE_ZERO;
+	// cusparse metadata variables
+	cudaDataType_t dataType_;
+  cusparseOperation_t opA_;
+  cusparseOperation_t opB_;
+  cusparseSpMVAlg_t alg_;
+  cusparseIndexType_t index_;
+  cusparseIndexBase_t base_;
 
   /** The constant value Alpha. */
   const T alpha = ALPHA;
@@ -514,13 +510,17 @@ protected:
    * ################################
    */
 	/** CSR format vectors on the host (also used for USM) */
-	T* A_val_;
-	int *A_col_, *A_row_;
+	T* A_vals_;
+	int64_t* A_cols_;
+  int64_t* A_rows_;
   /** CSR format vectors on the device. */
-	T* A_val_dev_;
-	int *A_col_dev_, *A_row_dev_;
+	T* A_vals_dev_;
+	int64_t* A_cols_dev_;
+	int64_t* A_rows_dev_;
   /** Metadata */
-  uint64_t vals_size_, cols_size_, rows_size_;
+  uint64_t vals_size_;
+  uint64_t cols_size_;
+  uint64_t rows_size_;
 
   /**
    * ################################
@@ -528,11 +528,14 @@ protected:
    * ################################
    */
   /** Vectors on the host (also used for USM) */
-  T * x_host_, *y_host_;
+  T* x_host_;
+  T* y_host_;
   /** Vectors on the device */
-  T *x_dev_, *y_dev_;
+  T* x_dev_;
+  T* y_dev_;
   /** Metadata */
-  uint64_t x_size_, y_size_;
+  uint64_t x_size_;
+  uint64_t y_size_;
 };
 }  // namespace gpu
 #endif

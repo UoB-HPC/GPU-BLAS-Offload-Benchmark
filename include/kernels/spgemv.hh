@@ -71,16 +71,19 @@ private:
 
 protected:
     void initInputMatrixVector() {
+      // Random number generator objects for use in descent
+      std::default_random_engine gen;
+      std::uniform_real_distribution<double> dist(0.0, 1.0);
+      // Set the seeds to allow checksum to work
+      srand(SEED);
+      gen.seed(SEED);
+
       // Initialise matric to
       for (int i = 0; i < (n_ * m_); i++) {
         A_[i] = 0.0;
       }
 
-      // Random number generator objects for use in descent
-      std::default_random_engine gen;
-      gen.seed(std::chrono::system_clock::now().time_since_epoch().count());
-      std::uniform_real_distribution<double> dist(0.0, 1.0);
-
+  
       if (print_) std::cout << "DEBUG: Generating sparse matrix with R-MAT" << std::endl;
       int successful_inserts = 0;
       int failed_attempts = 0;

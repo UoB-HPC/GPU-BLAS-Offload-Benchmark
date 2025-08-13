@@ -175,6 +175,35 @@ private:
     }
 
     void postLoopRequirements() override {
+      if (debug) {
+        std::cout << "==========   CPU   ==========" << std::endl;
+        std::cout << "___________________________________________" << std::endl;
+        std::cout << "A =" << std::endl;
+        std::cout << "[";
+        for (int64_t i = 0; i < (m_ * n_); i++) {
+          std::cout << A_[i];
+          if ((i % n_) < (n_ - 1)) std::cout << ", ";
+          else if (i != ((m_ * n_) - 1)) std::cout << std::endl;
+        }
+        std::cout << "]" << std::endl;
+
+        std::cout << "x =" << std::endl;
+        std::cout << "[";
+        for (int64_t i = 0; i < n_; i++) {
+          std::cout << x_[i];
+          if (i < (n_ - 1)) std::cout << ", ";
+        }
+        std::cout << "]" << std::endl;
+        
+        std::cout << "y =" << std::endl;
+        std::cout << "[";
+        for (int64_t i = 0; i < m_; i++) {
+          std::cout << y_[i];
+          if (i < (m_ - 1)) std::cout << ", ";
+        }
+        std::cout << "]" << std::endl;
+        std::cout << "___________________________________________" << std::endl;
+      }
     }
 
     void postCallKernelCleanup() override {
@@ -255,6 +284,7 @@ private:
     }
 
     bool print_ = false;
+    bool debug = false;
 
     aoclsparse_status status_;
 

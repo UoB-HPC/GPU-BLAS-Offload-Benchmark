@@ -47,8 +47,8 @@ public:
           break;
         }
       }
+      std::cout << "Initialising " << m << "x" << k << " . " << k << "x" << n <<std::endl;
     }
-
 
     offload_ = offload;
     sparsity_ = sparsity;
@@ -65,6 +65,11 @@ public:
     nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
 
     // Set up cuSPARSE metadata
+    opA_ = CUSPARSE_OPERATION_NON_TRANSPOSE;
+    opB_ = CUSPARSE_OPERATION_NON_TRANSPOSE;
+    alg_ = CUSPARSE_SPMM_ALG_DEFAULT;
+    index_ = CUSPARSE_INDEX_64I;
+    base_ = CUSPARSE_INDEX_BASE_ZERO;
     if (std::is_same_v<T, float>) dataType_ = CUDA_R_32F;
     else if (std::is_same_v<T, double>) dataType_ = CUDA_R_64F;
     else {
@@ -72,6 +77,7 @@ public:
       exit(1);
     }
 
+    if (print_) std::cout << "\tSetting up cuda streams" << std::endl;
     // Get device identifier
     cudaCheckError(cudaGetDevice(&gpuDevice_));
 
@@ -81,33 +87,31 @@ public:
     cudaCheckError(cudaStreamCreate(&s3_));
 
     if (offload_ == gpuOffloadType::unified) {
-      cudaCheckError(cudaMallocManaged(&A_val_, sizeof(T) * nnz_));
-      cudaCheckError(cudaMallocManaged(&A_col_, sizeof(int64_t) * nnz_));
-      cudaCheckError(cudaMallocManaged(&A_row_, sizeof(int64_t) * (m_ + 1)));
-
+      if (print_) std::cout << "\tAllocating unified memory" << std::endl;
+      cudaCheckError(cudaMallocManaged(&A_vals_, sizeof(T) * nnz_));
+      cudaCheckError(cudaMallocManaged(&A_cols_, sizeof(int64_t) * nnz_));
+      cudaCheckError(cudaMallocManaged(&A_rows_, sizeof(int64_t) * (m_ + 1)));
       cudaCheckError(cudaMallocManaged(&B_, sizeof(T) * k_ * n_));
-
       cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * m_ * n_));
     } else {
-      A_val_ = (T*)malloc(sizeof(T) * nnz_);
-      A_col_ = (int64_t*)malloc(sizeof(int64_t) * nnz_);
-      A_row_ = (int64_t*)malloc(sizeof(int64_t) * (m_ + 1));
-
+      if (print_) std::cout << "\tAllocating host memory" << std::endl;
+      A_vals_ = (T*)malloc(sizeof(T) * nnz_);
+      A_cols_ = (int64_t*)malloc(sizeof(int64_t) * nnz_);
+      A_rows_ = (int64_t*)malloc(sizeof(int64_t) * (m_ + 1));
       B_ = (T*)malloc(sizeof(T) * k_ * n_);
-
       C_ = (T*)malloc(sizeof(T) * m_ * n_);
 
-      cudaCheckError(cudaMalloc((void**)&A_val_dev_, sizeof(T) * nnz_));
-      cudaCheckError(cudaMalloc((void**)&A_col_dev_, sizeof(T) * nnz_));
-      cudaCheckError(cudaMalloc((void**)&A_row_dev_, sizeof(T) * (m_ + 1)));
-
+      if (print_) std::cout << "\tAllocating device memory" << std::endl;
+      cudaCheckError(cudaMalloc((void**)&A_vals_dev_, sizeof(T) * nnz_));
+      cudaCheckError(cudaMalloc((void**)&A_cols_dev_, sizeof(int64_t) * nnz_));
+      cudaCheckError(cudaMalloc((void**)&A_rows_dev_, sizeof(int64_t) * (m_ + 1)));
       cudaCheckError(cudaMalloc((void**)&B_dev_, sizeof(T) * k_ * n_));
-
       cudaCheckError(cudaMalloc((void**)&C_dev_, sizeof(T) * m_ * n_));
     }
 
     cusparseCheckError(cusparseCreate(&handle_));
 
+    if (print_) std::cout << "\tInitialising input matrices" << std::endl;
     initInputMatrices();
   }
 
@@ -116,18 +120,18 @@ protected:
     // Load A into CSR
     int nnz_encountered = 0;
     for (int row = 0; row < m_; row++) {
-      A_row_[row] = nnz_encountered;
+      A_rows_[row] = nnz_encountered;
       int nnz_row = 0;
       for (int col = 0; col < k_; col++) {
-        if (B_[(row * k_) + col] != 0.0) {
+        if (A_[(row * k_) + col] != 0.0) {
           nnz_row++;
-          A_col_[nnz_encountered] = col;
-          A_val_[nnz_encountered] = A_[(row * k_) + col];
+          A_cols_[nnz_encountered] = col;
+          A_vals_[nnz_encountered] = A_[(row * k_) + col];
           nnz_encountered++;
         }
       }
     }
-    A_row_[m_] = nnz_encountered;
+    A_rows_[m_] = nnz_encountered;
 
     B_order_ = C_order_ = CUSPARSE_ORDER_ROW;
   }
@@ -139,15 +143,15 @@ private:
         break;
       }
       case gpuOffloadType::once: {
-        cudaCheckError(cudaMemcpyAsync(A_val_dev_, A_val_, (sizeof(T) * nnz_),
+        if (print_) std::cout << "\tMoving data to GPU" << std::endl;
+        cudaCheckError(cudaMemcpyAsync(A_vals_dev_, A_vals_, (sizeof(T) * nnz_),
                                        cudaMemcpyHostToDevice, s1_));
-        cudaCheckError(cudaMemcpyAsync(A_col_dev_, A_col_,
+        cudaCheckError(cudaMemcpyAsync(A_cols_dev_, A_cols_,
                                        (sizeof(int64_t) * nnz_),
                                        cudaMemcpyHostToDevice, s1_));
-        cudaCheckError(cudaMemcpyAsync(A_row_dev_, A_row_,
+        cudaCheckError(cudaMemcpyAsync(A_rows_dev_, A_rows_,
                                        (sizeof(int64_t) * (m_ + 1)),
                                        cudaMemcpyHostToDevice, s1_));
-
         cudaCheckError(cudaMemcpyAsync(B_dev_, B_, (sizeof(T) * k_ * n_),
                                        cudaMemcpyHostToDevice, s2_));
 
@@ -157,16 +161,15 @@ private:
         break;
       }
       case gpuOffloadType::unified: {
-        cudaCheckError(cudaMemPrefetchAsync(A_val_, sizeof(T) * nnz_,
+        if (print_) std::cout << "\tMoving data to GPU" << std::endl;
+        cudaCheckError(cudaMemPrefetchAsync(A_vals_, sizeof(T) * nnz_,
                                             gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_col_, sizeof(int64_t) * nnz_,
+        cudaCheckError(cudaMemPrefetchAsync(A_cols_, sizeof(int64_t) * nnz_,
                                             gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_row_, sizeof(int64_t) * (m_ + 1),
+        cudaCheckError(cudaMemPrefetchAsync(A_rows_, sizeof(int64_t) * (m_ + 1),
                                             gpuDevice_, s1_));
-
         cudaCheckError(cudaMemPrefetchAsync(B_, sizeof(T) * n_ * k_,
                                             gpuDevice_, s2_));
-
         cudaCheckError(cudaMemPrefetchAsync(C_, sizeof(T) * m_ * n_,
                                             gpuDevice_, s3_));
         cudaCheckError(cudaDeviceSynchronize());
@@ -179,12 +182,13 @@ private:
     switch(offload_) {
       case gpuOffloadType::always: {
         // Move over data
-        cudaCheckError(cudaMemcpyAsync(A_val_dev_, A_val_, (sizeof(T) * nnz_),
+        if (print_) std::cout << "\tMoving data to GPU" << std::endl;
+        cudaCheckError(cudaMemcpyAsync(A_vals_dev_, A_vals_, (sizeof(T) * nnz_),
                                        cudaMemcpyHostToDevice, s1_));
-        cudaCheckError(cudaMemcpyAsync(A_col_dev_, A_col_,
+        cudaCheckError(cudaMemcpyAsync(A_cols_dev_, A_cols_,
                                        (sizeof(int64_t) * nnz_),
                                        cudaMemcpyHostToDevice, s1_));
-        cudaCheckError(cudaMemcpyAsync(A_row_dev_, A_row_,
+        cudaCheckError(cudaMemcpyAsync(A_rows_dev_, A_rows_,
                                        (sizeof(int64_t) * (m_ + 1)),
                                        cudaMemcpyHostToDevice, s1_));
 
@@ -196,19 +200,19 @@ private:
 
         // Set up descriptors
         if (print_) std::cout << "\tCreating matrix descriptor for A" << std::endl;
-        cusparseCheckError(cusparseCreateCsr(&descrA_, 
+        cusparseCheckError(cusparseCreateCsr(&A_descr_, 
                                              m_, 
                                              k_, 
                                              nnz_, 
-                                             A_row_dev_, 
-                                             A_col_dev_,
-                                             A_val_dev_, 
+                                             A_rows_dev_, 
+                                             A_cols_dev_,
+                                             A_vals_dev_, 
                                              index_, 
                                              index_, 
                                              base_, 
                                              dataType_));
         if (print_) std::cout << "\tCreating matrix descriptor for B" << std::endl;
-        cusparseCheckError(cusparseCreateDnMat(&descrB_, 
+        cusparseCheckError(cusparseCreateDnMat(&B_descr_, 
                                                B_num_rows_, 
                                                B_num_cols_,
                                                B_leading_dim_, 
@@ -216,7 +220,7 @@ private:
                                                dataType_,
                                                B_order_));
         if (print_) std::cout << "\tCreating matrix descriptor for C" << std::endl;
-        cusparseCheckError(cusparseCreateDnMat(&descrC_, 
+        cusparseCheckError(cusparseCreateDnMat(&C_descr_, 
                                                C_num_rows_, 
                                                C_num_cols_,
                                                C_leading_dim_, 
@@ -229,49 +233,55 @@ private:
         size_t bufferSize = 0;
 
         // Begin matrix-matrix multiplication
+        if (print_) std::cout << "\tCalculating buffer size" << std::endl;
         cusparseCheckError(cusparseSpMM_bufferSize(handle_, 
                                                    opA_, 
                                                    opB_, 
                                                    &alpha, 
-                                                   descrA_,
-                                                   descrB_, 
+                                                   A_descr_,
+                                                   B_descr_, 
                                                    &beta, 
-                                                   descrC_,
+                                                   C_descr_,
                                                    dataType_, 
                                                    alg_, 
                                                    &bufferSize));
 
+        if (print_) std::cout << "\tBuffer size: " << bufferSize << std::endl;
         // Allocate the temporary buffer
         if (bufferSize > 0) {
           cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
         }
+
+        if (print_) std::cout << "\tPreprocessing" << std::endl;
         cusparseCheckError(cusparseSpMM_preprocess(handle_, 
                                                    opA_, 
                                                    opB_, 
                                                    &alpha, 
-                                                   descrA_,
-                                                   descrB_, 
+                                                   A_descr_,
+                                                   B_descr_, 
                                                    &beta, 
-                                                   descrC_,
+                                                   C_descr_,
                                                    dataType_, 
                                                    alg_, 
                                                    dBuffer));
+
+        if (print_) std::cout << "\tPerforming SpGEMM" << std::endl;
         cusparseCheckError(cusparseSpMM(handle_, 
                                         opA_, 
                                         opB_, 
                                         &alpha, 
-                                        descrA_, 
-                                        descrB_,
+                                        A_descr_,
+                                        B_descr_,
                                         &beta, 
-                                        descrC_, 
-                                        dataType_, 
-                                        alg_, 
+                                        C_descr_,
+                                        dataType_,
+                                        alg_,
                                         dBuffer));
 
         // Clean up descriptors
-        cusparseCheckError(cusparseDestroySpMat(descrA_));
-        cusparseCheckError(cusparseDestroyDnMat(descrB_));
-        cusparseCheckError(cusparseDestroyDnMat(descrC_));
+        cusparseCheckError(cusparseDestroySpMat(A_descr_));
+        cusparseCheckError(cusparseDestroyDnMat(B_descr_));
+        cusparseCheckError(cusparseDestroyDnMat(C_descr_));
 
         // Free up the temporary buffer
         cudaCheckError(cudaFree(dBuffer));
@@ -282,21 +292,21 @@ private:
         break;
       }
       case gpuOffloadType::once: {
-        // Create descriptors for the matrices
+        // Set up descriptors
         if (print_) std::cout << "\tCreating matrix descriptor for A" << std::endl;
-        cusparseCheckError(cusparseCreateCsr(&descrA_, 
+        cusparseCheckError(cusparseCreateCsr(&A_descr_, 
                                              m_, 
                                              k_, 
                                              nnz_, 
-                                             A_row_dev_, 
-                                             A_col_dev_,
-                                             A_val_dev_, 
+                                             A_rows_dev_, 
+                                             A_cols_dev_,
+                                             A_vals_dev_, 
                                              index_, 
                                              index_, 
                                              base_, 
                                              dataType_));
         if (print_) std::cout << "\tCreating matrix descriptor for B" << std::endl;
-        cusparseCheckError(cusparseCreateDnMat(&descrB_, 
+        cusparseCheckError(cusparseCreateDnMat(&B_descr_, 
                                                B_num_rows_, 
                                                B_num_cols_,
                                                B_leading_dim_, 
@@ -304,7 +314,7 @@ private:
                                                dataType_,
                                                B_order_));
         if (print_) std::cout << "\tCreating matrix descriptor for C" << std::endl;
-        cusparseCheckError(cusparseCreateDnMat(&descrC_, 
+        cusparseCheckError(cusparseCreateDnMat(&C_descr_, 
                                                C_num_rows_, 
                                                C_num_cols_,
                                                C_leading_dim_, 
@@ -317,49 +327,55 @@ private:
         size_t bufferSize = 0;
 
         // Begin matrix-matrix multiplication
+        if (print_) std::cout << "\tCalculating buffer size" << std::endl;
         cusparseCheckError(cusparseSpMM_bufferSize(handle_, 
                                                    opA_, 
                                                    opB_, 
                                                    &alpha, 
-                                                   descrA_,
-                                                   descrB_, 
+                                                   A_descr_,
+                                                   B_descr_, 
                                                    &beta, 
-                                                   descrC_,
+                                                   C_descr_,
                                                    dataType_, 
                                                    alg_, 
                                                    &bufferSize));
 
+        if (print_) std::cout << "\tBuffer size: " << bufferSize << std::endl;
         // Allocate the temporary buffer
         if (bufferSize > 0) {
           cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
         }
+
+        if (print_) std::cout << "\tPreprocessing" << std::endl;
         cusparseCheckError(cusparseSpMM_preprocess(handle_, 
                                                    opA_, 
                                                    opB_, 
                                                    &alpha, 
-                                                   descrA_,
-                                                   descrB_, 
+                                                   A_descr_,
+                                                   B_descr_, 
                                                    &beta, 
-                                                   descrC_,
+                                                   C_descr_,
                                                    dataType_, 
                                                    alg_, 
                                                    dBuffer));
+
+        if (print_) std::cout << "\tPerforming SpGEMM" << std::endl;
         cusparseCheckError(cusparseSpMM(handle_, 
                                         opA_, 
                                         opB_, 
                                         &alpha, 
-                                        descrA_, 
-                                        descrB_,
+                                        A_descr_,
+                                        B_descr_,
                                         &beta, 
-                                        descrC_, 
+                                        C_descr_,
                                         dataType_, 
                                         alg_, 
                                         dBuffer));
 
         // Clean up descriptors
-        cusparseCheckError(cusparseDestroySpMat(descrA_));
-        cusparseCheckError(cusparseDestroyDnMat(descrB_));
-        cusparseCheckError(cusparseDestroyDnMat(descrC_));
+        cusparseCheckError(cusparseDestroySpMat(A_descr_));
+        cusparseCheckError(cusparseDestroyDnMat(B_descr_));
+        cusparseCheckError(cusparseDestroyDnMat(C_descr_));
 
         // Free up the temporary buffer
         cudaCheckError(cudaFree(dBuffer));
@@ -368,19 +384,19 @@ private:
       case gpuOffloadType::unified: {
         // Create descriptors for the matrices
         if (print_) std::cout << "\tCreating matrix descriptor for A" << std::endl;
-        cusparseCheckError(cusparseCreateCsr(&descrA_, 
+        cusparseCheckError(cusparseCreateCsr(&A_descr_, 
                                              m_, 
                                              k_, 
                                              nnz_, 
-                                             A_row_dev_, 
-                                             A_col_dev_,
-                                             A_val_dev_, 
+                                             A_rows_dev_, 
+                                             A_cols_dev_,
+                                             A_vals_dev_, 
                                              index_, 
                                              index_, 
                                              base_, 
                                              dataType_));
         if (print_) std::cout << "\tCreating matrix descriptor for B" << std::endl;
-        cusparseCheckError(cusparseCreateDnMat(&descrB_, 
+        cusparseCheckError(cusparseCreateDnMat(&B_descr_, 
                                                B_num_rows_, 
                                                B_num_cols_,
                                                B_leading_dim_, 
@@ -388,7 +404,7 @@ private:
                                                dataType_,
                                                B_order_));
         if (print_) std::cout << "\tCreating matrix descriptor for C" << std::endl;
-        cusparseCheckError(cusparseCreateDnMat(&descrC_, 
+        cusparseCheckError(cusparseCreateDnMat(&C_descr_, 
                                                C_num_rows_, 
                                                C_num_cols_,
                                                C_leading_dim_, 
@@ -401,49 +417,55 @@ private:
         size_t bufferSize = 0;
 
         // Begin matrix-matrix multiplication
+        if (print_) std::cout << "\tCalculating buffer size" << std::endl;
         cusparseCheckError(cusparseSpMM_bufferSize(handle_, 
                                                    opA_, 
                                                    opB_, 
                                                    &alpha, 
-                                                   descrA_,
-                                                   descrB_, 
+                                                   A_descr_,
+                                                   B_descr_, 
                                                    &beta, 
-                                                   descrC_,
+                                                   C_descr_,
                                                    dataType_, 
                                                    alg_, 
                                                    &bufferSize));
 
+        if (print_) std::cout << "\tBuffer size: " << bufferSize << std::endl;
         // Allocate the temporary buffer
         if (bufferSize > 0) {
-          cudaCheckError(cudaMallocManaged((void**)&dBuffer, bufferSize));
+          cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
         }
+
+        if (print_) std::cout << "\tPreprocessing" << std::endl;
         cusparseCheckError(cusparseSpMM_preprocess(handle_, 
                                                    opA_, 
                                                    opB_, 
                                                    &alpha, 
-                                                   descrA_,
-                                                   descrB_, 
+                                                   A_descr_,
+                                                   B_descr_, 
                                                    &beta, 
-                                                   descrC_,
+                                                   C_descr_,
                                                    dataType_, 
                                                    alg_, 
                                                    dBuffer));
+
+        if (print_) std::cout << "\tPerforming SpGEMM" << std::endl;
         cusparseCheckError(cusparseSpMM(handle_, 
                                         opA_, 
                                         opB_, 
                                         &alpha, 
-                                        descrA_, 
-                                        descrB_,
+                                        A_descr_, 
+                                        B_descr_,
                                         &beta, 
-                                        descrC_, 
+                                        C_descr_, 
                                         dataType_, 
                                         alg_, 
                                         dBuffer));
 
         // Clean up descriptors
-        cusparseCheckError(cusparseDestroySpMat(descrA_));
-        cusparseCheckError(cusparseDestroyDnMat(descrB_));
-        cusparseCheckError(cusparseDestroyDnMat(descrC_));
+        cusparseCheckError(cusparseDestroySpMat(A_descr_));
+        cusparseCheckError(cusparseDestroyDnMat(B_descr_));
+        cusparseCheckError(cusparseDestroyDnMat(C_descr_));
 
         // Free up the temporary buffer
         cudaCheckError(cudaFree(dBuffer));
@@ -475,7 +497,24 @@ private:
   }
 
   void postCallKernelCleanup() override {
-
+    if (offload_ == gpuOffloadType::unified) {
+      cudaCheckError(cudaFree(A_vals_));
+      cudaCheckError(cudaFree(A_cols_));
+      cudaCheckError(cudaFree(A_rows_));
+      cudaCheckError(cudaFree(B_));
+      cudaCheckError(cudaFree(C_));
+    } else {
+      cudaCheckError(cudaFree(A_vals_dev_));
+      cudaCheckError(cudaFree(A_cols_dev_));
+      cudaCheckError(cudaFree(A_rows_dev_));
+      cudaCheckError(cudaFree(B_dev_));
+      cudaCheckError(cudaFree(C_dev_));
+      free(A_vals_);
+      free(A_cols_);
+      free(A_rows_);
+      free(B_);
+      free(C_);
+    }
   }
 
   bool print_ = true;
@@ -492,10 +531,6 @@ private:
   /** The ID of the target GPU Device. */
   int gpuDevice_;
 
-  bool C_mem_allocated_always_;
-  bool C_mem_allocated_once_;
-  bool C_mem_allocated_unified_;
-
   /** The constant value Alpha. */
   const T alpha = ALPHA;
 
@@ -503,11 +538,11 @@ private:
   const T beta = BETA;
 
   // cuSPARSE parameters
-  cusparseOperation_t opA_ = CUSPARSE_OPERATION_NON_TRANSPOSE;
-  cusparseOperation_t opB_ = CUSPARSE_OPERATION_NON_TRANSPOSE;
-  cusparseSpMMAlg_t alg_ = CUSPARSE_SPMM_ALG_DEFAULT;
-	cusparseIndexType_t index_ = CUSPARSE_INDEX_64I;
-  cusparseIndexBase_t base_ = CUSPARSE_INDEX_BASE_ZERO;
+  cusparseOperation_t opA_;
+  cusparseOperation_t opB_;
+  cusparseSpMMAlg_t alg_;
+	cusparseIndexType_t index_;
+  cusparseIndexBase_t base_;
   cudaDataType_t dataType_;
 
 
@@ -515,21 +550,21 @@ private:
    * ___________ Host data ______________
    */
 	/** CSR format vectors for matrix A */
-  cusparseSpMatDescr_t descrA_;
-	T* A_val_;
-	int64_t* A_col_;
-  int64_t* A_row_;
+  cusparseSpMatDescr_t A_descr_;
+	T* A_vals_;
+	int64_t* A_cols_;
+  int64_t* A_rows_;
   int64_t A_num_rows_;
   int64_t A_num_cols_;
 
   /** dense format values for matrices B and C */
-  cusparseDnMatDescr_t descrB_;
+  cusparseDnMatDescr_t B_descr_;
   int64_t B_num_rows_;
   int64_t B_num_cols_;
   int64_t B_leading_dim_;
   cusparseOrder_t B_order_;
 
-  cusparseDnMatDescr_t descrC_;
+  cusparseDnMatDescr_t C_descr_;
   int64_t C_num_rows_;
   int64_t C_num_cols_;
   int64_t C_leading_dim_;
@@ -538,16 +573,13 @@ private:
   /**
    * _____________ Device data ________________
    */
-  T* A_val_dev_;
-  int64_t* A_col_dev_;
-  int64_t* A_row_dev_;
+  T* A_vals_dev_;
+  int64_t* A_cols_dev_;
+  int64_t* A_rows_dev_;
 
   T* B_dev_;
 
   T* C_dev_;
-
-
-
 };
 
 };

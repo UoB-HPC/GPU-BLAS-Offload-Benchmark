@@ -51,7 +51,7 @@ class spgemv_gpu : public spgemv<T> {
           break;
       }
     }
-    if (print_) std::cout << "Initialise" << std::endl;
+    if (print_) std::cout << "Initialise " << m_ << "x" << n_ << " . " << n_ << std::endl;
 
     offload_ = offload;
 
@@ -69,15 +69,13 @@ class spgemv_gpu : public spgemv<T> {
       exit(1);
     }
     opA_ = opB_ = CUSPARSE_OPERATION_NON_TRANSPOSE;
-    alg_ = CUSPARSE_SPMV_CSR_ALG2;
+    alg_ = CUSPARSE_SPMV_ALG_DEFAULT;
     index_ = CUSPARSE_INDEX_64I;
     base_ = CUSPARSE_INDEX_BASE_ZERO;
 
     m_ = m;
     n_ = n;
     nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
-
-    A_ = (T*)malloc(sizeof(T) * m_ * n_);
 
     // Initialise 3 streams to asynchronously move data between host and device
     cudaCheckError(cudaStreamCreate(&s1_));
@@ -86,26 +84,19 @@ class spgemv_gpu : public spgemv<T> {
 
     if (print_) std::cout << "\tcuda streams created" << std::endl;
 
+    // Allocate dense data structures
+    A_ = (T*)malloc(sizeof(T) * m_ * n_);
     if (offload_ == gpuOffloadType::unified) {
       if (print_) std::cout << "\tAllocating arrays in unified memory" << std::endl;
-      cudaCheckError(cudaMallocManaged(&A_vals_, nnz_ * sizeof(T)));
-      cudaCheckError(cudaMallocManaged(&A_cols_, nnz_ * sizeof(int64_t)));
-      cudaCheckError(cudaMallocManaged(&A_rows_, (m_ + 1) * sizeof(int64_t)));
       cudaCheckError(cudaMallocManaged(&x_, n_ * sizeof(T)));
       cudaCheckError(cudaMallocManaged(&y_, m_ * sizeof(T)));
       cudaCheckError(cudaDeviceSynchronize());
     } else {
       if (print_) std::cout << "\tAllocating arrays in local memory" << std::endl;
-      A_vals_ = (T*)malloc(nnz_ * sizeof(T));
-      A_cols_ = (int64_t*)malloc(nnz_ * sizeof(int64_t));
-      A_rows_ = (int64_t*)malloc((m_ + 1) * sizeof(int64_t));
       x_ = (T*)malloc(n_ * sizeof(T));
       y_ = (T*)malloc(m_ * sizeof(T));
 
       if (print_) std::cout << "\tAllocating arrays in GPU memory" << std::endl;
-      cudaCheckError(cudaMalloc((void**)&A_vals_dev_, nnz_ * sizeof(T)));
-      cudaCheckError(cudaMalloc((void**)&A_cols_dev_, nnz_ * sizeof(int64_t)));
-      cudaCheckError(cudaMalloc((void**)&A_rows_dev_, (m_ + 1) * sizeof(int64_t)));
       cudaCheckError(cudaMalloc((void**)&x_dev_, n_ * sizeof(T)));
       cudaCheckError(cudaMalloc((void**)&y_dev_, m_ * sizeof(T)));
       cudaCheckError(cudaDeviceSynchronize());
@@ -143,6 +134,7 @@ class spgemv_gpu : public spgemv<T> {
       std::cout << "___________________________________________" << std::endl;
       std::cout << "===============Sparsified==================" << std::endl;
       std::cout << "___________________________________________" << std::endl;
+      std::cout << "nnz = " << nnz_ << std::endl;
       std::cout << "A rows = [";
       for (int64_t i = 0; i < (m_ + 1); i++) {
         std::cout << A_rows_[i];
@@ -168,6 +160,27 @@ class spgemv_gpu : public spgemv<T> {
 protected:
 
   void toSparseFormat() override {
+    if (print_) std::cout << "\tChecking actual nnz" << std::endl;
+    uint64_t acutalNNZ = 0;
+    for (int64_t i = 0; i < (m_ * n_); i++) {
+      if (A_[i] != 0.0) acutalNNZ++;
+    }
+    nnz_ = acutalNNZ;
+    if (print_) std::cout << "\tAllocating sparse data structures" << std::endl;
+    if (offload_ == gpuOffloadType::unified) {
+      cudaCheckError(cudaMallocManaged(&A_vals_, nnz_ * sizeof(T)));
+      cudaCheckError(cudaMallocManaged(&A_cols_, nnz_ * sizeof(int64_t)));
+      cudaCheckError(cudaMallocManaged(&A_rows_, (m_ + 1) * sizeof(int64_t)));
+    } else {      
+      A_vals_ = (T*)malloc(nnz_ * sizeof(T));
+      A_cols_ = (int64_t*)malloc(nnz_ * sizeof(int64_t));
+      A_rows_ = (int64_t*)malloc((m_ + 1) * sizeof(int64_t));
+      cudaCheckError(cudaMalloc((void**)&A_vals_dev_, nnz_ * sizeof(T)));
+      cudaCheckError(cudaMalloc((void**)&A_cols_dev_, nnz_ * sizeof(int64_t)));
+      cudaCheckError(cudaMalloc((void**)&A_rows_dev_, (m_ + 1) * sizeof(int64_t)));
+    }
+    cudaCheckError(cudaDeviceSynchronize());
+
     if (print_) std::cout << "\tConverting matrix to sparse format" << std::endl;
     int nnz_encountered = 0;
     for (int row = 0; row < m_; row++) {
@@ -234,8 +247,8 @@ protected:
 
         if (print_) std::cout << "\tMaking descriptors" << std::endl;
         cusparseCheckError(cusparseCreateCsr(&A_descr_,
-                                             n_,
                                              m_,
+                                             n_,
                                              nnz_,
                                              A_rows_dev_,
                                              A_cols_dev_,
@@ -252,6 +265,7 @@ protected:
                                                m_,
                                                y_dev_,
                                                dataType_));
+        cudaCheckError(cudaDeviceSynchronize());
         /*
          * Workflow is :
          *    cusparseSpMV_bufferSize
@@ -259,7 +273,7 @@ protected:
          */
         if (print_) std::cout << "\tCalling bufferSize" << std::endl;
         size_t bufferSize;
-        void* dBuffer;
+        void* dBuffer = nullptr;
         cusparseCheckError(cusparseSpMV_bufferSize(handle_,
                                                    opA_,
                                                    &alpha,
@@ -270,9 +284,11 @@ protected:
                                                    dataType_,
                                                    alg_,
                                                    &bufferSize));
+        cudaCheckError(cudaDeviceSynchronize());
 
-        if (print_) std::cout << "\tAllocating buffer" << std::endl;
-        cudaCheckError(cudaMalloc(&dBuffer, bufferSize));
+        if (print_) std::cout << "\tAllocating buffer of size " << bufferSize << std::endl;
+        if (bufferSize > 0) cudaCheckError(cudaMalloc(&dBuffer, bufferSize));
+        cudaCheckError(cudaDeviceSynchronize());
 
         if (print_) std::cout << "\tCalling SpMV" << std::endl;
         cusparseCheckError(cusparseSpMV(handle_,
@@ -285,22 +301,26 @@ protected:
                                         dataType_,
                                         alg_,
                                         dBuffer));
+        cudaCheckError(cudaDeviceSynchronize());
 
         if (print_) std::cout << "\tDestroying descriptors" << std::endl;
         cusparseCheckError(cusparseDestroySpMat(A_descr_));
         cusparseCheckError(cusparseDestroyDnVec(x_descr_));
         cusparseCheckError(cusparseDestroyDnVec(y_descr_));
-        cudaCheckError(cudaFree(dBuffer));
+
+        cudaCheckError(cudaDeviceSynchronize());
+        if (dBuffer != nullptr) cudaCheckError(cudaFree(dBuffer));
 
         if (print_) std::cout << "\tCopying data back to host" << std::endl;
         cudaCheckError(cudaMemcpy(y_, y_dev_, m_ * sizeof(T), cudaMemcpyDeviceToHost));
+        cudaCheckError(cudaDeviceSynchronize());
         break;
       }
       case gpuOffloadType::once: {
         if (print_) std::cout << "\tMaking descriptors" << std::endl;
         cusparseCheckError(cusparseCreateCsr(&A_descr_,
-                                             n_,
                                              m_,
+                                             n_,
                                              nnz_,
                                              A_rows_dev_,
                                              A_cols_dev_,
@@ -317,6 +337,7 @@ protected:
                                                m_,
                                                y_dev_,
                                                dataType_));
+        cudaCheckError(cudaDeviceSynchronize());
         /*
          * Workflow is :
          *    cusparseSpMV_bufferSize
@@ -324,7 +345,7 @@ protected:
          */
         if (print_) std::cout << "\tCalling bufferSize" << std::endl;
         size_t bufferSize;
-        void* dBuffer;
+        void* dBuffer = nullptr;
         cusparseCheckError(cusparseSpMV_bufferSize(handle_,
                                                    opA_,
                                                    &alpha,
@@ -335,9 +356,11 @@ protected:
                                                    dataType_,
                                                    alg_,
                                                    &bufferSize));
+        cudaCheckError(cudaDeviceSynchronize());
 
-        if (print_) std::cout << "\tAllocating buffer" << std::endl;
-        cudaCheckError(cudaMalloc(&dBuffer, bufferSize));
+        if (print_) std::cout << "\tAllocating buffer of size " << bufferSize << std::endl;
+        if (bufferSize > 0) cudaCheckError(cudaMalloc(&dBuffer, bufferSize));
+        cudaCheckError(cudaDeviceSynchronize());
 
         if (print_) std::cout << "\tCalling SpMV" << std::endl;
         cusparseCheckError(cusparseSpMV(handle_,
@@ -350,19 +373,22 @@ protected:
                                         dataType_,
                                         alg_,
                                         dBuffer));
+        cudaCheckError(cudaDeviceSynchronize());
 
         if (print_) std::cout << "\tDestroying descriptors" << std::endl;
         cusparseCheckError(cusparseDestroySpMat(A_descr_));
         cusparseCheckError(cusparseDestroyDnVec(x_descr_));
         cusparseCheckError(cusparseDestroyDnVec(y_descr_));
-        cudaCheckError(cudaFree(dBuffer));
+        cudaCheckError(cudaDeviceSynchronize());
+        if (dBuffer != nullptr) cudaCheckError(cudaFree(dBuffer));
+        cudaCheckError(cudaDeviceSynchronize());
         break;
       }
       case gpuOffloadType::unified: {
         if (print_) std::cout << "\tMaking descriptors" << std::endl;
         cusparseCheckError(cusparseCreateCsr(&A_descr_,
-                                             n_,
                                              m_,
+                                             n_,
                                              nnz_,
                                              A_rows_,
                                              A_cols_,
@@ -379,6 +405,7 @@ protected:
                                                m_,
                                                y_,
                                                dataType_));
+        cudaCheckError(cudaDeviceSynchronize());
         /*
          * Workflow is :
          *    cusparseSpMV_bufferSize
@@ -386,7 +413,7 @@ protected:
          */
         if (print_) std::cout << "\tCalling bufferSize" << std::endl;
         size_t bufferSize;
-        void* dBuffer;
+        void* dBuffer = nullptr;
         cusparseCheckError(cusparseSpMV_bufferSize(handle_,
                                                    opA_,
                                                    &alpha,
@@ -397,9 +424,11 @@ protected:
                                                    dataType_,
                                                    alg_,
                                                    &bufferSize));
+        cudaCheckError(cudaDeviceSynchronize());
 
-        if (print_) std::cout << "\tAllocating buffer" << std::endl;
-        cudaCheckError(cudaMalloc(&dBuffer, bufferSize));
+        if (print_) std::cout << "\tAllocating buffer of size " << bufferSize << std::endl;
+        if (bufferSize > 0) cudaCheckError(cudaMalloc(&dBuffer, bufferSize));
+        cudaCheckError(cudaDeviceSynchronize());
 
         if (print_) std::cout << "\tCalling SpMV" << std::endl;
         cusparseCheckError(cusparseSpMV(handle_,
@@ -417,7 +446,9 @@ protected:
         cusparseCheckError(cusparseDestroySpMat(A_descr_));
         cusparseCheckError(cusparseDestroyDnVec(x_descr_));
         cusparseCheckError(cusparseDestroyDnVec(y_descr_));
-        cudaCheckError(cudaFree(dBuffer));
+        cudaCheckError(cudaDeviceSynchronize());
+        if (dBuffer != nullptr) cudaCheckError(cudaFree(dBuffer));
+        cudaCheckError(cudaDeviceSynchronize());
         break;
       }
     }
@@ -426,6 +457,7 @@ protected:
   /** Perform any required steps after calling the GEMM kernel that should
    * be timed. */
   void postLoopRequirements() override {
+    if (print_) std::cout << "Post-loop stuff" << std::endl;
     switch(offload_) {
       case gpuOffloadType::always: {
         break;
@@ -443,34 +475,7 @@ protected:
       }
     }
     cudaCheckError(cudaDeviceSynchronize());
-    if (print_) {
-      std::cout << "___________________________________________" << std::endl;
-      std::cout << "A =" << std::endl;
-      std::cout << "[";
-      for (int64_t i = 0; i < (m_ * n_); i++) {
-        std::cout << A_[i];
-        if ((i % n_) < (n_ - 1)) std::cout << ", ";
-        else if (i != ((m_ * n_) - 1)) std::cout << std::endl;
-      }
-      std::cout << "]" << std::endl;
-
-      std::cout << "x =" << std::endl;
-      std::cout << "[";
-      for (int64_t i = 0; i < n_; i++) {
-        std::cout << x_[i];
-        if (i < (n_ - 1)) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      
-      std::cout << "y =" << std::endl;
-      std::cout << "[";
-      for (int64_t i = 0; i < m_; i++) {
-        std::cout << y_[i];
-        if (i < (m_ - 1)) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "___________________________________________" << std::endl;
-    }
+  
   }
 
   /** Do any necessary cleanup (free pointers, close library handles, etc.)

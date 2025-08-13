@@ -83,7 +83,7 @@ protected:
         A_[i] = 0.0;
       }
 
-  
+
       if (print_) std::cout << "DEBUG: Generating sparse matrix with R-MAT" << std::endl;
       int successful_inserts = 0;
       int failed_attempts = 0;
@@ -94,7 +94,7 @@ protected:
         bool inserted = false;
 
         while (!inserted && attempts < max_attempts_per_element) {
-          inserted = rMat(A_, n_, 0, n_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22,
+          inserted = rMat(A_, m_, 0, m_ - 1, 0, n_ - 1, 0.45, 0.22, 0.22,
                           &gen, dist, false);
           attempts++;
         }

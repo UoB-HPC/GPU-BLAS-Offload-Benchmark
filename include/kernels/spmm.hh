@@ -93,12 +93,20 @@ protected:
           actual_nnz++;
         }
       }
+      if (actual_nnz == 0) {
+        A_[0] = 7.8;
+        actual_nnz = 1;
+      }
       A_nnz_ = actual_nnz;
       actual_nnz = 0;
       for (int i = 0; i < (k_ * n_); i++) {
         if (std::abs(B_[i]) > 1e-10) {
           actual_nnz++;
         }
+      }
+      if (actual_nnz == 0) {
+        B_[0] = 7.8;
+        actual_nnz = 1;
       }
       B_nnz_ = actual_nnz;
       

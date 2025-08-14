@@ -103,8 +103,6 @@ protected:
       if (print_) std::cout << "DEBUG: Generating sparse matrix with R-MAT" << std::endl;
       rMat(A_, m_, k_, nnz_);
 
-      if (print_) std::cout << "DEBUG: R-MAT generation complete. Successful: " << successful_inserts << ", Failed: " << failed_attempts << std::endl;
-
       // Count actual non-zeros
       int actual_nnz = 0;
       for (int i = 0; i < (m_ * k_); i++) {

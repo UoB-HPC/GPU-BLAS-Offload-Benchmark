@@ -89,29 +89,8 @@ protected:
     //   for (int i = 0; i < (m_ * n_); i++) {
     //     C_[i] = 0.0;
     //   }
-
-      // Random number generator objects for use in descent
-      std::default_random_engine gen;
-      gen.seed(SEED);
-      std::uniform_real_distribution<double> dist(0.0, 1.0);
-
-      // Using a=0.45 and b=c=0.22 as default probabilities
-     if (print_) std::cout << ".. RMAT for A (nnz = " << A_nnz_ << "): ";
-      for (int i = 0; i < A_nnz_; i++) {
-        while (!rMat(A_, k_, 0, k_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22, &gen, dist,
-                     false)) {
-         if (print_) std::cout << "fail,  ";
-        }
-       if (print_) std::cout << "success " << i << ", ";
-      }
-     if (print_) std::cout << ".. RMAT for B (nnz = " << B_nnz_ << "): ";
-      for (int i = 0; i < B_nnz_; i++) {
-        while (!rMat(B_, n_, 0, n_ - 1, 0, k_ - 1, 0.45, 0.22, 0.22, &gen, dist,
-                     false)) {
-         if (print_) std::cout << "fail,  ";
-        }
-       if (print_) std::cout << "success " << i << ", ";
-      }
+      rMat(A_, m_, k_, A_nnz_);
+      rMat(B_, k_, n_, B_nnz_);
       
       toSparseFormat();
     }

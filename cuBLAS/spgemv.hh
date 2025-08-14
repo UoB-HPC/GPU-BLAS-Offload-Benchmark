@@ -27,14 +27,7 @@ class spgemv_gpu : public spgemv<T> {
   using spgemv<T>::offload_;
   using spgemv<T>::sparsity_;
 
-  ~spgemv_gpu() {
-    // ToDo -- destroy the handle
-
-    // Destroy streams after use
-    cudaCheckError(cudaStreamDestroy(s1_));
-    cudaCheckError(cudaStreamDestroy(s2_));
-    cudaCheckError(cudaStreamDestroy(s3_));
-  }
+  ~spgemv_gpu() {}
 
   void initialise(gpuOffloadType offload, int m, int n, 
                   double sparsity) override {

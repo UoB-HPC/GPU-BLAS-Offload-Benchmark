@@ -76,21 +76,31 @@ private:
 protected:
     /** Set up the starting matrices */
     void initInputMatrices() {
-     if (print_) std::cout << "Zeroing A";
       for (int i = 0; i < (m_ * k_); i++) {
         A_[i] = 0.0;
       }
-     if (print_) std::cout << ", B";
       for (int i = 0; i < (k_ * n_); i++) {
         B_[i] = 0.0;
       }
-      // C isn't used in Spmm, because we use the csr format for it.  Therefore, dont initialise it!
-    //  if (print_) std::cout << ", and C";
-    //   for (int i = 0; i < (m_ * n_); i++) {
-    //     C_[i] = 0.0;
-    //   }
+
       rMat(A_, m_, k_, A_nnz_);
       rMat(B_, k_, n_, B_nnz_);
+
+      // Count actual non-zeros
+      int actual_nnz = 0;
+      for (int i = 0; i < (m_ * k_); i++) {
+        if (std::abs(A_[i]) > 1e-10) {
+          actual_nnz++;
+        }
+      }
+      A_nnz_ = actual_nnz;
+      actual_nnz = 0;
+      for (int i = 0; i < (k_ * n_); i++) {
+        if (std::abs(B_[i]) > 1e-10) {
+          actual_nnz++;
+        }
+      }
+      B_nnz_ = actual_nnz;
       
       toSparseFormat();
     }

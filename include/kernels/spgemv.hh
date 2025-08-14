@@ -81,9 +81,7 @@ protected:
 
       if (print_) std::cout << "DEBUG: Generating sparse matrix with R-MAT" << std::endl;
       rMat(A_, m_, n_, nnz_);
-
-      if (print_) std::cout << "DEBUG: R-MAT generation complete. Successful: " << successful_inserts << ", Failed: " << failed_attempts << std::endl;
-
+      
       // Initialise the input and output vectors
       for (int y = 0; y < n_; y++) {
         x_[y] = (T)((double)(rand() % 100) / 3.0);

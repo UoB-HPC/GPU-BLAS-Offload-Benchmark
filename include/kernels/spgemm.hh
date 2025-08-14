@@ -99,39 +99,9 @@ protected:
         C_[i] = (T)0.0;
       }
 
-      // Random number generator for R-MAT
-      std::default_random_engine gen;
-      gen.seed(SEED);
-      std::uniform_real_distribution<double> dist(0.0, 1.0);
-
       // Generate sparse matrix using R-MAT
       if (print_) std::cout << "DEBUG: Generating sparse matrix with R-MAT" << std::endl;
-      int successful_inserts = 0;
-      int failed_attempts = 0;
-      const int max_attempts_per_element = 100;
-
-      for (int i = 0; i < nnz_; i++) {
-        int attempts = 0;
-        bool inserted = false;
-
-        while (!inserted && attempts < max_attempts_per_element) {
-          inserted = rMat(A_, k_, 0, k_ - 1, 0, m_ - 1, 0.45, 0.22, 0.22,
-                          &gen, dist, false);
-          attempts++;
-        }
-
-        if (inserted) {
-          successful_inserts++;
-        } else {
-          failed_attempts++;
-          if (print_) std::cout << "WARNING: Failed to insert element " << i << " after " << attempts << " attempts" << std::endl;
-        }
-
-        // Progress update
-        if ((i + 1) % 1000 == 0) {
-          if (print_) std::cout << "  Generated " << (i + 1) << "/" << nnz_ << " non-zeros" << std::endl;
-        }
-      }
+      rMat(A_, m_, k_, nnz_);
 
       if (print_) std::cout << "DEBUG: R-MAT generation complete. Successful: " << successful_inserts << ", Failed: " << failed_attempts << std::endl;
 

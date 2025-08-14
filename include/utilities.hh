@@ -142,72 +142,82 @@ int consume(void* a, void* b, void* c);
  * - Leskovec, J., et al. (2010). Kronecker graphs: An approach to modeling networks.
  *   Journal of Machine Learning Research, 11, 985-1042.
  */
-template<typename T>
-bool rMat(T* M, int n, int x1, int x2, int y1, int y2, float a, float b, float c,
-          std::default_random_engine* gen, std::uniform_real_distribution<double> dist, bool bin) {
-  struct Region {
-      int x1, x2, y1, y2;
-  };
+template <typename T>
+void rMat(T* M, int rows, int cols, int nnz,
+          double a = 0.57,
+          double b = 0.19,
+          double c = 0.19,
+          double d = 0.05,
+          double noise = 0.0,
+          bool no_self_loops = false,
+          bool undirected = false) {
+  // Determine number of bits to cover rows and cols
+  int row_bits = static_cast<int>(std::ceil(std::log2(rows)));
+  int col_bits = static_cast<int>(std::ceil(std::log2(cols)));
 
-  std::queue<Region> regions;
-  regions.push({x1, x2 + 1, y1, y2 + 1}); // Convert to exclusive upper bounds
+  // Random number generator objects for use in descent
+  std::default_random_engine gen;
+  std::uniform_real_distribution<double> dist(0.0, 1.0);
+  // Set the seed to allow checksum to work
+  gen.seed(SEED);
 
-  while (!regions.empty()) {
-    Region current = regions.front();
-    regions.pop();
+  int edge_idx = 0;
+  while (edge_idx < nnz) {
+    int u = 0;
+    int v = 0;
 
-    // Base case: single cell
-    if ((current.x2 - current.x1) <= 1 && (current.y2 - current.y1) <= 1) {
-      if (current.x1 >= n || current.y1 >= n || current.x1 < 0 || current.y1 < 0) {
-        continue; // Out of bounds
+    double A = a, B = b, C = c, D = d;
+
+    // For each bit position (MSB to LSB)
+    for (int bit = 0; bit < std::max(row_bits, col_bits); ++bit) {
+      // Optional noise
+      if (noise > 0.0) {
+        auto jitter = [&](double val) {
+          return std::max(0.0, val + (dist(gen) * 2.0 - 1.0) * noise);
+        };
+        A = jitter(a);
+        B = jitter(b);
+        C = jitter(c);
+        D = jitter(d);
+        double sum = A + B + C + D;
+        A /= sum; B /= sum; C /= sum; D /= sum;
       }
 
-      uint64_t index = static_cast<uint64_t>(current.y1) * static_cast<uint64_t>(n) +
-                       static_cast<uint64_t>(current.x1);
+      double r = dist(gen);
+      double t1 = A;
+      double t2 = A + B;
+      double t3 = A + B + C;
 
-      // Check if position is already occupied
-      if (std::abs(M[index]) > static_cast<T>(1e-10)) {
-        return false; // Position occupied
-      }
-
-      // Place edge
-      if (bin) {
-        M[index] = static_cast<T>(1.0);
+      int row_bit = 0;
+      int col_bit = 0;
+      if (r < t1) {
+        row_bit = 0;  col_bit = 0;
+      } else if (r < t2) {
+        row_bit = 0; col_bit = 1;
+      } else if (r < t3) {
+        row_bit = 1; col_bit = 0;
       } else {
-        std::uniform_real_distribution<double> value_dist(-50.0, 50.0);
-        M[index] = static_cast<T>(value_dist(*gen));
+        row_bit = 1; col_bit = 1;
       }
-      return true;
+
+      if (bit < row_bits)
+        u = (u << 1) | row_bit;
+      if (bit < col_bits)
+        v = (v << 1) | col_bit;
     }
 
-    // Calculate midpoints
-    int x_mid = current.x1 + (current.x2 - current.x1) / 2;
-    int y_mid = current.y1 + (current.y2 - current.y1) / 2;
+    if (u >= rows || v >= cols)
+      continue; // Out of bounds due to non-power-of-two dims
 
-    // Ensure we don't create empty regions
-    if (x_mid <= current.x1) x_mid = current.x1 + 1;
-    if (y_mid <= current.y1) y_mid = current.y1 + 1;
-    if (x_mid >= current.x2) x_mid = current.x2 - 1;
-    if (y_mid >= current.y2) y_mid = current.y2 - 1;
+    if (no_self_loops && u == v)
+      continue;
 
-    // Select quadrant based on R-MAT probabilities
-    double random_val = dist(*gen);
+    if (undirected && u > v)
+      std::swap(u, v);
 
-    if (random_val < a) {
-      // Top-left quadrant
-      regions.push({current.x1, x_mid, current.y1, y_mid});
-    } else if (random_val < (a + b)) {
-      // Top-right quadrant
-      regions.push({x_mid, current.x2, current.y1, y_mid});
-    } else if (random_val < (a + b + c)) {
-      // Bottom-left quadrant
-      regions.push({current.x1, x_mid, y_mid, current.y2});
-    } else {
-      // Bottom-right quadrant
-      regions.push({x_mid, current.x2, y_mid, current.y2});
-    }
+    M[2 * edge_idx]     = (T)u;
+    M[2 * edge_idx + 1] = (T)v;
+    ++edge_idx;
   }
-
-  return false; // Should not reach here
 }
 

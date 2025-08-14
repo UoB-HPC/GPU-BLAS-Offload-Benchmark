@@ -57,10 +57,6 @@ public:
     n_ = n;
     k_ = k;
 
-    A_ = (T*)malloc(sizeof(T) * m_ * k_);
-    B_ = (T*)malloc(sizeof(T) * k_ * n_);
-    C_ = (T*)calloc(m_ * n_, sizeof(T));
-
     /** Determine the number of nnz elements in A and B */
     nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
 
@@ -70,6 +66,8 @@ public:
     alg_ = CUSPARSE_SPMM_ALG_DEFAULT;
     index_ = CUSPARSE_INDEX_64I;
     base_ = CUSPARSE_INDEX_BASE_ZERO;
+    B_order_ = CUSPARSE_ORDER_ROW;
+    C_order_ = CUSPARSE_ORDER_ROW;
     if (std::is_same_v<T, float>) dataType_ = CUDA_R_32F;
     else if (std::is_same_v<T, double>) dataType_ = CUDA_R_64F;
     else {
@@ -86,28 +84,21 @@ public:
     cudaCheckError(cudaStreamCreate(&s2_));
     cudaCheckError(cudaStreamCreate(&s3_));
 
+    A_ = (T*)malloc(sizeof(T) * m_ * k_);
     if (offload_ == gpuOffloadType::unified) {
       if (print_) std::cout << "\tAllocating unified memory" << std::endl;
-      cudaCheckError(cudaMallocManaged(&A_vals_, sizeof(T) * nnz_));
-      cudaCheckError(cudaMallocManaged(&A_cols_, sizeof(int64_t) * nnz_));
-      cudaCheckError(cudaMallocManaged(&A_rows_, sizeof(int64_t) * (m_ + 1)));
       cudaCheckError(cudaMallocManaged(&B_, sizeof(T) * k_ * n_));
       cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * m_ * n_));
     } else {
       if (print_) std::cout << "\tAllocating host memory" << std::endl;
-      A_vals_ = (T*)malloc(sizeof(T) * nnz_);
-      A_cols_ = (int64_t*)malloc(sizeof(int64_t) * nnz_);
-      A_rows_ = (int64_t*)malloc(sizeof(int64_t) * (m_ + 1));
       B_ = (T*)malloc(sizeof(T) * k_ * n_);
       C_ = (T*)malloc(sizeof(T) * m_ * n_);
 
       if (print_) std::cout << "\tAllocating device memory" << std::endl;
-      cudaCheckError(cudaMalloc((void**)&A_vals_dev_, sizeof(T) * nnz_));
-      cudaCheckError(cudaMalloc((void**)&A_cols_dev_, sizeof(int64_t) * nnz_));
-      cudaCheckError(cudaMalloc((void**)&A_rows_dev_, sizeof(int64_t) * (m_ + 1)));
       cudaCheckError(cudaMalloc((void**)&B_dev_, sizeof(T) * k_ * n_));
       cudaCheckError(cudaMalloc((void**)&C_dev_, sizeof(T) * m_ * n_));
     }
+    cudaCheckError(cudaDeviceSynchronize());
 
     cusparseCheckError(cusparseCreate(&handle_));
 
@@ -117,23 +108,39 @@ public:
 
 protected:
   void toSparseFormat() override {
+    // Allocate CSR arrays
+    if (offload_ == gpuOffloadType::unified) {
+      cudaCheckError(cudaMallocManaged(&A_vals_, sizeof(T) * nnz_));
+      cudaCheckError(cudaMallocManaged(&A_cols_, sizeof(int64_t) * nnz_));
+      cudaCheckError(cudaMallocManaged(&A_rows_, sizeof(int64_t) * (m_ + 1)));
+    } else {
+      A_vals_ = (T*)malloc(sizeof(T) * nnz_);
+      A_cols_ = (int64_t*)malloc(sizeof(int64_t) * nnz_);
+      A_rows_ = (int64_t*)malloc(sizeof(int64_t) * (m_ + 1));
+      cudaCheckError(cudaMalloc((void**)&A_vals_dev_, sizeof(T) * nnz_));
+      cudaCheckError(cudaMalloc((void**)&A_cols_dev_, sizeof(int64_t) * nnz_));
+      cudaCheckError(cudaMalloc((void**)&A_rows_dev_, sizeof(int64_t) * (m_ + 1)));
+    }
+
     // Load A into CSR
     int nnz_encountered = 0;
     for (int row = 0; row < m_; row++) {
       A_rows_[row] = nnz_encountered;
-      int nnz_row = 0;
       for (int col = 0; col < k_; col++) {
         if (A_[(row * k_) + col] != 0.0) {
-          nnz_row++;
           A_cols_[nnz_encountered] = col;
           A_vals_[nnz_encountered] = A_[(row * k_) + col];
           nnz_encountered++;
         }
+        if (nnz_encountered == nnz_) break;
       }
+      if (nnz_encountered == nnz_) break;
     }
     A_rows_[m_] = nnz_encountered;
-
-    B_order_ = C_order_ = CUSPARSE_ORDER_ROW;
+    if (nnz_ != nnz_encountered) {
+      std::cout << "ERROR -- NOT ENOUGH NON-ZERO VALUES!" << std::endl;
+    }
+    cudaCheckError(cudaDeviceSynchronize());
   }
 
 private:
@@ -144,34 +151,21 @@ private:
       }
       case gpuOffloadType::once: {
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
-        cudaCheckError(cudaMemcpyAsync(A_vals_dev_, A_vals_, (sizeof(T) * nnz_),
-                                       cudaMemcpyHostToDevice, s1_));
-        cudaCheckError(cudaMemcpyAsync(A_cols_dev_, A_cols_,
-                                       (sizeof(int64_t) * nnz_),
-                                       cudaMemcpyHostToDevice, s1_));
-        cudaCheckError(cudaMemcpyAsync(A_rows_dev_, A_rows_,
-                                       (sizeof(int64_t) * (m_ + 1)),
-                                       cudaMemcpyHostToDevice, s1_));
-        cudaCheckError(cudaMemcpyAsync(B_dev_, B_, (sizeof(T) * k_ * n_),
-                                       cudaMemcpyHostToDevice, s2_));
-
-        cudaCheckError(cudaMemcpyAsync(C_dev_, C_, (sizeof(T) * m_ * n_),
-                                       cudaMemcpyHostToDevice, s3_));
+        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, nnz_ * sizeof(T), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, nnz_ * sizeof(int64_t), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, (m_ + 1) * sizeof(int64_t), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(B_dev_, B_, (k_ * n_) * sizeof(T), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(C_dev_, C_, (m_ * n_) * sizeof(T), cudaMemcpyHostToDevice));
         cudaCheckError(cudaDeviceSynchronize());
         break;
       }
       case gpuOffloadType::unified: {
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
-        cudaCheckError(cudaMemPrefetchAsync(A_vals_, sizeof(T) * nnz_,
-                                            gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_cols_, sizeof(int64_t) * nnz_,
-                                            gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_rows_, sizeof(int64_t) * (m_ + 1),
-                                            gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(B_, sizeof(T) * n_ * k_,
-                                            gpuDevice_, s2_));
-        cudaCheckError(cudaMemPrefetchAsync(C_, sizeof(T) * m_ * n_,
-                                            gpuDevice_, s3_));
+        cudaCheckError(cudaMemPrefetchAsync(A_vals_, nnz_ * sizeof(T), gpuDevice_, s1_));
+        cudaCheckError(cudaMemPrefetchAsync(A_cols_, nnz_ * sizeof(int64_t), gpuDevice_, s1_));
+        cudaCheckError(cudaMemPrefetchAsync(A_rows_, (m_ + 1) * sizeof(int64_t), gpuDevice_, s1_));
+        cudaCheckError(cudaMemPrefetchAsync(B_, (n_ * k_) * sizeof(T), gpuDevice_, s2_));
+        cudaCheckError(cudaMemPrefetchAsync(C_, (m_ * n_) * sizeof(T), gpuDevice_, s3_));
         cudaCheckError(cudaDeviceSynchronize());
         break;
       }
@@ -213,17 +207,17 @@ private:
                                              dataType_));
         if (print_) std::cout << "\tCreating matrix descriptor for B" << std::endl;
         cusparseCheckError(cusparseCreateDnMat(&B_descr_, 
-                                               B_num_rows_, 
-                                               B_num_cols_,
-                                               B_leading_dim_, 
+                                               k_, 
+                                               n_,
+                                               n_, 
                                                B_dev_, 
                                                dataType_,
                                                B_order_));
         if (print_) std::cout << "\tCreating matrix descriptor for C" << std::endl;
         cusparseCheckError(cusparseCreateDnMat(&C_descr_, 
-                                               C_num_rows_, 
-                                               C_num_cols_,
-                                               C_leading_dim_, 
+                                               m_, 
+                                               n_,
+                                               n_, 
                                                C_dev_, 
                                                dataType_,
                                                C_order_));
@@ -277,6 +271,7 @@ private:
                                         dataType_,
                                         alg_,
                                         dBuffer));
+        cudaCheckError(cudaDeviceSynchronize());
 
         // Clean up descriptors
         cusparseCheckError(cusparseDestroySpMat(A_descr_));
@@ -284,7 +279,7 @@ private:
         cusparseCheckError(cusparseDestroyDnMat(C_descr_));
 
         // Free up the temporary buffer
-        cudaCheckError(cudaFree(dBuffer));
+        if (dBuffer != nullptr) cudaCheckError(cudaFree(dBuffer));
 
         // Move result back to CPU
         cudaCheckError(cudaMemcpyAsync(C_, C_dev_, (sizeof(T) * m_ * n_),
@@ -307,17 +302,17 @@ private:
                                              dataType_));
         if (print_) std::cout << "\tCreating matrix descriptor for B" << std::endl;
         cusparseCheckError(cusparseCreateDnMat(&B_descr_, 
-                                               B_num_rows_, 
-                                               B_num_cols_,
-                                               B_leading_dim_, 
+                                               k_, 
+                                               n_,
+                                               n_, 
                                                B_dev_, 
                                                dataType_,
                                                B_order_));
         if (print_) std::cout << "\tCreating matrix descriptor for C" << std::endl;
         cusparseCheckError(cusparseCreateDnMat(&C_descr_, 
-                                               C_num_rows_, 
-                                               C_num_cols_,
-                                               C_leading_dim_, 
+                                               m_, 
+                                               n_,
+                                               n_, 
                                                C_dev_, 
                                                dataType_,
                                                C_order_));
@@ -388,27 +383,27 @@ private:
                                              m_, 
                                              k_, 
                                              nnz_, 
-                                             A_rows_dev_, 
-                                             A_cols_dev_,
-                                             A_vals_dev_, 
+                                             A_rows_, 
+                                             A_cols_,
+                                             A_vals_, 
                                              index_, 
                                              index_, 
                                              base_, 
                                              dataType_));
         if (print_) std::cout << "\tCreating matrix descriptor for B" << std::endl;
         cusparseCheckError(cusparseCreateDnMat(&B_descr_, 
-                                               B_num_rows_, 
-                                               B_num_cols_,
-                                               B_leading_dim_, 
-                                               B_dev_, 
+                                               k_, 
+                                               n_,
+                                               n_, 
+                                               B_, 
                                                dataType_,
                                                B_order_));
         if (print_) std::cout << "\tCreating matrix descriptor for C" << std::endl;
         cusparseCheckError(cusparseCreateDnMat(&C_descr_, 
-                                               C_num_rows_, 
-                                               C_num_cols_,
-                                               C_leading_dim_, 
-                                               C_dev_, 
+                                               m_, 
+                                               n_,
+                                               n_, 
+                                               C_, 
                                                dataType_,
                                                C_order_));
 
@@ -448,6 +443,7 @@ private:
                                                    dataType_, 
                                                    alg_, 
                                                    dBuffer));
+        cudaCheckError(cudaDeviceSynchronize());
 
         if (print_) std::cout << "\tPerforming SpGEMM" << std::endl;
         cusparseCheckError(cusparseSpMM(handle_, 
@@ -461,11 +457,13 @@ private:
                                         dataType_, 
                                         alg_, 
                                         dBuffer));
+        cudaCheckError(cudaDeviceSynchronize());
 
         // Clean up descriptors
         cusparseCheckError(cusparseDestroySpMat(A_descr_));
         cusparseCheckError(cusparseDestroyDnMat(B_descr_));
         cusparseCheckError(cusparseDestroyDnMat(C_descr_));
+        cudaCheckError(cudaDeviceSynchronize());
 
         // Free up the temporary buffer
         cudaCheckError(cudaFree(dBuffer));
@@ -497,27 +495,44 @@ private:
   }
 
   void postCallKernelCleanup() override {
+    if (print_) std::cout << "Freeing A_" << std::endl;
+    free(A_);
     if (offload_ == gpuOffloadType::unified) {
+      if (print_) std::cout << "Freeing A_vals_" << std::endl;
       cudaCheckError(cudaFree(A_vals_));
+      if (print_) std::cout << "Freeing A_cols_" << std::endl;
       cudaCheckError(cudaFree(A_cols_));
+      if (print_) std::cout << "Freeing A_rows_" << std::endl;
       cudaCheckError(cudaFree(A_rows_));
+      if (print_) std::cout << "Freeing B_" << std::endl;
       cudaCheckError(cudaFree(B_));
+      if (print_) std::cout << "Freeing C_" << std::endl;
       cudaCheckError(cudaFree(C_));
     } else {
+      if (print_) std::cout << "Freeing A_vals_dev_" << std::endl;
       cudaCheckError(cudaFree(A_vals_dev_));
+      if (print_) std::cout << "Freeing A_cols_dev_" << std::endl;
       cudaCheckError(cudaFree(A_cols_dev_));
+      if (print_) std::cout << "Freeing A_rows_dev_" << std::endl;
       cudaCheckError(cudaFree(A_rows_dev_));
+      if (print_) std::cout << "Freeing B_dev_" << std::endl;
       cudaCheckError(cudaFree(B_dev_));
+      if (print_) std::cout << "Freeing C_dev_" << std::endl;
       cudaCheckError(cudaFree(C_dev_));
+      if (print_) std::cout << "Freeing A_vals_" << std::endl;
       free(A_vals_);
+      if (print_) std::cout << "Freeing A_cols_" << std::endl;
       free(A_cols_);
+      if (print_) std::cout << "Freeing A_rows_" << std::endl;
       free(A_rows_);
+      if (print_) std::cout << "Freeing B_" << std::endl;
       free(B_);
+      if (print_) std::cout << "Freeing C_" << std::endl;
       free(C_);
     }
   }
 
-  bool print_ = true;
+  bool print_ = false;
 
   /** Handle used when calling cuBLAS. */
   cusparseHandle_t handle_;

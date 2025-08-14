@@ -110,6 +110,12 @@ protected:
           actual_nnz++;
         }
       }
+      if (actual_nnz == 0) {
+        A_[0] = 7.8;
+        actual_nnz = 1;
+      }
+
+      nnz_ = actual_nnz;
       if (print_) std::cout << "DEBUG: Actual non-zeros in A: " << actual_nnz << std::endl;
 
       if (print_) std::cout << "DEBUG: Calling toSparseFormat()" << std::endl;

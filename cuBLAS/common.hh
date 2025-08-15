@@ -3,6 +3,8 @@
 #if defined GPU_CUBLAS
 
 #include <cusparse_v2.h>
+#include <cuda_runtime.h>
+#include <cstdio>
 
 /** Macro function to check if error occurred when calling cuBLAS. */
 /** Macro function to check if error occurred when calling CUDA. */
@@ -74,4 +76,43 @@
     }                                                                         \
   } while (false)                                                             \
 
+inline cudaError_t safeCudaMemPrefetchAsync(
+    const void* devPtr,
+    size_t count,
+    int dstDevice,
+    cudaStream_t stream)
+{
+    if (devPtr == nullptr || count == 0) {
+        // Nothing to prefetch
+        return cudaSuccess;
+    }
+
+    cudaPointerAttributes attr;
+    cudaError_t err = cudaPointerGetAttributes(&attr, devPtr);
+
+    if (err != cudaSuccess) {
+        // Could not get attributes — treat as non-managed
+        cudaGetLastError(); // clear error state
+        return cudaSuccess;
+    }
+
+    // Check for unified (managed) memory
+#if CUDART_VERSION >= 10000
+    bool isManaged = (attr.type == cudaMemoryTypeManaged);
+#else
+    bool isManaged = (attr.memoryType == cudaMemoryTypeManaged);
 #endif
+
+    if (!isManaged) {
+        // Not managed memory — skip prefetch
+        // printf("Skipping prefetch: pointer is not managed memory\n");
+        return cudaSuccess;
+    }
+
+    // Perform prefetch
+    return cudaMemPrefetchAsync(devPtr, count, dstDevice, stream);
+}
+
+#endif
+
+

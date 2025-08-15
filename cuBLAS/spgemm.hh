@@ -121,6 +121,7 @@ protected:
       cudaCheckError(cudaMalloc((void**)&A_cols_dev_, sizeof(int64_t) * nnz_));
       cudaCheckError(cudaMalloc((void**)&A_rows_dev_, sizeof(int64_t) * (m_ + 1)));
     }
+    cudaCheckError(cudaDeviceSynchronize());
 
     // Load A into CSR
     int nnz_encountered = 0;

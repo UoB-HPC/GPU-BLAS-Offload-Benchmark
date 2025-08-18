@@ -552,9 +552,9 @@ private:
     std::string getKernelName() const {
       switch (sizeof(T)) {
         case 4:
-          return "sgemm";
+          return "sspgemm";
         case 8:
-          return "dgemm";
+          return "dspgemm";
         default:
           return "unknown";
       }

@@ -332,21 +332,12 @@ private:
             hundredOverChecksum)) > 0.1 &&
           ((std::fabs(cpuResult.checksum - gpuResult_unified.checksum) *
             hundredOverChecksum)) > 0.1) {
-        std::cerr << "ERROR - " << getKernelName()
-                  << " kernel checksums do not match:\n\tInput "
-                     "dimensions: M="
-                  << M << ", N=" << N << ", K=" << K << std::endl;
-        std::cerr << std::setprecision(10)
-                  << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
-        std::cerr << std::setprecision(10)
-                  << "\tGPU (Once) Checksum = " << gpuResult_once.checksum
-                  << std::endl;
-        std::cerr << std::setprecision(10)
-                  << "\tGPU (Always) Checksum = " << gpuResult_always.checksum
-                  << std::endl;
-        std::cerr << std::setprecision(10)
-                  << "\tGPU (Unified) Checksum = " << gpuResult_unified.checksum
-                  << std::endl;
+        std::cerr << "ERROR - " << getKernelName() << " kernel checksums do not match:\n\tInput "
+                     "dimensions: M=" << M << ", N=" << N << ", K=" << K << std::endl;
+        std::cerr << std::setprecision(10) << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
+        std::cerr << std::setprecision(10) << "\tGPU (Once) Checksum = " << gpuResult_once.checksum << std::endl;
+        std::cerr << std::setprecision(10) << "\tGPU (Always) Checksum = " << gpuResult_always.checksum << std::endl;
+        std::cerr << std::setprecision(10) << "\tGPU (Unified) Checksum = " << gpuResult_unified.checksum << std::endl;
         exit(1);
       }
     }
@@ -522,9 +513,9 @@ private:
     std::string getKernelName() const {
       switch (sizeof(T)) {
         case 4:
-          return "sgemm";
+          return "sspmm";
         case 8:
-          return "dgemm";
+          return "dspmm";
         default:
           return "unknown";
       }

@@ -795,6 +795,7 @@ class spmm_gpu : public spmm<T> {
         break;
       }
       case gpuOffloadType::unified: {
+        cudaCheckError(cudaDeviceSynchronize());
         if (print_) std::cout << "\tPrefetching results back to CPU" << std::endl;
         cudaCheckError(safeCudaMemPrefetchAsync(C_vals_, sizeof(T) * C_nnz_, cudaCpuDeviceId, 0));
         cudaCheckError(safeCudaMemPrefetchAsync(C_cols_32_, sizeof(int32_t) * C_nnz_, cudaCpuDeviceId, 0));
@@ -810,6 +811,7 @@ class spmm_gpu : public spmm<T> {
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
+    if (print_) std::cout << "Post-kernel cleanup" << std::endl;
     switch (offload_) {
       case gpuOffloadType::always: {
         if (print_) std::cout << "\tFreeing temp C arrays" << std::endl;
@@ -859,10 +861,12 @@ class spmm_gpu : public spmm<T> {
       }
       case gpuOffloadType::unified: {
         if (C_allocated) {
+          if (print_) std::cout << "\tFree temp C arrays" << std::endl;
           cudaCheckError(cudaFree(C_vals_));
           cudaCheckError(cudaFree(C_cols_32_));
           C_allocated = false;
         }
+        if (print_) std::cout << "\tFree perm C arrays" << std::endl;
         cudaCheckError(cudaFree(A_vals_));
         cudaCheckError(cudaFree(A_cols_));
         cudaCheckError(cudaFree(A_rows_));
@@ -873,6 +877,7 @@ class spmm_gpu : public spmm<T> {
         break;
       }
     }
+    if (print_) std::cout << "\tFreeing handle and streams" << std::endl;
     // Destroy the handle
     cusparseCheckError(cusparseDestroy(handle_));
 
@@ -912,7 +917,7 @@ class spmm_gpu : public spmm<T> {
     std::cout << std::endl;
   }
 
-  bool print_ = true;
+  bool print_ = false;
 
   /** Handle used when calling cuBLAS. */
   cusparseHandle_t handle_;

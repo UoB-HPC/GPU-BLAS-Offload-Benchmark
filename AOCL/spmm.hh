@@ -345,9 +345,12 @@ private:
         printAOCLError(status_);
       }
 
-      delete[] A_;
-      delete[] B_;
-      delete[] C_;
+      free(A_);
+      free(B_);
+      free(C_);
+      delete[] A_rows_;
+      delete[] A_cols_;
+      delete[] A_vals_;
     }
 
     void printAOCLError(aoclsparse_status stat) {

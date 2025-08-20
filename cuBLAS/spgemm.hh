@@ -57,6 +57,8 @@ public:
     n_ = n;
     k_ = k;
 
+    A_ = B_ = C_ = B_dev_ = C_dev_ = A_vals_ = A_vals_dev_ = nullptr;
+    A_rows_ = A_cols_ = A_rows_dev_ = A_cols_dev_ = nullptr;
     /** Determine the number of nnz elements in A and B */
     nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
 
@@ -84,18 +86,25 @@ public:
     cudaCheckError(cudaStreamCreate(&s2_));
     cudaCheckError(cudaStreamCreate(&s3_));
 
-    A_ = (T*)malloc(sizeof(T) * m_ * k_);
+    if (A_ != nullptr) cudaFreeAdaptive(A_, "A_");
+    cudaCheckError(cudaMallocHost(&A_, sizeof(T) * m_ * k_));
     if (offload_ == gpuOffloadType::unified) {
       if (print_) std::cout << "\tAllocating unified memory" << std::endl;
+      if (B_ != nullptr) cudaFreeAdaptive(B_, "B_");
       cudaCheckError(cudaMallocManaged(&B_, sizeof(T) * k_ * n_));
+      if (C_ != nullptr) cudaFreeAdaptive(C_, "C_");
       cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * m_ * n_));
     } else {
       if (print_) std::cout << "\tAllocating host memory" << std::endl;
-      B_ = (T*)malloc(sizeof(T) * k_ * n_);
-      C_ = (T*)malloc(sizeof(T) * m_ * n_);
+      if (B_ != nullptr) cudaFreeAdaptive(B_, "B_");
+      cudaCheckError(cudaMallocHost(&B_, sizeof(T) * k_ * n_));
+      if (C_ != nullptr) cudaFreeAdaptive(C_, "C_");
+      cudaCheckError(cudaMallocHost(&C_, sizeof(T) * m_ * n_));
 
       if (print_) std::cout << "\tAllocating device memory" << std::endl;
+      if (B_dev_ != nullptr) cudaFreeAdaptive(B_dev_, "B_dev_");
       cudaCheckError(cudaMalloc((void**)&B_dev_, sizeof(T) * k_ * n_));
+      if (C_dev_ != nullptr) cudaFreeAdaptive(C_dev_, "C_dev_");
       cudaCheckError(cudaMalloc((void**)&C_dev_, sizeof(T) * m_ * n_));
     }
     cudaCheckError(cudaDeviceSynchronize());
@@ -110,15 +119,24 @@ protected:
   void toSparseFormat() override {
     // Allocate CSR arrays
     if (offload_ == gpuOffloadType::unified) {
+      if (A_vals_ != nullptr) cudaFreeAdaptive(A_vals_, "A_vals_");
       cudaCheckError(cudaMallocManaged(&A_vals_, sizeof(T) * nnz_));
+      if (A_cols_ != nullptr) cudaFreeAdaptive(A_cols_, "A_cols_");
       cudaCheckError(cudaMallocManaged(&A_cols_, sizeof(int64_t) * nnz_));
+      if (A_rows_ != nullptr) cudaFreeAdaptive(A_rows_, "A_rows_");
       cudaCheckError(cudaMallocManaged(&A_rows_, sizeof(int64_t) * (m_ + 1)));
     } else {
-      A_vals_ = (T*)malloc(sizeof(T) * nnz_);
-      A_cols_ = (int64_t*)malloc(sizeof(int64_t) * nnz_);
-      A_rows_ = (int64_t*)malloc(sizeof(int64_t) * (m_ + 1));
+      if (A_vals_ != nullptr) cudaFreeAdaptive(A_vals_, "A_vals_");
+      cudaCheckError(cudaMallocHost(&A_vals_, sizeof(T) * nnz_));
+      if (A_cols_ != nullptr) cudaFreeAdaptive(A_cols_, "A_cols_");
+      cudaCheckError(cudaMallocHost(&A_cols_, sizeof(int64_t) * nnz_));
+      if (A_rows_ != nullptr) cudaFreeAdaptive(A_rows_, "A_rows_");
+      cudaCheckError(cudaMallocHost(&A_rows_, sizeof(int64_t) * (m_ + 1)));
+      if (A_vals_dev_ != nullptr) cudaFreeAdaptive(A_vals_dev_, "A_vals_dev_");
       cudaCheckError(cudaMalloc((void**)&A_vals_dev_, sizeof(T) * nnz_));
+      if (A_cols_dev_ != nullptr) cudaFreeAdaptive(A_cols_dev_, "A_cols_dev_");
       cudaCheckError(cudaMalloc((void**)&A_cols_dev_, sizeof(int64_t) * nnz_));
+      if (A_rows_dev_ != nullptr) cudaFreeAdaptive(A_rows_dev_, "A_rows_dev_");
       cudaCheckError(cudaMalloc((void**)&A_rows_dev_, sizeof(int64_t) * (m_ + 1)));
     }
     cudaCheckError(cudaDeviceSynchronize());
@@ -244,6 +262,7 @@ private:
         if (print_) std::cout << "\tBuffer size: " << bufferSize << std::endl;
         // Allocate the temporary buffer
         if (bufferSize > 0) {
+          if (dBuffer != nullptr) cudaFreeAdaptive(dBuffer, "dBuffer");
           cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
         }
 
@@ -280,7 +299,10 @@ private:
         cusparseCheckError(cusparseDestroyDnMat(C_descr_));
 
         // Free up the temporary buffer
-        if (dBuffer != nullptr) cudaCheckError(cudaFree(dBuffer));
+        if (dBuffer != nullptr) {
+          cudaFreeAdaptive(dBuffer, "dBuffer");
+          dBuffer = nullptr;
+        }
 
         // Move result back to CPU
         cudaCheckError(cudaMemcpyAsync(C_, C_dev_, (sizeof(T) * m_ * n_),
@@ -339,6 +361,7 @@ private:
         if (print_) std::cout << "\tBuffer size: " << bufferSize << std::endl;
         // Allocate the temporary buffer
         if (bufferSize > 0) {
+          if (dBuffer != nullptr) cudaFreeAdaptive(dBuffer, "dBuffer");
           cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
         }
 
@@ -374,7 +397,10 @@ private:
         cusparseCheckError(cusparseDestroyDnMat(C_descr_));
 
         // Free up the temporary buffer
-        cudaCheckError(cudaFree(dBuffer));
+        if (dBuffer != nullptr) {
+          cudaFreeAdaptive(dBuffer, "dBuffer");
+          dBuffer = nullptr;
+        }
         break;
       }
       case gpuOffloadType::unified: {
@@ -429,6 +455,7 @@ private:
         if (print_) std::cout << "\tBuffer size: " << bufferSize << std::endl;
         // Allocate the temporary buffer
         if (bufferSize > 0) {
+          if (dBuffer != nullptr) cudaFreeAdaptive(dBuffer, "dBuffer");
           cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
         }
 
@@ -467,7 +494,10 @@ private:
         cudaCheckError(cudaDeviceSynchronize());
 
         // Free up the temporary buffer
-        cudaCheckError(cudaFree(dBuffer));
+        if (dBuffer != nullptr) {
+          cudaFreeAdaptive(dBuffer, "dBuffer");
+          dBuffer = nullptr;
+        }
         break;
       }
     }
@@ -496,40 +526,88 @@ private:
   }
 
   void postCallKernelCleanup() override {
-    if (print_) std::cout << "Freeing A_" << std::endl;
-    free(A_);
-    if (offload_ == gpuOffloadType::unified) {
+    if (A_ != nullptr) {
+      if (print_) std::cout << "Freeing A_" << std::endl;
+      cudaFreeAdaptive(A_, "A_");
+      A_ = nullptr;
+    }
+    if (A_vals_ != nullptr) {
       if (print_) std::cout << "Freeing A_vals_" << std::endl;
-      cudaCheckError(cudaFree(A_vals_));
+      cudaFreeAdaptive(A_vals_, "A_vals_"); 
+      A_vals_ = nullptr;
+    }
+    if (A_cols_ != nullptr) {
       if (print_) std::cout << "Freeing A_cols_" << std::endl;
-      cudaCheckError(cudaFree(A_cols_));
+      cudaFreeAdaptive(A_cols_, "A_cols_"); 
+      A_cols_ = nullptr; 
+    }
+    if (A_rows_ != nullptr) {
       if (print_) std::cout << "Freeing A_rows_" << std::endl;
-      cudaCheckError(cudaFree(A_rows_));
+      cudaFreeAdaptive(A_rows_, "A_rows_"); 
+      A_rows_ = nullptr;
+    }
+    if (B_ != nullptr) {
       if (print_) std::cout << "Freeing B_" << std::endl;
-      cudaCheckError(cudaFree(B_));
+      cudaFreeAdaptive(B_, "B_"); 
+      B_ = nullptr;
+    }
+    if (C_ != nullptr) {
       if (print_) std::cout << "Freeing C_" << std::endl;
-      cudaCheckError(cudaFree(C_));
-    } else {
+      cudaFreeAdaptive(C_, "C_"); 
+      C_ = nullptr;
+    }
+    if (A_vals_dev_ != nullptr) {
       if (print_) std::cout << "Freeing A_vals_dev_" << std::endl;
-      cudaCheckError(cudaFree(A_vals_dev_));
+      cudaFreeAdaptive(A_vals_dev_, "A_vals_dev_");
+      A_vals_dev_ = nullptr;
+    }
+    if (A_cols_dev_ != nullptr) {
       if (print_) std::cout << "Freeing A_cols_dev_" << std::endl;
-      cudaCheckError(cudaFree(A_cols_dev_));
+      cudaFreeAdaptive(A_cols_dev_, "A_cols_dev_");
+      A_cols_dev_ = nullptr;
+    }
+    if (A_rows_dev_ != nullptr) {
       if (print_) std::cout << "Freeing A_rows_dev_" << std::endl;
-      cudaCheckError(cudaFree(A_rows_dev_));
+      cudaFreeAdaptive(A_rows_dev_, "A_rows_dev_");
+      A_rows_dev_ = nullptr;
+    }
+    if (B_dev_ != nullptr) {
       if (print_) std::cout << "Freeing B_dev_" << std::endl;
-      cudaCheckError(cudaFree(B_dev_));
+      cudaFreeAdaptive(B_dev_, "B_dev_");
+      B_dev_ = nullptr;
+    }
+    if (C_dev_ != nullptr) {
       if (print_) std::cout << "Freeing C_dev_" << std::endl;
-      cudaCheckError(cudaFree(C_dev_));
-      if (print_) std::cout << "Freeing A_vals_" << std::endl;
-      free(A_vals_);
-      if (print_) std::cout << "Freeing A_cols_" << std::endl;
-      free(A_cols_);
-      if (print_) std::cout << "Freeing A_rows_" << std::endl;
-      free(A_rows_);
-      if (print_) std::cout << "Freeing B_" << std::endl;
-      free(B_);
-      if (print_) std::cout << "Freeing C_" << std::endl;
-      free(C_);
+      cudaFreeAdaptive(C_dev_, "C_dev_");
+      C_dev_ = nullptr;
+    }
+  }
+
+  inline void cudaFreeAdaptive(void* ptr, std::string name) {
+    if (!ptr) return;
+    cudaPointerAttributes attr;
+    cudaError_t err = cudaPointerGetAttributes(&attr, ptr);
+    if (err != cudaSuccess) {
+      // Pointer not recognized by CUDA (e.g. malloc) → just free?
+      // But since you've moved to cudaMallocHost, we should treat this as error.
+      std::cerr << "cudaPointerGetAttributes failed: " << cudaGetErrorString(err) << std::endl;
+      return;
+    }
+    switch (attr.type) {
+      case cudaMemoryTypeDevice:
+      case cudaMemoryTypeManaged:
+        // cudaMallocManaged
+        cudaCheckError(cudaFree(ptr));
+        break;
+
+      case cudaMemoryTypeHost:
+        // cudaMallocHost
+        cudaCheckError(cudaFreeHost(ptr));
+        break;
+
+      default:
+        std::cerr << "Unknown CUDA pointer type in cudaFreeAdaptive for: " << name << std::endl;
+        break;
     }
   }
 

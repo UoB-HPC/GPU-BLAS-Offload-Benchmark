@@ -143,6 +143,52 @@ protected:
         }
         A_rows_[row + 1] = nnz_encountered;
       }
+
+      if (print_) {
+        std::cout << "=============================================" << std::endl;
+        std::cout << "==================== GPU ====================" << std::endl;
+        std::cout << "=============================================" << std::endl;
+        std::cout << "                    INPUT"  << std::endl;
+        std::cout << "_____________________________________________" << std::endl;
+        std::cout << "A (dense):" << std::endl;
+        std::cout << "[";
+        for (int i = 0; i < (m_ * n_); i++) {
+          std::cout << A_[i];
+          if (i == ((m_ * n_) - 1)) std::cout << "]" << std::endl;
+          else if ((i % n_) == (n_ - 1)) std::cout << std::endl << " ";
+          else std::cout << ", ";
+        }
+        
+        std::cout << "x:" << std::endl;
+        std::cout << "[";
+        for (int i = 0; i < n_; i++) {
+          std::cout << x_[i];
+          if (i == (n_ - 1)) std::cout << "]" << std::endl;
+          else std::cout << ", ";
+        }
+        std::cout << "A_rows_:" << std::endl;
+        std::cout << "[";
+        for (int i = 0; i < (m_ + 1); i++) {
+          std::cout << A_rows_[i];
+          if (i == (m_)) std::cout << "]" << std::endl;
+          else std::cout << ", ";
+        }
+        std::cout << "A_cols_:" << std::endl;
+        std::cout << "[";
+        for (int i = 0; i < (nnz_); i++) {
+          std::cout << A_cols_[i];
+          if (i == (nnz_ - 1)) std::cout << "]" << std::endl;
+          else std::cout << ", ";
+        }
+        std::cout << "A_vals_:" << std::endl;
+        std::cout << "[";
+        for (int i = 0; i < (nnz_); i++) {
+          std::cout << A_vals_[i];
+          if (i == (nnz_ - 1)) std::cout << "]" << std::endl;
+          else std::cout << ", ";
+        }
+        std::cout << "_____________________________________________" << std::endl;
+      }
     }
 
 private:

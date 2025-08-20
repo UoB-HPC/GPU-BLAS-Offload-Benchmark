@@ -39,6 +39,15 @@ public:
 
 protected:
     void toSparseFormat() override {
+      // Get the actual nnz, instead of the desired nnz
+      uint64_t actual_nnz = 0;
+      for (int i = 0; i < m_ * n_; i++) {
+        if (A_[i] != 0.0) {
+          actual_nnz++;
+        }
+      }
+      nnz_ = actual_nnz;
+
       A_vals_ = new T[nnz_];
       A_cols_ = new MKL_INT[nnz_];
       A_rowsb_ = new MKL_INT[m_ + 1];
@@ -46,11 +55,8 @@ protected:
 
       int nnz_encountered = 0;
 
-      A_rowsb_[0] = 0;
-      A_rowse_[0] = 0;
-
       for (int row = 0; row < m_; row++) {
-        A_rowsb_[row + 1] = nnz_encountered;
+        A_rowsb_[row] = nnz_encountered;
         for (int col = 0; col < n_; col++) {
           if (A_[(row * n_) + col] != 0.0) {
             A_cols_[nnz_encountered] = col;
@@ -58,7 +64,61 @@ protected:
             nnz_encountered++;
           }
         }
-        A_rowse_[row + 1] = nnz_encountered;
+        A_rowse_[row] = nnz_encountered;
+      }
+      A_rowse_[m_ + 1] = A_rowsb_[m_ + 1] = nnz_encountered;
+
+      if (print_) {
+        std::cout << "=============================================" << std::endl;
+        std::cout << "==================== CPU ====================" << std::endl;
+        std::cout << "=============================================" << std::endl;
+        std::cout << "                    INPUT"  << std::endl;
+        std::cout << "_____________________________________________" << std::endl;
+        std::cout << "A (dense):" << std::endl;
+        std::cout << "[";
+        for (int i = 0; i < (m_ * n_); i++) {
+          std::cout << A_[i];
+          if (i == ((m_ * n_) - 1)) std::cout << "]" << std::endl;
+          else if ((i % n_) == (n_ - 1)) std::cout << std::endl << " ";
+          else std::cout << ", ";
+        }
+        
+        std::cout << "x:" << std::endl;
+        std::cout << "[";
+        for (int i = 0; i < n_; i++) {
+          std::cout << x_[i];
+          if (i == (n_ - 1)) std::cout << "]" << std::endl;
+          else std::cout << ", ";
+        }
+        std::cout << "A_rowsb_:" << std::endl;
+        std::cout << "[";
+        for (int i = 0; i < (m_ + 1); i++) {
+          std::cout << A_rowsb_[i];
+          if (i == (m_)) std::cout << "]" << std::endl;
+          else std::cout << ", ";
+        }
+        std::cout << "A_rowse_:" << std::endl;
+        std::cout << "[";
+        for (int i = 0; i < (m_ + 1); i++) {
+          std::cout << A_rowse_[i];
+          if (i == (m_)) std::cout << "]" << std::endl;
+          else std::cout << ", ";
+        }
+        std::cout << "A_cols_:" << std::endl;
+        std::cout << "[";
+        for (int i = 0; i < (nnz_); i++) {
+          std::cout << A_cols_[i];
+          if (i == (nnz_ - 1)) std::cout << "]" << std::endl;
+          else std::cout << ", ";
+        }
+        std::cout << "A_vals_:" << std::endl;
+        std::cout << "[";
+        for (int i = 0; i < (nnz_); i++) {
+          std::cout << A_vals_[i];
+          if (i == (nnz_ - 1)) std::cout << "]" << std::endl;
+          else std::cout << ", ";
+        }
+        std::cout << "_____________________________________________" << std::endl;
       }
     }
 
@@ -129,6 +189,8 @@ private:
       mkl_free(x_);
       mkl_free(y_);
     }
+
+    bool print_ = true;
 
     sparse_status_t status_;
 

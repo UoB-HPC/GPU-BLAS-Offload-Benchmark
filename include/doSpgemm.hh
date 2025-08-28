@@ -323,7 +323,7 @@ private:
     void callKernels(std::ofstream& csvFile, const int M, const int N,
                      const int K, double SPARSITY) {
       const double probSize = calcKib(M, N, K);
-      const uint64_t flops = calcFlops(M, N, K);
+      const uint64_t flops = calcFlops(M, N, K, SPARSITY);
       std::string kernelName = getKernelName();
 
 // Perform CPU kernel
@@ -524,21 +524,12 @@ private:
       }
     }
 
-    /** A function for calculating FLOPs performed by a GEMM.
+    /** A function for calculating FLOPs performed by a SpGEMM.
      * C = alpha*AB + beta*C */
-     // ToDo -- Work out how to do this for an unknown algorithm
-    constexpr uint64_t calcFlops(const int M, const int N, const int K) const {
-      // A * B = 2*M*N*K (FMA)
-      // alpha * AB = M*N (multiplication)
-      // beta * C = M*N (multiplication)
-      // AB + C = M*N (addition)
-      // = 2MNK + MN + MN + MN
-
-      // If beta==0; = 2MNK + MN ------- alpha*AB Always done
-      // Else; = 2MNK + 3MN
-      uint64_t scalar = (BETA != 0) ? 3 : 1;
-      return (2 * (uint64_t)M * (uint64_t)N * (uint64_t)K) +
-             (scalar * (uint64_t)M * (uint64_t)N);
+    constexpr uint64_t calcFlops(const int M, const int N, const int K, const double SPARSITY) const {
+      // Sparse Matrix x Dense Matrix is just a series of SpGEMV - one for each column
+      uint64_t NNZ = (uint64_t)((double)M * (double)K * (1.0 - SPARSITY));
+      return 2 * NNZ * N;
     }
 
     /** A function for calculating the total GEMM problem size in KiB. */

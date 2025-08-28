@@ -418,7 +418,7 @@ private:
     void callKernels(std::ofstream& csvFile, const int N, const int M,
                      const int K, const float sparsity) {
       const double probSize = calcKib(N, N, N);
-      const uint64_t flops = calcFlops(N, N, N);
+      const uint64_t flops = calcFlops(N, N, N, sparsity);
       std::string kernelName = getKernelName();
 
 #if CPU_ENABLED
@@ -488,18 +488,13 @@ private:
 
     /** A function for calculating FLOPs performed by a GEMM.
      * C = alpha*AB + beta*C */
-    constexpr uint64_t calcFlops(const int M, const int N, const int K) const {
-      // A * B = 2*M*N*K (FMA)
-      // alpha * AB = M*N (multiplication)
-      // beta * C = M*N (multiplication)
-      // AB + C = M*N (addition)
-      // = 2MNK + MN + MN + MN
-
-      // If beta==0; = 2MNK + MN ------- alpha*AB Always done
-      // Else; = 2MNK + 3MN
-      uint64_t scalar = (BETA != 0) ? 3 : 1;
-      return (2 * (uint64_t)M * (uint64_t)N * (uint64_t)K) +
-              (scalar * (uint64_t)M * (uint64_t)N);
+    constexpr uint64_t calcFlops(const int M, const int N, const int K, const double SPARSITY) const {
+      // The number of scalar multiplications is nnz(Ak)*nnz(Bk) for each inner index k
+      // Therefore, the expectation is to have NNZA * NNZB / K, as each K index would 
+      // on average have NNZA/K * NNZB/K.  This assumes a uniform distribution of non-zero elements
+      uint64_t NNZA = 1 + (uint64_t)((double)M * (double)K * (1.0 - SPARSITY));
+      uint64_t NNZB = 1 + (uint64_t)((double)K * (double)N * (1.0 - SPARSITY));
+      return (NNZA * NNZB) / K;
     }
 
     /** A function for calculating the total GEMM problem size in KiB. */

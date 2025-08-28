@@ -44,6 +44,7 @@ class spmm_gpu : public spmm<T> {
    *             required */
   void initialise(gpuOffloadType offload, int n, int m, int k, 
                   double sparsity, bool binary = false) override {
+    print_ = (n >= 2580);
     if (print_) {
       switch (offload) {
         case gpuOffloadType::always: {
@@ -101,6 +102,7 @@ class spmm_gpu : public spmm<T> {
 
     initInputMatrices();
 
+    print_ = false;
     if (print_) {
       std::cout << "===============Initialised=================" << std::endl;
       std::cout << "___________________________________________" << std::endl;
@@ -166,6 +168,7 @@ class spmm_gpu : public spmm<T> {
       std::cout << "]" << std::endl << std::endl;
       std::cout << "___________________________________________" << std::endl;
     }
+    print_ = (n >= 2580);
   }
 
  protected:

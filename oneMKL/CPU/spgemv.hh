@@ -190,7 +190,7 @@ private:
       mkl_free(y_);
     }
 
-    bool print_ = true;
+    bool print_ = false;
 
     sparse_status_t status_;
 

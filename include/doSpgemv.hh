@@ -189,8 +189,8 @@ private:
     /** Call the appropriate CPU and GPU SPGEMV kernels. */
     void callKernels(std::ofstream& csvFile, const int M, const int N, const
     double SPARSITY) {
-      const double probSize = calcKib(M, N);
-      const uint64_t flops = calcFlops(M, N);
+      const double probSize = calcKib(M, N, SPARSITY);
+      const uint64_t flops = calcFlops(M, N, SPARSITY);
       std::string kernelName = getKernelName();
 
 // Perform CPU kernel
@@ -283,21 +283,12 @@ private:
      if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) * hundredOverChecksum)) > 0.1 &&
          ((std::fabs(cpuResult.checksum - gpuResult_always.checksum) * hundredOverChecksum)) > 0.1 &&
          ((std::fabs(cpuResult.checksum - gpuResult_unified.checksum) * hundredOverChecksum)) > 0.1) {
-       std::cerr << "ERROR - " << getKernelName()
-                 << " kernel checksums do not match:\n\tInput "
-                    "dimensions: M="
-                 << M << ", N=" << N << std::endl;
-       std::cerr << std::setprecision(10)
-                 << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
-       std::cerr << std::setprecision(10)
-                 << "\tGPU (Once) Checksum = " << gpuResult_once.checksum
-                 << std::endl;
-       std::cerr << std::setprecision(10)
-                 << "\tGPU (Always) Checksum = " << gpuResult_always.checksum
-                 << std::endl;
-       std::cerr << std::setprecision(10)
-                 << "\tGPU (Unified) Checksum = " << gpuResult_unified.checksum
-                 << std::endl;
+       std::cerr << "ERROR - " << getKernelName() << " kernel checksums do not match:\n\tInput "
+                    "dimensions: M=" << M << ", N=" << N << std::endl;
+       std::cerr << std::setprecision(10) << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
+       std::cerr << std::setprecision(10) << "\tGPU (Once) Checksum = " << gpuResult_once.checksum << std::endl;
+       std::cerr << std::setprecision(10) << "\tGPU (Always) Checksum = " << gpuResult_always.checksum << std::endl;
+       std::cerr << std::setprecision(10) << "\tGPU (Unified) Checksum = " << gpuResult_unified.checksum << std::endl;
        exit(1);
      }
     }
@@ -375,24 +366,20 @@ private:
      * an unknown algorithm
      * A function for calculating FLOPs performed by a GEMV.
      * y = alpha*Ax + beta*y */
-    constexpr uint64_t calcFlops(const int M, const int N) const {
-      // A * x = 2*M*N (FMA)
-      // alpha * Ax = M (multiplication)
-      // beta * y = M (multiplication)
-      // Ax + y = M (addition)
-      // = 2MN + M + M + M
-
-      // If beta==0; = 2MN + M ------- alpha*Ax Always done
-      // Else; = 2MN + 3M
-      uint64_t scalar = (BETA != 0) ? 3 : 1;
-      return (2 * (uint64_t)M * (uint64_t)N) + (scalar * (uint64_t)M);
+    constexpr uint64_t calcFlops(const int M, const int N, const double SPARSITY) const {
+      // There are two flops per non-zero element in the sparse matrix
+      uint64_t NNZ = 1 + (uint64_t)((double)M * (double)N * (1.0 - SPARSITY));
+      return 2 * NNZ;
     }
 
     /** A function for calculating the total GEMV problem size in KiB. */
-    constexpr double calcKib(const int M, const int N) const {
-      uint64_t M_ = (uint64_t)M, N_ = (uint64_t)N;
-      uint64_t probSize = (M_ * N_) + N_ + M_;
-      return ((double)(probSize * (sizeof(T))) / 1024);
+    constexpr double calcKib(const int M, const int N, const double SPARSITY) const {
+      // Needs a CSR format matrix (one array of ints size m + 1 (row pointers), one array of ints size nnz (column indices), and one array of fps of size nnz (values))
+      // Also needs two vectors x and y, of sizes n and m, respectively
+      uint64_t NNZ = 1 + (uint64_t)((double)M * (double)N * (1.0 - SPARSITY));
+      uint64_t intSize = (M + 1) + NNZ;
+      uint64_t fpSize = NNZ + N + M;
+      return (((double)(fpSize * (sizeof(T))) + (double)(intSize * sizeof(int64_t)))/ 1024);
     }
 
     /** Get the name of the kernel being run. */

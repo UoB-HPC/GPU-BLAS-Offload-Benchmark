@@ -23,7 +23,6 @@ public:
   using spgemm<T>::m_;
   using spgemm<T>::n_;
   using spgemm<T>::k_;
-  using spgemm<T>::A_;
   using spgemm<T>::B_;
   using spgemm<T>::C_;
   using spgemm<T>::offload_;
@@ -57,7 +56,7 @@ public:
     n_ = n;
     k_ = k;
 
-    A_ = B_ = C_ = B_dev_ = C_dev_ = A_vals_ = A_vals_dev_ = nullptr;
+    B_ = C_ = B_dev_ = C_dev_ = A_vals_ = A_vals_dev_ = nullptr;
     A_rows_ = A_cols_ = A_rows_dev_ = A_cols_dev_ = nullptr;
     /** Determine the number of nnz elements in A and B */
     nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
@@ -86,8 +85,6 @@ public:
     cudaCheckError(cudaStreamCreate(&s2_));
     cudaCheckError(cudaStreamCreate(&s3_));
 
-    if (A_ != nullptr) cudaFreeAdaptive(A_, "A_");
-    cudaCheckError(cudaMallocHost(&A_, sizeof(T) * m_ * k_));
     if (offload_ == gpuOffloadType::unified) {
       if (print_) std::cout << "\tAllocating unified memory" << std::endl;
       if (B_ != nullptr) cudaFreeAdaptive(B_, "B_");
@@ -141,25 +138,7 @@ protected:
     }
     cudaCheckError(cudaDeviceSynchronize());
 
-    // Load A into CSR
-    int nnz_encountered = 0;
-    for (int row = 0; row < m_; row++) {
-      A_rows_[row] = nnz_encountered;
-      for (int col = 0; col < k_; col++) {
-        if (A_[(row * k_) + col] != 0.0) {
-          A_cols_[nnz_encountered] = col;
-          A_vals_[nnz_encountered] = A_[(row * k_) + col];
-          nnz_encountered++;
-        }
-        if (nnz_encountered == nnz_) break;
-      }
-      if (nnz_encountered == nnz_) break;
-    }
-    A_rows_[m_] = nnz_encountered;
-    if (nnz_ != nnz_encountered) {
-      std::cout << "ERROR -- NOT ENOUGH NON-ZERO VALUES!" << std::endl;
-    }
-    cudaCheckError(cudaDeviceSynchronize());
+    rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
   }
 
 private:
@@ -526,11 +505,6 @@ private:
   }
 
   void postCallKernelCleanup() override {
-    if (A_ != nullptr) {
-      if (print_) std::cout << "Freeing A_" << std::endl;
-      cudaFreeAdaptive(A_, "A_");
-      A_ = nullptr;
-    }
     if (A_vals_ != nullptr) {
       if (print_) std::cout << "Freeing A_vals_" << std::endl;
       cudaFreeAdaptive(A_vals_, "A_vals_"); 

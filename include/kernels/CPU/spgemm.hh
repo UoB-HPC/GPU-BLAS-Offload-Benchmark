@@ -18,7 +18,6 @@ public:
     using ::spgemm<T>::m_;
     using ::spgemm<T>::n_;
     using ::spgemm<T>::k_;
-    using ::spgemm<T>::A_;
     using ::spgemm<T>::B_;
     using ::spgemm<T>::C_;
 
@@ -37,12 +36,11 @@ public:
       nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
 
       // Allocate memory for dense matrices
-      A_ = (T*)calloc(m_ * k_, sizeof(T));
       B_ = (T*)calloc(k_ * n_, sizeof(T));
       C_ = (T*)calloc(m_ * n_, sizeof(T));
 
       // Check for allocation failures
-      if (!A_ || !B_ || !C_) {
+      if (!B_ || !C_) {
         std::cerr << "ERROR: Memory allocation failed in spgemm initialization" << std::endl;
         exit(1);
       }
@@ -54,7 +52,6 @@ private:
     /** Do any necessary cleanup (free pointers, close library handles, etc.)
      * after Kernel has been called. */
     void postCallKernelCleanup() {
-      free(A_);
       free(B_);
       free(C_);
     }

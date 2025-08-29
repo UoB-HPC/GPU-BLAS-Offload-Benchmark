@@ -21,9 +21,6 @@ public:
   using ::spmm<T>::m_;
   using ::spmm<T>::n_;
   using ::spmm<T>::k_;
-  using ::spmm<T>::A_;
-  using ::spmm<T>::B_;
-  using ::spmm<T>::C_;
   using ::spmm<T>::C_rows_;
   using ::spmm<T>::C_cols_;
   using ::spmm<T>::C_vals_;
@@ -42,11 +39,7 @@ public:
     /** Determine the number of nnz elements in A and B */
     A_nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
     B_nnz_ = 1 + (uint64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
-
-    A_ = (T*)malloc(sizeof(T) * m_ * k_);
-    B_ = (T*)malloc(sizeof(T) * k_ * n_);
-    C_ = (T*)calloc(sizeof(T) * m_ * n_);
-
+    
     initInputMatrices();
   }
 
@@ -54,9 +47,6 @@ private:
     /** Do any necessary cleanup (free pointers, close library handles, etc.)
      * after Kernel has been called. */
   void postCallKernelCleanup() {
-    free(A_);
-    free(B_);
-    free(C_);
   }
 };
 }  // namespace cpu

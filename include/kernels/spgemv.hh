@@ -73,14 +73,6 @@ protected:
     void initInputMatrixVector() {
       // Set the seed to allow checksum to work
       srand(SEED);
-
-      // Initialise matric to
-      for (int i = 0; i < (n_ * m_); i++) {
-        A_[i] = 0.0;
-      }
-
-      if (print_) std::cout << "DEBUG: Generating sparse matrix with R-MAT" << std::endl;
-      rMat(A_, m_, n_, nnz_);
       
       // Initialise the input and output vectors
       for (int y = 0; y < n_; y++) {
@@ -100,7 +92,7 @@ protected:
     virtual void toSparseFormat() = 0;
 
     /** Call the extern consume() function. */
-    void callConsume() { consume((void*)A_, (void*)x_, (void*)y_); }
+    void callConsume() {}
 
     /** The number of iterations to perform per problem size. */
     const int iterations_;
@@ -110,9 +102,6 @@ protected:
 
     /** Matrix / vector dimension N. */
     int n_ = 0;
-
-    /** Input matrix A. */
-    T* A_;
 
     /** Input vector x. */
     T* x_;

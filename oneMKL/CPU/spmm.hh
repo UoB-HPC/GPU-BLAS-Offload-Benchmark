@@ -20,9 +20,6 @@ public:
     using spmm<T>::m_;
     using spmm<T>::n_;
     using spmm<T>::k_;
-    using spmm<T>::A_;
-    using spmm<T>::B_;
-    using spmm<T>::C_;
     using spmm<T>::sparsity_;
     using spmm<T>::A_nnz_;
     using spmm<T>::B_nnz_;
@@ -33,7 +30,6 @@ public:
 
     void initialise(int m, int n, int k, double sparsity,
                     bool binary = false) {
-//      std::cout << ".. setting metadata";
       m_ = m;
       n_ = n;
       k_ = k;
@@ -47,41 +43,22 @@ public:
       /** Determine the number of nnz elements in A and B */
       A_nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
       B_nnz_ = 1 + (uint64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
-
-//      std::cout << ".. making data structures";
-      A_ = (T*)mkl_malloc(sizeof(T) * m_ * k_, 64);
-      B_ = (T*)mkl_malloc(sizeof(T) * k_ * n_, 64);
-      C_ = (T*)mkl_malloc(sizeof(T) * m_ * n_, 64);
-
-//      std::cout << ".. initialising matrices";
       initInputMatrices();
-//      std::cout << ".. DONE";
     }
 
 protected:
     void toSparseFormat() override {
-//      std::cout << ".. to sparse format";
       A_vals_ = new T[A_nnz_];
       A_cols_ = new MKL_INT[A_nnz_];
       A_rowsb_ = new MKL_INT[m_ + 1];
       A_rowse_ = new MKL_INT[m_ + 1];
 
-      int nnz_encountered = 0;
+      rMatCSR<T, MKL_INT>(A_vals_, A_cols_, A_rowsb_, m_, k_, nnz_);
 
-      A_rowsb_[0] = 0;
-      A_rowse_[0] = 0;
-
-      for (int row = 0; row < m_; row++) {
-        A_rowsb_[row + 1] = nnz_encountered;
-        for (int col = 0; col < k_; col++) {
-          if (A_[(row * k_) + col] != 0.0) {
-            A_cols_[nnz_encountered] = col;
-            A_vals_[nnz_encountered] = static_cast<T>(A_[(row * k_) + col]);
-            nnz_encountered++;
-          }
-        }
-        A_rowse_[row + 1] = nnz_encountered;
+      for (uint64_t i = 0; i < m_; i++) {
+        A_rowse_[i] = A_rowsb_[i + 1] - 1;
       }
+      A_rowse_[m_] = A_rowsb_[m_ + 1];
 
 
       B_vals_ = new T[B_nnz_];
@@ -89,22 +66,13 @@ protected:
       B_rowsb_ = new MKL_INT[k_ + 1];
       B_rowse_ = new MKL_INT[k_ + 1];
 
-      nnz_encountered = 0;
 
-      B_rowsb_[0] = 0;
-      B_rowse_[0] = 0;
+      rMatCSR<T, MKL_INT>(B_vals_, B_cols_, B_rowsb_, k_, n_, nnz_);
 
-      for (int row = 0; row < k_; row++) {
-        B_rowsb_[row + 1] = nnz_encountered;
-        for (int col = 0; col < n_; col++) {
-          if (B_[(row * n_) + col] != 0.0) {
-            B_cols_[nnz_encountered] = col;
-            B_vals_[nnz_encountered] = static_cast<T>(B_[(row * n_) + col]);
-            nnz_encountered++;
-          }
-        }
-        B_rowse_[row + 1] = nnz_encountered;
+      for (uint64_t i = 0; i < k_; i++) {
+        B_rowse_[i] = B_rowsb_[i + 1] - 1;
       }
+      B_rowse_[k_] = B_rowsb_[k_ + 1];
     }
 
 private:
@@ -198,9 +166,20 @@ private:
       }
     }
     void postCallKernelCleanup() override {
-      mkl_free(A_);
-      mkl_free(B_);
-      mkl_free(C_);
+      delete[] A_vals_;
+      delete[] A_cols_;
+      delete[] A_rowsb_;
+      delete[] A_rowse_;
+
+      delete[] B_vals_;
+      delete[] B_cols_;
+      delete[] B_rowsb_;
+      delete[] B_rowse_;
+
+      delete[] C_cols_;
+      delete[] C_rowsb_;
+      delete[] C_rowse_;
+      delete[] C_vals_;
     }
 
     sparse_status_t status_;

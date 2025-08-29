@@ -75,64 +75,7 @@ private:
 
 protected:
     /** Set up the starting matrices */
-    void initInputMatrices() {
-      for (int i = 0; i < (m_ * k_); i++) {
-        A_[i] = 0.0;
-      }
-      for (int i = 0; i < (k_ * n_); i++) {
-        B_[i] = 0.0;
-      }
-
-      rMat(A_, m_, k_, A_nnz_);
-      rMat(B_, k_, n_, B_nnz_);
-
-      bool valid_C = false;
-
-      for (int Ar = 0; Ar < m_; Ar++) {
-        for (int Bc = 0; Bc < n_; Bc++) {
-          for (int i = 0; i < k_; i++) {
-            int Aind = (Ar * k_) + i;
-            int Bind = (i * n_) + Bc;
-            if (std::abs(A_[Aind] * B_[Bind]) > 1e-10) {
-              valid_C = true; 
-              break;
-            }
-          }
-          if (valid_C) break;
-        }
-        if (valid_C) break;
-      }
-
-      if (!valid_C) {
-        A_[0] = -98.3;
-        B_[0] = 5.2;
-      }
-
-      // Count actual non-zeros
-      int actual_nnz = 0;
-      for (int i = 0; i < (m_ * k_); i++) {
-        if (std::abs(A_[i]) > 1e-10) {
-          actual_nnz++;
-        }
-      }
-      if (actual_nnz == 0) {
-        A_[0] = 7.8;
-        actual_nnz = 1;
-      }
-      A_nnz_ = actual_nnz;
-      actual_nnz = 0;
-      for (int i = 0; i < (k_ * n_); i++) {
-        if (std::abs(B_[i]) > 1e-10) {
-          actual_nnz++;
-        }
-      }
-      if (actual_nnz == 0) {
-        B_[0] = 7.8;
-        actual_nnz = 1;
-      }
-      B_nnz_ = actual_nnz;
-
-      
+    void initInputMatrices() {    
       
       toSparseFormat();
     }

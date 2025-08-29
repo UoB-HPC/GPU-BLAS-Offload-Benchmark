@@ -44,7 +44,6 @@ class spmm_gpu : public spmm<T> {
    *             required */
   void initialise(gpuOffloadType offload, int n, int m, int k, 
                   double sparsity, bool binary = false) override {
-    print_ = (n >= 2580);
     if (print_) {
       switch (offload) {
         case gpuOffloadType::always: {
@@ -102,30 +101,8 @@ class spmm_gpu : public spmm<T> {
 
     initInputMatrices();
 
-    print_ = false;
     if (print_) {
       std::cout << "===============Initialised=================" << std::endl;
-      std::cout << "___________________________________________" << std::endl;
-      std::cout << "A =" << std::endl;
-      std::cout << "[";
-      for (int64_t i = 0; i < (m_ * k_); i++) {
-        std::cout << A_[i];
-        if ((i % k_) < (k_ - 1)) std::cout << ", ";
-        else if (i != ((m_ * k_) - 1)) std::cout << std::endl;
-      }
-      std::cout << "]" << std::endl;
-
-      std::cout << "B =" << std::endl;
-      std::cout << "[";
-      for (int64_t i = 0; i < (k_ * n_); i++) {
-        std::cout << B_[i];
-        if ((i % n_) < (n_ - 1)) std::cout << ", ";
-        else if (i != ((k_ * n_) - 1)) std::cout << std::endl;
-      }
-      std::cout << "]" << std::endl << std::endl;
-
-      std::cout << "___________________________________________" << std::endl;
-      std::cout << "===============Sparsified==================" << std::endl;
       std::cout << "___________________________________________" << std::endl;
       std::cout << "A nnz = " << A_nnz_ << std::endl;
       std::cout << "A rows = [";
@@ -168,7 +145,6 @@ class spmm_gpu : public spmm<T> {
       std::cout << "]" << std::endl << std::endl;
       std::cout << "___________________________________________" << std::endl;
     }
-    print_ = (n >= 2580);
   }
 
  protected:
@@ -206,34 +182,8 @@ class spmm_gpu : public spmm<T> {
       C_cols_dev_ = nullptr;
     }
     cudaCheckError(cudaDeviceSynchronize());
-    // Load A into CSR
-    // Load A into CSR
-    int32_t nnz_encountered = 0;
-    for (int32_t row = 0; row < m_; row++) {
-      A_rows_[row] = nnz_encountered;
-      for (int32_t col = 0; col < k_; col++) {
-        if (A_[(row * k_) + col] != 0.0) { // fixed here
-          A_cols_[nnz_encountered] = col;
-          A_vals_[nnz_encountered] = A_[(row * k_) + col];
-          nnz_encountered++;
-        }
-      }
-    }
-    A_rows_[m_] = nnz_encountered;
-
-    // Load B into CSR
-    nnz_encountered = 0;
-    for (int32_t row = 0; row < k_; row++) {
-      B_rows_[row] = nnz_encountered;
-      for (int32_t col = 0; col < n_; col++) {
-        if (B_[(row * n_) + col] != 0.0) {
-          B_cols_[nnz_encountered] = col;
-          B_vals_[nnz_encountered] = B_[(row * n_) + col];
-          nnz_encountered++;
-        }
-      }
-    }
-    B_rows_[k_] = nnz_encountered;
+    rMatCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_);
+    rMatCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, true);
   }
 
  private:

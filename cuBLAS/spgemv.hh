@@ -21,7 +21,6 @@ class spgemv_gpu : public spgemv<T> {
   using spgemv<T>::nnz_;
   using spgemv<T>::m_;
   using spgemv<T>::n_;
-  using spgemv<T>::A_;
   using spgemv<T>::x_;
   using spgemv<T>::y_;
   using spgemv<T>::offload_;
@@ -45,7 +44,6 @@ class spgemv_gpu : public spgemv<T> {
       }
     }
     if (print_) std::cout << "Initialise " << m_ << "x" << n_ << " . " << n_ << std::endl;
-
     offload_ = offload;
 
     sparsity_ = sparsity;
@@ -78,7 +76,6 @@ class spgemv_gpu : public spgemv<T> {
     if (print_) std::cout << "\tcuda streams created" << std::endl;
 
     // Allocate dense data structures
-    A_ = (T*)malloc(sizeof(T) * m_ * n_);
     if (offload_ == gpuOffloadType::unified) {
       if (print_) std::cout << "\tAllocating arrays in unified memory" << std::endl;
       cudaCheckError(cudaMallocManaged(&x_, n_ * sizeof(T)));
@@ -100,15 +97,6 @@ class spgemv_gpu : public spgemv<T> {
     if (debug) {
       std::cout << "===============Initialised=================" << std::endl;
       std::cout << "___________________________________________" << std::endl;
-      std::cout << "A =" << std::endl;
-      std::cout << "[";
-      for (int64_t i = 0; i < (m_ * n_); i++) {
-        std::cout << A_[i];
-        if ((i % n_) < (n_ - 1)) std::cout << ", ";
-        else if (i != ((m_ * n_) - 1)) std::cout << std::endl;
-      }
-      std::cout << "]" << std::endl;
-
       std::cout << "x =" << std::endl;
       std::cout << "[";
       for (int64_t i = 0; i < n_; i++) {
@@ -153,12 +141,7 @@ class spgemv_gpu : public spgemv<T> {
 protected:
 
   void toSparseFormat() override {
-    if (print_) std::cout << "\tChecking actual nnz" << std::endl;
-    uint64_t acutalNNZ = 0;
-    for (int64_t i = 0; i < (m_ * n_); i++) {
-      if (A_[i] != 0.0) acutalNNZ++;
-    }
-    nnz_ = acutalNNZ;
+
     if (print_) std::cout << "\tAllocating sparse data structures" << std::endl;
     if (offload_ == gpuOffloadType::unified) {
       cudaCheckError(cudaMallocManaged(&A_vals_, nnz_ * sizeof(T)));
@@ -174,22 +157,7 @@ protected:
     }
     cudaCheckError(cudaDeviceSynchronize());
 
-    if (print_) std::cout << "\tConverting matrix to sparse format" << std::endl;
-    int nnz_encountered = 0;
-    for (int row = 0; row < m_; row++) {
-      A_rows_[row] = nnz_encountered;
-      int nnz_row = 0;
-      for (int col = 0; col < n_; col++) {
-        if (A_[(row * n_) + col] != 0.0) {
-          nnz_row++;
-          A_cols_[nnz_encountered] = col;
-          A_vals_[nnz_encountered] = A_[(row * n_) + col];
-          nnz_encountered++;
-        }
-      }
-    }
-    A_rows_[m_] = nnz_encountered;
-    cudaCheckError(cudaDeviceSynchronize());
+    rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
   }
 
  private:
@@ -474,7 +442,6 @@ protected:
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
   void postCallKernelCleanup() override {
-    free(A_);
     if (offload_ == gpuOffloadType::unified) {
       cudaCheckError(cudaFree(A_vals_));
       cudaCheckError(cudaFree(A_cols_));

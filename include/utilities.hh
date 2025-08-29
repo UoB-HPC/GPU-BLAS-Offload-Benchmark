@@ -1,6 +1,9 @@
 #pragma once
 
 #include <random>
+#include <cmath>
+#include <algorithm>
+#include <vector>
 #include <queue>
 #include <iostream>
 
@@ -49,6 +52,7 @@
 // Define seed for random number generation - use seeded srand() to ensure
 // inputs across libraries are consistent & comparable
 const unsigned int SEED = 19123005;
+const unsigned int SEED2 = 19123027;
 
 // Define enum class for GPU offload type
 enum class gpuOffloadType : uint8_t {
@@ -83,46 +87,44 @@ int consume(void* a, void* b, void* c);
 }
 
 /**
- * R-MAT (Recursive MATrix) Graph Generator - Single Edge Addition
+ * @brief Generate an R-MAT matrix directly in CSR format.
  *
- * Iterative Implementation of the R-MAT model for generating scale-free graphs
- * with  realistic
- * structural properties. R-MAT subdivides the adjacency matrix into
- * four quadrants and probabilistically selects which quadrant to place each edge,
- * creating graphs with power-law degree distributions and community structure
- * similar to real-world networks.
+ * This function samples `nnz` edges (nonzeros) from the R-MAT distribution and
+ * writes the result directly into CSR arrays:
+ *   - vals[k] : value of the k-th nonzero (here set to 1 by default)
+ *   - cols[k] : column index of the k-th nonzero
+ *   - rows[i] : starting offset in (vals, cols) for row i
+ *               (classic CSR row pointer of length nrows+1)
  *
- * The algorithm works by:
- * 1. Dividing the current matrix region into 4 quadrants
- * 2. Using probabilities (a,b,c,d) where d = 1-(a+b+c) to select a quadrant
- * 3. Recursively descending until reaching a 1x1 cell
- * 4. Attempting to place a non-zero value at that position
+ * Memory usage is O(nnz) (plus a temporary edge list), avoiding any dense
+ * matrix construction.
  *
- * This implementation is particularly relevant for sparse linear algebra benchmarks
- * as R-MAT graphs exhibit:
- * - High sparsity (typical density < 0.1%)
- * - Irregular structure that challenges cache efficiency
- * - Realistic non-uniform sparsity patterns found in real applications
- * - Scalable generation for large problem sizes
+ * IMPORTANT BEHAVIOR:
+ *  - Undirected: When `undirected == true`, this code only enforces u <= v
+ *    during sampling (so edges are oriented consistently). It does NOT insert
+ *    the symmetric counterpart (v,u). If you want a symmetric matrix, you must
+ *    explicitly duplicate edges (except diagonal) before CSR conversion.
+ *  - Seeding: Uses a global or external `SEED` to make the generator
+ *    deterministic/reproducible. Ensure `SEED` is defined in your translation unit.
  *
- * @param M         Pointer to flattened n×n adjacency matrix (row-major order)
- * @param n         Matrix dimension (number of columns in the matrix).
- * Needed for calcluating index
- * @param x1        Left boundary of current matrix subregion (inclusive)
- * @param x2        Right boundary of current matrix subregion (inclusive)
- * @param y1        Top boundary of current matrix subregion (inclusive)
- * @param y2        Bottom boundary of current matrix subregion (inclusive)
- * @param a         Probability of selecting top-left quadrant [0,1]
- * @param b         Probability of selecting top-right quadrant [0,1]
- * @param c         Probability of selecting bottom-left quadrant [0,1]
- *                  Note: bottom-right probability d = 1-(a+b+c)
- * @param gen       Pointer to random number generator for reproducible results
- * @param dist      Uniform real distribution [0,1) for quadrant selection
- * @param bin       If true, creates binary matrix (edges = 1.0);
- *                  if false, assigns random weights in range [-50, 50)
+ * Complexity:
+ *  - Sampling:    O(nnz * log(max(nrows,ncols))) bit-decisions per edge
+ *  - Sorting:     O(nnz log nnz) (by row, then col)
+ *  - CSR build:   O(nnz + nrows)
  *
- * @return true if successfully added non-zero value to an empty position,
- *         false if selected position already contains non-zero value
+ * @tparam T         Numeric type for values (e.g., float, double, int)
+ * @tparam int_type  Integer type for indices (e.g., int, int32_t, int64_t)
+ *
+ * @param vals   Output array of length nnz (nonzero values)
+ * @param cols   Output array of length nnz (column indices)
+ * @param rows   Output array of length nrows+1 (row pointer)
+ * @param nrows  Number of rows in the matrix
+ * @param ncols  Number of columns in the matrix
+ * @param nnz    Number of nonzeros to generate
+ * @param a,b,c,d R-MAT quadrant probabilities (must sum to 1; typical: 0.57,0.19,0.19,0.05)
+ * @param noise  Optional jitter in probabilities each bit step (0.0 = none)
+ * @param no_self_loops If true, edges with u == v are discarded and resampled
+ * @param undirected    If true, enforce u <= v in the sampled edge; does NOT mirror edges
  *
  * @note Typical R-MAT parameters for realistic graphs:
  *       - a=0.45, b=0.15, c=0.15, d=0.25 (Kronecker-like)
@@ -142,82 +144,150 @@ int consume(void* a, void* b, void* c);
  * - Leskovec, J., et al. (2010). Kronecker graphs: An approach to modeling networks.
  *   Journal of Machine Learning Research, 11, 985-1042.
  */
-template <typename T>
-void rMat(T* M, int rows, int cols, int nnz,
-          double a = 0.57,
-          double b = 0.19,
-          double c = 0.19,
-          double d = 0.05,
-          double noise = 0.0,
-          bool no_self_loops = false,
-          bool undirected = false) {
-  // Determine number of bits to cover rows and cols
-  int row_bits = static_cast<int>(std::ceil(std::log2(rows)));
-  int col_bits = static_cast<int>(std::ceil(std::log2(cols)));
+template <typename T, typename int_type>
+void rMatCSR(T* vals, int_type* cols, int_type* rows,
+             int nrows, int ncols, int nnz, bool isB = false,
+             double a = 0.57,
+             double b = 0.19,
+             double c = 0.19,
+             double d = 0.05,
+             double noise = 0.0,
+             bool no_self_loops = false,
+             bool undirected = false) {
+  // Number of bits needed to index into the row/col ranges.
+  // R-MAT decides each bit from MSB→LSB by picking a quadrant.
+  int row_bits = static_cast<int>(std::ceil(std::log2(nrows)));
+  int col_bits = static_cast<int>(std::ceil(std::log2(ncols)));
 
-  // Random number generator objects for use in descent
+  // Set up RNG.  Uses srand for value generation, and uniform[0,1)
+  // for quadrant selection
+  srand((isB ? SEED2 : SEED));
   std::default_random_engine gen;
   std::uniform_real_distribution<double> dist(0.0, 1.0);
-  // Set the seed to allow checksum to work
-  gen.seed(SEED);
+  gen.seed((isB ? SEED2 : SEED));
 
+
+  // Temporary storage of sampled edges as (row, col) pairs.
+  // We reserve exactly nnz slots and will push_back exactly nnz valid edges.
+  std::vector<std::pair<int_type, int_type>> edges;
+  edges.reserve(nnz);
+
+  // Keep sampling until we have nnz valid edges.
+  // Invalid candidates (out-of-bounds due to non-powers-of-two, self-loops, etc.)
+  // are discarded by continuing the loop without incrementing the edge count.
   int edge_idx = 0;
   while (edge_idx < nnz) {
-    int u = 0;
-    int v = 0;
+    int u = 0; // Sampled row index (as int, cast to int_type later)
+    int v = 0; // Sampled column index
 
+    // Base quadrant probabilities (A,B,C,D). We optionally jitter these
+    // at each bit decision if 'noise' > 0.
     double A = a, B = b, C = c, D = d;
 
-    // For each bit position (MSB to LSB)
+    // For each bit (from most-significant to least), decide which quadrant
+    // the edge falls into and set the corresponding bit of (u,v).
     for (int bit = 0; bit < std::max(row_bits, col_bits); ++bit) {
-      // Optional noise
+      // Optional noise: perturb A,B,C,D slightly, then renormalize.
       if (noise > 0.0) {
         auto jitter = [&](double val) {
-          return std::max(0.0, val + (dist(gen) * 2.0 - 1.0) * noise);
+            // Perturb within ±noise, clamp to [0,1] lower bound via max(0,•)
+            return std::max(0.0, val + (dist(gen) * 2.0 - 1.0) * noise);
         };
         A = jitter(a);
         B = jitter(b);
         C = jitter(c);
         D = jitter(d);
         double sum = A + B + C + D;
-        A /= sum; B /= sum; C /= sum; D /= sum;
+        // Guard against degenerate total (shouldn’t happen unless noise is extreme)
+        A = (sum > 0) ? (A / sum) : 0.25;
+        B = (sum > 0) ? (B / sum) : 0.25;
+        C = (sum > 0) ? (C / sum) : 0.25;
+        D = (sum > 0) ? (D / sum) : 0.25;
       }
 
+      // Draw r ~ U(0,1) and select quadrant by cumulative thresholds.
       double r = dist(gen);
       double t1 = A;
       double t2 = A + B;
       double t3 = A + B + C;
 
-      int row_bit = 0;
-      int col_bit = 0;
+      int row_bit = 0, col_bit = 0;
       if (r < t1) {
-        row_bit = 0;  col_bit = 0;
+      // Quadrant 00
+        row_bit = 0; col_bit = 0;
       } else if (r < t2) {
+      // Quadrant 01
         row_bit = 0; col_bit = 1;
       } else if (r < t3) {
+      // Quadrant 10
         row_bit = 1; col_bit = 0;
       } else {
+      // Quadrant 11
         row_bit = 1; col_bit = 1;
       }
 
-      if (bit < row_bits)
-        u = (u << 1) | row_bit;
-      if (bit < col_bits)
-        v = (v << 1) | col_bit;
+      // Only set bits that are within the bit-width of rows/cols respectively.
+      if (bit < row_bits) u = (u << 1) | row_bit;
+      if (bit < col_bits) v = (v << 1) | col_bit;
     }
 
-    if (u >= rows || v >= cols)
-      continue; // Out of bounds due to non-power-of-two dims
+    // If dimensions are not powers of two, some combinations will exceed bounds.
+    if (u >= nrows || v >= ncols) continue;
+    // Optionally filter self-loops
+    if (no_self_loops && u == v) continue;
+    // If undirected, orient edges consistently (store the "upper-triangular" orientation).
+    // NOTE: This does NOT create symmetric pairs; it only enforces a canonical ordering.
+    if (undirected && u > v) std::swap(u, v);
+    // If a duplicate, do not commit edge
+    if (std::find(edges.begin(), edges.end(), std::make_pair((int_type)u, (int_type)v)) != edges.end()) continue;
 
-    if (no_self_loops && u == v)
-      continue;
-
-    if (undirected && u > v)
-      std::swap(u, v);
-
-    M[2 * edge_idx]     = (T)u;
-    M[2 * edge_idx + 1] = (T)v;
+    // Commit the sampled edge.
+    edges.emplace_back((int_type)u, (int_type)v);
     ++edge_idx;
   }
+
+  // Sort edges primarily by row, and secondarily by column.
+  // CSR expects nonzeros grouped by row; sorting also makes columns within
+  // each row non-decreasing, which is often desirable.
+  std::sort(edges.begin(), edges.end(),
+            [](auto& a, auto& b) {
+                return (a.first < b.first) ||
+                        (a.first == b.first && a.second < b.second);
+            });
+
+  // Initialize row pointer array with zeros.
+  // rows[i] will eventually hold the starting index in (vals, cols) of row i.
+  // rows[nrows] will equal nnz after prefix-sum (the total number of nonzeros).
+  std::fill(rows, rows + nrows + 1, 0);
+
+  // Linear pass over sorted edges to fill cols/vals and count entries per row.
+  // We write the k-th edge's column into cols[k] and its value into vals[k].
+  // Simultaneously, we increment a per-row count into rows[r+1].
+  for (int i = 0; i < nnz; ++i) {
+    const int_type r = edges[static_cast<size_t>(i)].first;
+    const int_type c = edges[static_cast<size_t>(i)].second;
+
+    cols[static_cast<size_t>(i)] = c;
+    vals[static_cast<size_t>(i)] = (T)((double)(rand() % 100) / 3.0);
+
+    // Count one nonzero in row r by bumping rows[r+1].
+    // After this loop, rows[k+1] holds the count of nonzeros in row k.
+    ++rows[static_cast<size_t>(r) + 1];
+  }
+
+
+    // Convert per-row counts into exclusive prefix sums:
+    // rows[0] = 0
+    // rows[i+1] = rows[i] + (count of row i)
+    // After this, rows[i] is the starting offset of row i in (vals, cols),
+    // and rows[nrows] == nnz.
+    for (int i = 0; i < nrows; i++) {
+        rows[static_cast<size_t>(i) + 1] += rows[static_cast<size_t>(i)];
+    }
+
+    // At this point:
+    //  - For each row r, nonzeros occupy indices [rows[r], rows[r+1]) in (vals, cols).
+    //  - cols in each row are sorted non-decreasingly (due to the global sort above).
+    //  - vals are all 1 by default (modify above if you want random or specific weights).
 }
 

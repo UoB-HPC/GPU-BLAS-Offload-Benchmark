@@ -19,7 +19,6 @@ public:
   using spgemm<T>::m_;
   using spgemm<T>::n_;
   using spgemm<T>::k_;
-  using spgemm<T>::A_;
   using spgemm<T>::B_;
   using spgemm<T>::C_;
   using spgemm<T>::sparsity_;
@@ -52,7 +51,6 @@ public:
     nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
     nnz_aocl_ = nnz_;
 
-    A_ = (T*)calloc(m_ * k_, sizeof(T));
     B_ = (T*)calloc(k_ * n_, sizeof(T));
     C_ = (T*)calloc(m_ * n_, sizeof(T));
 
@@ -61,61 +59,13 @@ public:
 
 protected:
   void toSparseFormat() override {
-    aoclsparse_int actual_nnz = 0;
-    for (int i = 0; i < m_ * k_; i++) {
-      if (A_[i] != static_cast<T>(0)) {
-        actual_nnz++;
-      }
-    }
   
-    if (actual_nnz != nnz_aocl_) {
-      if (print_) std::cerr << "Warning: Actual nnz (" << actual_nnz << ") differs from expected nnz (" << nnz_aocl_ << ")" << std::endl;
-      nnz_ = nnz_aocl_ = actual_nnz; // Update nnz_aocl_ to reflect actual count
-    }
-
     // Initialise datastructures for the CSR format
     A_rows_ = new aoclsparse_int[m_ + 1];
     A_cols_ = new aoclsparse_int[nnz_aocl_];
     A_vals_ = new T[nnz_aocl_];
 
-    // Initialize row pointer with base (zero, as we're using C++)
-    A_rows_[0] = 0;
-    
-    
-    // First pass: count non-zeros per row to build row pointer
-    for (aoclsparse_int i = 0; i < m_; ++i) {
-      aoclsparse_int row_nnz = 0;
-      for (aoclsparse_int j = 0; j < k_; ++j) {
-        if (A_[i * k_ + j] != static_cast<T>(0)) {
-          row_nnz++;
-        }
-      }
-      A_rows_[i + 1] = A_rows_[i] + row_nnz;
-    }
-  
-    
-    // Second pass: populate column indices and values
-    aoclsparse_int current_val = 0;
-    for (aoclsparse_int i = 0; i < m_; ++i) {
-      for (aoclsparse_int j = 0; j < k_; ++j) {
-        T val = A_[i * k_ + j];
-        if (val != static_cast<T>(0)) {
-          A_cols_[current_val] = j;  // Adjust for base indexing
-          A_vals_[current_val] = val;
-          current_val++;
-        }
-      }
-    }
-    
-    // Optional: Verify CSR format integrity (useful for debugging)
-    if (print_) {
-        std::cout << "CSR conversion complete. Total nnz: " << nnz_aocl_ << std::endl;
-        std::cout << "First few rows: ";
-        for (int i = 0; i <= m_; ++i) {
-            std::cout << A_rows_[i] << " ";
-        }
-        std::cout << std::endl;
-    }
+    rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
 
     // Move into the AOCL CSR matrix handle
     if constexpr (std::is_same_v<T, float>) {
@@ -197,7 +147,9 @@ private:
       std::cerr << "aoclsparse_destroy is failing with problem size of " << m_ << "x" << k_ << " . " << k_ << "x" << n_ << std::endl;
       printAOCLError(status_);
     }
-    delete[] A_;
+    delete[] A_vals_;
+    delete[] A_cols_;
+    delete[] A_rows_;
     delete[] B_;
     delete[] C_;
   }
@@ -258,13 +210,13 @@ private:
   }
 
   void internalCheck(aoclsparse_int          maj_dim,
-                      aoclsparse_int          min_dim,
-                      aoclsparse_int          nnz,
-                      const aoclsparse_int   *idx_ptr,
-                      const aoclsparse_int   *indices,
-                      const void             *val,
-                      int                    shape,
-                      int                    base) {
+                     aoclsparse_int          min_dim,
+                     aoclsparse_int          nnz,
+                     const aoclsparse_int   *idx_ptr,
+                     const aoclsparse_int   *indices,
+                     const void             *val,
+                     int                    shape,
+                     int                    base) {
     if (print_) std::cout << "CHECKING POINTERS" << std::endl;               
     if (idx_ptr == nullptr) {
       if (print_) std::cout << "INVALID ROWS ARRAY" << std::endl;
@@ -328,8 +280,7 @@ private:
         if (print_) std::cout << ", idx = " << idx << ", diag = " << ((diagonal) ? "true" : "false") << std::endl;
         j = indices[idx] - base;
         if (j < jmin || j > jmax) {
-          if (print_) std::cout << "Wrong index - out of bounds or triangle, @idx=" << idx << ": j=" << j
-                    << ", i=" << i << std::endl;
+          if (print_) std::cout << "Wrong index - out of bounds or triangle, @idx=" << idx << ": j=" << j << ", i=" << i << std::endl;
           exit(1);          
         }
         // check for sorting pattern for each element in a row

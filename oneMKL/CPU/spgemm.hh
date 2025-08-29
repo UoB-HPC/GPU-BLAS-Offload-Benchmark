@@ -20,7 +20,6 @@ public:
     using spgemm<T>::m_;
     using spgemm<T>::n_;
     using spgemm<T>::k_;
-    using spgemm<T>::A_;
     using spgemm<T>::B_;
     using spgemm<T>::C_;
     using spgemm<T>::sparsity_;
@@ -41,11 +40,8 @@ public:
 
       /** Determine the number of nnz elements in A and B */
       nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
-
-      A_ = (T*)mkl_malloc(sizeof(T) * m_ * k_, 64);
       B_ = (T*)mkl_malloc(sizeof(T) * k_ * n_, 64);
       C_ = (T*)mkl_malloc(sizeof(T) * m_ * n_, 64);
-
 
       initInputMatrices();
     }
@@ -57,22 +53,12 @@ protected:
       A_rowsb_ = new MKL_INT[m_ + 1];
       A_rowse_ = new MKL_INT[m_ + 1];
 
-      int nnz_encountered = 0;
+      rMatCSR<T, MKL_INT>(A_vals_, A_cols_, A_rowsb_, m_, k_, nnz_);
 
-      A_rowsb_[0] = 0;
-      A_rowse_[0] = 0;
-
-      for (int row = 0; row < m_; row++) {
-        A_rowsb_[row + 1] = nnz_encountered;
-        for (int col = 0; col < k_; col++) {
-          if (A_[(row * k_) + col] != 0.0) {
-            A_cols_[nnz_encountered] = col;
-            A_vals_[nnz_encountered] = static_cast<T>(A_[(row * k_) + col]);
-            nnz_encountered++;
-          }
-        }
-        A_rowse_[row + 1] = nnz_encountered;
+      for (uint64_t i = 0; i < m_; i++) {
+        A_rowse_[i] = A_rowsb_[i + 1] - 1;
       }
+      A_rowse_[m_] = A_rowsb_[m_ + 1];
     }
 
 private:
@@ -149,7 +135,10 @@ private:
     }
 
     void postCallKernelCleanup() override {
-      mkl_free(A_);
+      mkl_free(A_rowsb_);
+      mkl_free(A_rowse_);
+      mkl_free(A_cols_);
+      mkl_free(A_vals_);
       mkl_free(B_);
       mkl_free(C_);
     }

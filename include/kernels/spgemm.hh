@@ -79,12 +79,6 @@ protected:
       if (print_) std::cout << "  m_=" << m_ << ", n_=" << n_ << ", k_=" << k_ << std::endl;
       if (print_) std::cout << "  nnz_=" << nnz_ << ", sparsity_=" << sparsity_ << std::endl;
 
-      // Initialize A to zero
-      if (print_) std::cout << "DEBUG: Zeroing matrix A (size=" << (m_ * k_) << ")" << std::endl;
-      for (int i = 0; i < (m_ * k_); i++) {
-        if (print_) std::cout << "A_[" << i << "] = 0.0;" << std::endl;
-        A_[i] = 0.0;
-      }
 
       // Initialize B with random values
       if (print_) std::cout << "DEBUG: Initializing matrix B" << std::endl;
@@ -99,25 +93,6 @@ protected:
         C_[i] = (T)0.0;
       }
 
-      // Generate sparse matrix using R-MAT
-      if (print_) std::cout << "DEBUG: Generating sparse matrix with R-MAT" << std::endl;
-      rMat(A_, m_, k_, nnz_);
-
-      // Count actual non-zeros
-      int actual_nnz = 0;
-      for (int i = 0; i < (m_ * k_); i++) {
-        if (std::abs(A_[i]) > 1e-10) {
-          actual_nnz++;
-        }
-      }
-      if (actual_nnz == 0) {
-        A_[0] = 7.8;
-        actual_nnz = 1;
-      }
-
-      nnz_ = actual_nnz;
-      if (print_) std::cout << "DEBUG: Actual non-zeros in A: " << actual_nnz << std::endl;
-
       if (print_) std::cout << "DEBUG: Calling toSparseFormat()" << std::endl;
       toSparseFormat();
       if (print_) std::cout << "DEBUG: initInputMatrices - Complete" << std::endl;
@@ -129,7 +104,7 @@ protected:
     virtual void toSparseFormat() = 0;
 
     /** Call the external consume() function on the matrices */
-    void callConsume() { consume((void*)A_, (void*)B_, (void*)C_); }/** Recursive function to populate sparse matrices */
+    void callConsume() {}/** Recursive function to populate sparse matrices */
 
     /** The number of iterations to perform per problem size. */
     const int iterations_;
@@ -142,9 +117,6 @@ protected:
 
     /** Matrix dimension K. */
     int64_t k_ = 0;
-
-    /** Dense representation of input matrix A. */
-    T* A_;
 
     /** Dense representation of input matrix B. */
     T* B_;

@@ -15,7 +15,6 @@ namespace cpu {
         using ::spgemv<T>::initInputMatrixVector;
         using ::spgemv<T>::m_;
         using ::spgemv<T>::n_;
-        using ::spgemv<T>::A_;
         using ::spgemv<T>::x_;
         using ::spgemv<T>::y_;
         using ::spgemv<T>::sparsity_;
@@ -33,7 +32,6 @@ namespace cpu {
           // change there
           nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
 
-          A_ = (T*)malloc(sizeof(T) * m_ * n_);
           x_ = (T*)malloc(sizeof(T) * n_);
           y_ = (T*)malloc(sizeof(T) * m_);
 
@@ -45,7 +43,6 @@ namespace cpu {
         /** Do any necessary cleanup (free pointers, close library handles, etc.)
          * after Kernel has been called. */
         void postCallKernelCleanup() {
-          free(A_);
           free(x_);
           free(y_);
         }

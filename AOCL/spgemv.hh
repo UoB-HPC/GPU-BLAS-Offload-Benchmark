@@ -17,7 +17,6 @@ public:
     using spgemv<T>::initInputMatrixVector;
     using spgemv<T>::m_;
     using spgemv<T>::n_;
-    using spgemv<T>::A_;
     using spgemv<T>::x_;
     using spgemv<T>::y_;
     using spgemv<T>::sparsity_;
@@ -36,7 +35,6 @@ public:
       nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
       nnz_aocl_ = nnz_;
 
-      A_ = (T*)calloc(m_ * n_, sizeof(T));
       x_ = (T*)calloc(n_, sizeof(T));
       y_ = (T*)calloc(m_, sizeof(T));
 
@@ -52,51 +50,10 @@ public:
 
 protected:
     void toSparseFormat() override {
-      aoclsparse_int actual_nnz = 0;
-      for (int i = 0; i < m_ * n_; i++) {
-        if (A_[i] != static_cast<T>(0)) {
-          actual_nnz++;
-        }
-      }
-    
-      if (actual_nnz != nnz_aocl_) {
-        if (print_) std::cerr << "Warning: Actual nnz (" << actual_nnz << ") differs from expected nnz (" << nnz_aocl_ << ")" << std::endl;
-        nnz_ = nnz_aocl_ = actual_nnz; // Update nnz_aocl_ to reflect actual count
-      }
-
-      // Initialise datastructures for the CSR format
-      A_rows_ = new aoclsparse_int[m_ + 1];
-      A_cols_ = new aoclsparse_int[nnz_aocl_];
-      A_vals_ = new T[nnz_aocl_];
-
-      // Initialize row pointer with base (zero, as we're using C++)
-      A_rows_[0] = 0;
-      
-      
-      // First pass: count non-zeros per row to build row pointer
-      for (aoclsparse_int i = 0; i < m_; ++i) {
-        aoclsparse_int row_nnz = 0;
-        for (aoclsparse_int j = 0; j < n_; ++j) {
-          if (A_[i * n_ + j] != static_cast<T>(0)) {
-            row_nnz++;
-          }
-        }
-        A_rows_[i + 1] = A_rows_[i] + row_nnz;
-      }
-    
-      
-      // Second pass: populate column indices and values
-      aoclsparse_int current_val = 0;
-      for (aoclsparse_int i = 0; i < m_; ++i) {
-        for (aoclsparse_int j = 0; j < n_; ++j) {
-          T val = A_[i * n_ + j];
-          if (val != static_cast<T>(0)) {
-            A_cols_[current_val] = j;  // Adjust for base indexing
-            A_vals_[current_val] = val;
-            current_val++;
-          }
-        }
-      }
+      A_vals_ = (T*)calloc(nnz_aocl_, sizeof(T));
+      A_cols_ = (aoclsparse_int*)calloc(nnz_aocl_, sizeof(aoclsparse_int));
+      A_rows_ = (aoclsparse_int*)calloc(m_ + 1, sizeof(aoclsparse_int));
+      rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
 
       // Move into the AOCL CSR matrix handle
       if constexpr (std::is_same_v<T, float>) {
@@ -178,15 +135,6 @@ private:
       if (debug) {
         std::cout << "==========   CPU   ==========" << std::endl;
         std::cout << "___________________________________________" << std::endl;
-        std::cout << "A =" << std::endl;
-        std::cout << "[";
-        for (int64_t i = 0; i < (m_ * n_); i++) {
-          std::cout << A_[i];
-          if ((i % n_) < (n_ - 1)) std::cout << ", ";
-          else if (i != ((m_ * n_) - 1)) std::cout << std::endl;
-        }
-        std::cout << "]" << std::endl;
-
         std::cout << "x =" << std::endl;
         std::cout << "[";
         for (int64_t i = 0; i < n_; i++) {
@@ -223,7 +171,9 @@ private:
         std::cout << "aoclsparse_destroy success" << std::endl;
       } 
 
-      delete[] A_;
+      delete[] A_vals_;
+      delete[] A_cols_;
+      delete[] A_rows_;
       delete[] x_;
       delete[] y_;
     }

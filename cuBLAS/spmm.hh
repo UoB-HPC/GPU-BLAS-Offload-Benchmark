@@ -23,17 +23,12 @@ class spmm_gpu : public spmm<T> {
   using spmm<T>::m_;
   using spmm<T>::n_;
   using spmm<T>::k_;
-  using spmm<T>::A_;
-  using spmm<T>::B_;
-  using spmm<T>::C_;
   using spmm<T>::offload_;
   using spmm<T>::sparsity_;
   using spmm<T>::C_nnz_;
   using spmm<T>::C_rows_;
   using spmm<T>::C_cols_;
   using spmm<T>::C_vals_;
-
-	// ToDo -- No checksum for sparse yet.  Need to do
 
   /** Initialise the required data structures.
    * `offload` refers to the data offload type:
@@ -93,10 +88,7 @@ class spmm_gpu : public spmm<T> {
     cudaCheckError(cudaStreamCreate(&s2_));
     cudaCheckError(cudaStreamCreate(&s3_));
 
-    if (print_) std::cout << "\tAllocating dense matrix arrays" << std::endl;
-    A_ = (T*)malloc(sizeof(T) * m_ * k_);
-    B_ = (T*)malloc(sizeof(T) * k_ * n_);
-    C_ = (T*)calloc(m_ * n_, sizeof(T));
+    if (print_) std::cout << "\tAllocating handle" << std::endl;
     cusparseCheckError(cusparseCreate(&handle_));
 
     initInputMatrices();
@@ -870,7 +862,7 @@ class spmm_gpu : public spmm<T> {
     std::cout << std::endl;
   }
 
-  bool print_ = false;
+  bool print_ = true;
 
   /** Handle used when calling cuBLAS. */
   cusparseHandle_t handle_;

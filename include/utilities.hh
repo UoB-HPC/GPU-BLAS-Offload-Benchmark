@@ -375,10 +375,5 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
     for (int i = 0; i < nrows; i++) {
         rows[static_cast<size_t>(i) + 1] += rows[static_cast<size_t>(i)];
     }
-
-    // At this point:
-    //  - For each row r, nonzeros occupy indices [rows[r], rows[r+1]) in (vals, cols).
-    //  - cols in each row are sorted non-decreasingly (due to the global sort above).
-    //  - vals are all 1 by default (modify above if you want random or specific weights).
     checkCSRValid(nrows, ncols, nnz, rows, cols, vals);
 }

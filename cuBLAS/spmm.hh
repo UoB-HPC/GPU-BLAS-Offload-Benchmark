@@ -149,7 +149,7 @@ class spmm_gpu : public spmm<T> {
       cudaCheckError(cudaMallocManaged(&B_vals_, sizeof(T) * B_nnz_));
       cudaCheckError(cudaMallocManaged(&B_cols_, sizeof(int32_t) * B_nnz_));
       cudaCheckError(cudaMallocManaged(&B_rows_, sizeof(int32_t) * (k_ + 1)));
-      cudaCheckError(cudaMallocManaged(&C_rows_32_, sizeof(int32_t) * (n_ + 1)));
+      cudaCheckError(cudaMallocManaged(&C_rows_32_, sizeof(int32_t) * (m_ + 1)));
       C_vals_ = nullptr;
       C_cols_32_ = nullptr;
     } else {
@@ -159,7 +159,7 @@ class spmm_gpu : public spmm<T> {
       B_vals_ = (T*)malloc(sizeof(T) * B_nnz_);
       B_cols_ = (int32_t*)malloc(sizeof(int32_t) * B_nnz_);
       B_rows_ = (int32_t*)malloc(sizeof(int32_t) * (k_ + 1));
-      C_rows_32_ = (int32_t*)malloc(sizeof(int32_t) * (n_ + 1));
+      C_rows_32_ = (int32_t*)malloc(sizeof(int32_t) * (m_ + 1));
       C_vals_ = nullptr;
       C_cols_32_ = nullptr;
 
@@ -169,7 +169,7 @@ class spmm_gpu : public spmm<T> {
       cudaCheckError(cudaMalloc((void**)&B_vals_dev_, sizeof(T) * B_nnz_));
       cudaCheckError(cudaMalloc((void**)&B_cols_dev_, sizeof(int32_t) * B_nnz_));
       cudaCheckError(cudaMalloc((void**)&B_rows_dev_, sizeof(int32_t) * (k_ + 1)));
-      cudaCheckError(cudaMalloc((void**)&C_rows_dev_, sizeof(int32_t) * (n_ + 1)));
+      cudaCheckError(cudaMalloc((void**)&C_rows_dev_, sizeof(int32_t) * (m_ + 1)));
       C_vals_dev_ = nullptr;
       C_cols_dev_ = nullptr;
     }
@@ -195,7 +195,7 @@ class spmm_gpu : public spmm<T> {
         cudaCheckError(cudaMemcpy(B_vals_dev_, B_vals_, sizeof(T) * B_nnz_, cudaMemcpyHostToDevice));
         cudaCheckError(cudaMemcpy(B_cols_dev_, B_cols_, sizeof(int32_t) * B_nnz_, cudaMemcpyHostToDevice));
         cudaCheckError(cudaMemcpy(B_rows_dev_, B_rows_, sizeof(int32_t) * (k_ + 1), cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(C_rows_dev_, C_rows_32_, sizeof(int32_t) * (n_ + 1), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(C_rows_dev_, C_rows_32_, sizeof(int32_t) * (m_ + 1), cudaMemcpyHostToDevice));
         cudaCheckError(cudaDeviceSynchronize());
         break;
       }
@@ -234,7 +234,7 @@ class spmm_gpu : public spmm<T> {
         cudaCheckError(cudaMemcpy(B_vals_dev_, B_vals_, sizeof(T) * B_nnz_, cudaMemcpyHostToDevice));
         cudaCheckError(cudaMemcpy(B_cols_dev_, B_cols_, sizeof(int32_t) * B_nnz_, cudaMemcpyHostToDevice));
         cudaCheckError(cudaMemcpy(B_rows_dev_, B_rows_, sizeof(int32_t) * (k_ + 1), cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(C_rows_dev_, C_rows_32_, sizeof(int32_t) * (n_ + 1), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(C_rows_dev_, C_rows_32_, sizeof(int32_t) * (m_ + 1), cudaMemcpyHostToDevice));
         cudaCheckError(cudaDeviceSynchronize());
 
         // Make matrix descriptors
@@ -265,7 +265,7 @@ class spmm_gpu : public spmm<T> {
                                              m_, 
                                              n_, 
                                              0, 
-                                             C_rows_dev_,
+                                             nullptr,
                                              nullptr, 
                                              nullptr, 
                                              index_, 
@@ -352,7 +352,7 @@ class spmm_gpu : public spmm<T> {
                                                 &C_num_cols_,
                                                 &C_nnz_));
 
-        if (print_) std::cout << "\tAllocating C device arrays" << std::endl;
+        if (print_) std::cout << "\tAllocating C device arrays, nnz = " << C_nnz_ << std::endl;
         cudaCheckError(cudaMalloc(&C_vals_dev_, sizeof(T) * C_nnz_));
         cudaCheckError(cudaMalloc(&C_cols_dev_, sizeof(int32_t) * C_nnz_));
 
@@ -433,7 +433,7 @@ class spmm_gpu : public spmm<T> {
                                              m_, 
                                              n_, 
                                              0, 
-                                             C_rows_dev_,
+                                             nullptr,
                                              nullptr, 
                                              nullptr, 
                                              index_, 
@@ -520,7 +520,7 @@ class spmm_gpu : public spmm<T> {
                                                 &C_num_cols_,
                                                 &C_nnz_));
 
-        if (print_) std::cout << "\tAllocating C device arrays" << std::endl;
+        if (print_) std::cout << "\tAllocating C device arrays, nnz = " << C_nnz_ << std::endl;
         cudaCheckError(cudaMalloc(&C_vals_dev_, sizeof(T) * C_nnz_));
         cudaCheckError(cudaMalloc(&C_cols_dev_, sizeof(int32_t) * C_nnz_));
         C_allocated = true;
@@ -589,7 +589,7 @@ class spmm_gpu : public spmm<T> {
                                              m_, 
                                              n_, 
                                              0, 
-                                             C_rows_32_,
+                                             nullptr,
                                              nullptr, 
                                              nullptr, 
                                              index_, 

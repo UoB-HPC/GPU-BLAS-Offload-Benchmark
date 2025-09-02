@@ -322,7 +322,7 @@ private:
     /** Call the appropriate CPU and GPU GEMM kernels. */
     void callKernels(std::ofstream& csvFile, const int M, const int N,
                      const int K, double SPARSITY) {
-      const double probSize = calcKib(M, N, K);
+      const double probSize = calcKib(M, N, K, SPARSITY);
       const uint64_t flops = calcFlops(M, N, K, SPARSITY);
       std::string kernelName = getKernelName();
 
@@ -532,10 +532,12 @@ private:
       return 2 * NNZ * N;
     }
 
-    /** A function for calculating the total GEMM problem size in KiB. */
-    constexpr double calcKib(const int M, const int N, const int K) const {
+    /** A function for calculating the total GEMM problem size in KiB.
+      Uses a single CSR format matrix: (M+1) + 2NNZ; and two dense matrices */
+    constexpr double calcKib(const int M, const int N, const int K, const double SPARSITY) const {
+      uint64_t NNZ = 1 + (uint64_t)((double)M * (double)K * (1.0 - SPARSITY));
       uint64_t M_ = (uint64_t)M, N_ = (uint64_t)N, K_ = (uint64_t)K;
-      uint64_t probSize = (M_ * K_) + (K_ * N_) + (M_ * N_);
+      uint64_t probSize = (M_ + 1) + (2 * NNZ) + (K_ * N_) + (M_ * N_);
       return ((double)(probSize * (sizeof(T))) / 1024);
     }
 
@@ -562,8 +564,7 @@ private:
       std::stringstream probSize_o;
       std::stringstream gpuGflops_o;
       std::stringstream cpuGflops_o;
-      probSize_o << std::fixed << std::setprecision(2)
-                 << cpuGpu_once_.probSize_kib;
+      probSize_o << std::fixed << std::setprecision(2) << cpuGpu_once_.probSize_kib;
       gpuGflops_o << std::fixed << std::setprecision(2) << cpuGpu_once_.gpuGflops;
       cpuGflops_o << std::fixed << std::setprecision(2) << cpuGpu_once_.cpuGflops;
       if (cpuGpu_once_.M == 0) {
@@ -582,12 +583,9 @@ private:
       std::stringstream probSize_a;
       std::stringstream gpuGflops_a;
       std::stringstream cpuGflops_a;
-      probSize_a << std::fixed << std::setprecision(2)
-                 << cpuGpu_always_.probSize_kib;
-      gpuGflops_a << std::fixed << std::setprecision(2)
-                  << cpuGpu_always_.gpuGflops;
-      cpuGflops_a << std::fixed << std::setprecision(2)
-                  << cpuGpu_always_.cpuGflops;
+      probSize_a << std::fixed << std::setprecision(2) << cpuGpu_always_.probSize_kib;
+      gpuGflops_a << std::fixed << std::setprecision(2) << cpuGpu_always_.gpuGflops;
+      cpuGflops_a << std::fixed << std::setprecision(2) << cpuGpu_always_.cpuGflops;
       if (cpuGpu_always_.M == 0) {
         // No offload threshold found
         rows.push_back({"GPU (Offload Always)", std::to_string(0),
@@ -604,12 +602,9 @@ private:
       std::stringstream probSize_u;
       std::stringstream gpuGflops_u;
       std::stringstream cpuGflops_u;
-      probSize_u << std::fixed << std::setprecision(2)
-                 << cpuGpu_unified_.probSize_kib;
-      gpuGflops_u << std::fixed << std::setprecision(2)
-                  << cpuGpu_unified_.gpuGflops;
-      cpuGflops_u << std::fixed << std::setprecision(2)
-                  << cpuGpu_unified_.cpuGflops;
+      probSize_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.probSize_kib;
+      gpuGflops_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.gpuGflops;
+      cpuGflops_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.cpuGflops;
       if (cpuGpu_unified_.M == 0) {
         // No offload threshold found
         rows.push_back({"GPU (Unified Memory)", std::to_string(0),

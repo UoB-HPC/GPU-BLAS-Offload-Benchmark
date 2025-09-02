@@ -497,10 +497,28 @@ private:
       return (NNZA * NNZB) / K;
     }
 
-    /** A function for calculating the total GEMM problem size in KiB. */
-    constexpr double calcKib(const int M, const int N, const int K) const {
+    /** A function for calculating the total GEMM problem size in KiB. 
+      Each matrix is stored in CSR, and so needs (nRows + 1) + 2NNZ space.
+      For A and B, this is easy, but for C we do not know its size ahead of time 
+      (we know nRows but not NNZ).  However, we can estimate the NNZ, on average.
+
+      Each value of C is the sum of the products of the corresponding row of A 
+      and column of B.
+      As each value of A and B has a probability of (1 - SPARSITY) if being non-zero, 
+      the probability that both A and B are non-zero (and thus that the product is 
+      non-zero)is (1 - SPARSITY)^2.
+      There are K products that are summed together.  If any one of these products is 
+      non-zero, so too shall the sum be.  Therefore, the estimated sparsity of C is
+      (1 - (1 - SPARSITY)^2)^K
+      */
+    constexpr double calcKib(const int M, const int N, const int K, const double SPARSITY) const {
       uint64_t M_ = (uint64_t)M, N_ = (uint64_t)N, K_ = (uint64_t)K;
-      uint64_t probSize = (M_ * K_) + (K_ * N_) + (M_ * N_);
+      uint64_t NNZA = 1 + (uint64_t)((double)M * (double)K * (1.0 - SPARSITY));
+      uint64_t NNZB = 1 + (uint64_t)((double)K * (double)N * (1.0 - SPARSITY));
+      double CSPARSITY = (1 - ((1 - SPARSITY) ^ 2)) ^ K;
+      uint64_t NNZC = 1 + (uint64_t)((double)M * (double)N * CSPARSITY);
+
+      uint64_t probSize = (M_ + 1) + (2 * NNZA) + (K_ + 1) + (2 * NNZB) + (M_ + 1) + (2 * NNZC);
       return ((double)(probSize * (sizeof(T))) / 1024);
     }
 
@@ -527,8 +545,7 @@ private:
       std::stringstream probSize_o;
       std::stringstream gpuGflops_o;
       std::stringstream cpuGflops_o;
-      probSize_o << std::fixed << std::setprecision(2)
-                 << cpuGpu_once_.probSize_kib;
+      probSize_o << std::fixed << std::setprecision(2) << cpuGpu_once_.probSize_kib;
       gpuGflops_o << std::fixed << std::setprecision(2) << cpuGpu_once_.gpuGflops;
       cpuGflops_o << std::fixed << std::setprecision(2) << cpuGpu_once_.cpuGflops;
       if (cpuGpu_once_.M == 0) {
@@ -547,12 +564,9 @@ private:
       std::stringstream probSize_a;
       std::stringstream gpuGflops_a;
       std::stringstream cpuGflops_a;
-      probSize_a << std::fixed << std::setprecision(2)
-                 << cpuGpu_always_.probSize_kib;
-      gpuGflops_a << std::fixed << std::setprecision(2)
-                  << cpuGpu_always_.gpuGflops;
-      cpuGflops_a << std::fixed << std::setprecision(2)
-                  << cpuGpu_always_.cpuGflops;
+      probSize_a << std::fixed << std::setprecision(2) << cpuGpu_always_.probSize_kib;
+      gpuGflops_a << std::fixed << std::setprecision(2) << cpuGpu_always_.gpuGflops;
+      cpuGflops_a << std::fixed << std::setprecision(2) << cpuGpu_always_.cpuGflops;
       if (cpuGpu_always_.M == 0) {
         // No offload threshold found
         rows.push_back({"GPU (Offload Always)", std::to_string(0),
@@ -569,12 +583,9 @@ private:
       std::stringstream probSize_u;
       std::stringstream gpuGflops_u;
       std::stringstream cpuGflops_u;
-      probSize_u << std::fixed << std::setprecision(2)
-                 << cpuGpu_unified_.probSize_kib;
-      gpuGflops_u << std::fixed << std::setprecision(2)
-                  << cpuGpu_unified_.gpuGflops;
-      cpuGflops_u << std::fixed << std::setprecision(2)
-                  << cpuGpu_unified_.cpuGflops;
+      probSize_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.probSize_kib;
+      gpuGflops_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.gpuGflops;
+      cpuGflops_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.cpuGflops;
       if (cpuGpu_unified_.M == 0) {
         // No offload threshold found
         rows.push_back({"GPU (Unified Memory)", std::to_string(0),

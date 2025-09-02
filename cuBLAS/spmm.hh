@@ -390,7 +390,7 @@ class spmm_gpu : public spmm<T> {
         C_allocated = true;
 
         if (print_) std::cout << "\tCopying results back to the CPU" << std::endl;
-        cudaCheckError(cudaMemcpy(C_rows_32_, C_rows_dev_, sizeof(int32_t) * (n_ + 1), cudaMemcpyDeviceToHost));
+        cudaCheckError(cudaMemcpy(C_rows_32_, C_rows_dev_, sizeof(int32_t) * (m_ + 1), cudaMemcpyDeviceToHost));
         cudaCheckError(cudaMemcpy(C_cols_32_, C_cols_dev_, sizeof(int32_t) * C_nnz_, cudaMemcpyDeviceToHost));
         cudaCheckError(cudaMemcpy(C_vals_, C_vals_dev_, sizeof(T) * C_nnz_, cudaMemcpyDeviceToHost));
         cudaCheckError(cudaDeviceSynchronize());
@@ -728,7 +728,7 @@ class spmm_gpu : public spmm<T> {
         C_cols_32_ = (int32_t*)malloc(sizeof(int32_t) * C_nnz_);
         
         if (print_) std::cout << "\tCopying results back to the CPU" << std::endl;
-        cudaCheckError(cudaMemcpy(C_rows_32_, C_rows_dev_, sizeof(int32_t) * (n_ + 1), cudaMemcpyDeviceToHost));
+        cudaCheckError(cudaMemcpy(C_rows_32_, C_rows_dev_, sizeof(int32_t) * (m_ + 1), cudaMemcpyDeviceToHost));
         cudaCheckError(cudaMemcpy(C_cols_32_, C_cols_dev_, sizeof(int32_t) * C_nnz_, cudaMemcpyDeviceToHost));
         cudaCheckError(cudaMemcpy(C_vals_, C_vals_dev_, sizeof(T) * C_nnz_, cudaMemcpyDeviceToHost));
         cudaCheckError(cudaDeviceSynchronize());
@@ -744,7 +744,7 @@ class spmm_gpu : public spmm<T> {
         if (print_) std::cout << "\tPrefetching results back to CPU" << std::endl;
         cudaCheckError(safeCudaMemPrefetchAsync(C_vals_, sizeof(T) * C_nnz_, cudaCpuDeviceId, 0));
         cudaCheckError(safeCudaMemPrefetchAsync(C_cols_32_, sizeof(int32_t) * C_nnz_, cudaCpuDeviceId, 0));
-        cudaCheckError(safeCudaMemPrefetchAsync(C_rows_32_, sizeof(int32_t) * (n_ + 1), cudaCpuDeviceId, 0));
+        cudaCheckError(safeCudaMemPrefetchAsync(C_rows_32_, sizeof(int32_t) * (m_ + 1), cudaCpuDeviceId, 0));
         // Ensure device has finished all work.
         cudaCheckError(cudaDeviceSynchronize());
         if (print_) std::cout << "\tSuccessfully prefetched" << std::endl;
@@ -862,7 +862,7 @@ class spmm_gpu : public spmm<T> {
     std::cout << std::endl;
   }
 
-  bool print_ = true;
+  bool print_ = false;
 
   /** Handle used when calling cuBLAS. */
   cusparseHandle_t handle_;

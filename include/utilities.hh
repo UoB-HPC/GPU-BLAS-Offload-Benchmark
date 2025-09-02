@@ -86,6 +86,96 @@ extern "C" {
 int consume(void* a, void* b, void* c);
 }
 
+
+template <typename fp_type, typename int_type> 
+void printCSR(uint64_t nRows,
+              uint64_t nnz,
+              const int_type* rows,
+              const int_type* cols,
+              const fp_type* vals) {
+  std::cout << "ROWS:" << std::endl;
+  std::cout << "\t[";
+  for (uint64_t i = 0; i <= nRows; i++) {
+    std::cout << rows[i];
+    if (i < nRows) {
+      std::cout << ", ";
+    }
+  }
+  std::cout << "]" << std::endl;
+
+  std::cout << "COLS:" << std::endl;
+  std::cout << "\t[";
+  for (uint64_t i = 0; i < nnz; i++) {
+    std::cout << cols[i];
+    if (i < nnz - 1) {
+      std::cout << ", ";
+    }
+  }
+  std::cout << "]" << std::endl;
+
+  std::cout << "VALS:" << std::endl;
+  std::cout << "\t[";
+  for (uint64_t i = 0; i < nnz; i++) {
+    std::cout << vals[i];
+    if (i < nnz - 1) {
+      std::cout << ", ";
+    }
+  }
+  std::cout << "]" << std::endl;
+}
+
+template <typename fp_type, typename int_type>
+void checkCSRValid(uint64_t nRows,
+                   uint64_t nCols,
+                   uint64_t nnz,
+                   const int_type* rows,
+                   const int_type* cols,
+                   const fp_type* vals) {
+  if (rows[0] != 0) {
+    std::cerr << "[ERROR]: CSR INVALID - row_pointer[0] is not 0" << std::endl;
+    printCSR(nRows, nnz, rows, cols, vals);
+    exit(1);
+  }
+
+  for (uint64_t r = 0; r < nRows; r++) {
+    if (rows[r] > rows[r + 1]) {
+      std::cerr << "[ERROR]: CSR INVALID - row_pointer[" << r << "] > row_pointer[" << (r + 1) << "]" << std::endl;
+    printCSR(nRows, nnz, rows, cols, vals);
+      exit(1);
+    }
+  }
+
+  if (rows[nRows] != (int_type)nnz) {
+    std::cerr << "[ERROR]: CSR INVALID - row_pointer[nRows] != nnz" << std::endl;
+    printCSR(nRows, nnz, rows, cols, vals);
+    exit(1);
+  }
+
+  for (uint64_t i = 0; i < nnz; i++) {
+    if (cols[i] < 0 || cols[i] >= (int_type)nCols) {
+      std::cerr << "[ERROR]: CSR INVALID - column index out of bounds" << std::endl;
+      printCSR(nRows, nnz, rows, cols, vals);
+      exit(1);
+    }
+  }
+
+  for (uint64_t r = 0; r < nRows; r++) {
+    for (int_type j = rows[r]; j < (rows[r + 1] - 1); j++) {
+      if (cols[j] > cols[j + 1]) {
+        std::cerr << "[ERROR]: CSR INVALID - column indices not sorted in row " << r << std::endl;
+        printCSR(nRows, nnz, rows, cols, vals);
+        exit(1);
+      }
+      if (cols[j] == cols[j + 1]) {
+        std::cerr << "[ERROR]: CSR INVALID - duplicate column indices in row " << r << std::endl;
+        printCSR(nRows, nnz, rows, cols, vals);
+        exit(1);
+      }
+    }
+  }
+}
+
+
 /**
  * @brief Generate an R-MAT matrix directly in CSR format.
  *
@@ -146,7 +236,8 @@ int consume(void* a, void* b, void* c);
  */
 template <typename T, typename int_type>
 void rMatCSR(T* vals, int_type* cols, int_type* rows,
-             int nrows, int ncols, int nnz, bool isB = false,
+             int nrows, int ncols, int nnz, 
+             bool isB = false,
              double a = 0.57,
              double b = 0.19,
              double c = 0.19,
@@ -190,8 +281,8 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
       // Optional noise: perturb A,B,C,D slightly, then renormalize.
       if (noise > 0.0) {
         auto jitter = [&](double val) {
-            // Perturb within ±noise, clamp to [0,1] lower bound via max(0,•)
-            return std::max(0.0, val + (dist(gen) * 2.0 - 1.0) * noise);
+          // Perturb within ±noise, clamp to [0,1] lower bound via max(0,•)
+          return std::max(0.0, val + (dist(gen) * 2.0 - 1.0) * noise);
         };
         A = jitter(a);
         B = jitter(b);
@@ -289,5 +380,5 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
     //  - For each row r, nonzeros occupy indices [rows[r], rows[r+1]) in (vals, cols).
     //  - cols in each row are sorted non-decreasingly (due to the global sort above).
     //  - vals are all 1 by default (modify above if you want random or specific weights).
+    checkCSRValid(nrows, ncols, nnz, rows, cols, vals);
 }
-

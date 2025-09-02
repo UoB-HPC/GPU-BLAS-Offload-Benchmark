@@ -404,8 +404,7 @@ private:
       std::stringstream probSize_o;
       std::stringstream gpuGflops_o;
       std::stringstream cpuGflops_o;
-      probSize_o << std::fixed << std::setprecision(2)
-                 << cpuGpu_once_.probSize_kib;
+      probSize_o << std::fixed << std::setprecision(2) << cpuGpu_once_.probSize_kib;
       gpuGflops_o << std::fixed << std::setprecision(2) << cpuGpu_once_.gpuGflops;
       cpuGflops_o << std::fixed << std::setprecision(2) << cpuGpu_once_.cpuGflops;
       if (cpuGpu_once_.M == 0) {
@@ -422,12 +421,9 @@ private:
       std::stringstream probSize_a;
       std::stringstream gpuGflops_a;
       std::stringstream cpuGflops_a;
-      probSize_a << std::fixed << std::setprecision(2)
-                 << cpuGpu_always_.probSize_kib;
-      gpuGflops_a << std::fixed << std::setprecision(2)
-                  << cpuGpu_always_.gpuGflops;
-      cpuGflops_a << std::fixed << std::setprecision(2)
-                  << cpuGpu_always_.cpuGflops;
+      probSize_a << std::fixed << std::setprecision(2) << cpuGpu_always_.probSize_kib;
+      gpuGflops_a << std::fixed << std::setprecision(2) << cpuGpu_always_.gpuGflops;
+      cpuGflops_a << std::fixed << std::setprecision(2) << cpuGpu_always_.cpuGflops;
       if (cpuGpu_always_.M == 0) {
         // No offload threshold found
         rows.push_back({"GPU (Offload Always)", std::to_string(0),
@@ -442,12 +438,9 @@ private:
       std::stringstream probSize_u;
       std::stringstream gpuGflops_u;
       std::stringstream cpuGflops_u;
-      probSize_u << std::fixed << std::setprecision(2)
-                 << cpuGpu_unified_.probSize_kib;
-      gpuGflops_u << std::fixed << std::setprecision(2)
-                  << cpuGpu_unified_.gpuGflops;
-      cpuGflops_u << std::fixed << std::setprecision(2)
-                  << cpuGpu_unified_.cpuGflops;
+      probSize_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.probSize_kib;
+      gpuGflops_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.gpuGflops;
+      cpuGflops_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.cpuGflops;
       if (cpuGpu_unified_.M == 0) {
         // No offload threshold found
         rows.push_back({"GPU (Unified Memory)", std::to_string(0),

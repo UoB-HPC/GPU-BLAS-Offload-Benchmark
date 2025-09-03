@@ -70,7 +70,7 @@ public:
               initCSVFile(CSV_DIR + "/" + getKernelName() + "_square_vector_M=N.csv");
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = dim;
-        callKernels(csvFile, dim, dim, sparsity_);
+        callKernels(csvFile, dim, dim);
       }
       // Close file
       csvFile.close();
@@ -95,7 +95,7 @@ public:
       int N = startDimention_;
       int M = 16 * N;
       while (M <= upperLimit_) {
-        callKernels(csvFile, M, N, sparsity_);
+        callKernels(csvFile, M, N);
         M += 16;
         N++;
       }
@@ -121,7 +121,7 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = 32;
-          callKernels(csvFile, dim, 32, sparsity_);
+          callKernels(csvFile, dim, 32);
         }
       }
       // Close file
@@ -146,7 +146,7 @@ public:
       M = startDimention_;
       N = 16 * M;
       while (N <= upperLimit_) {
-        callKernels(csvFile, M, N, sparsity_);
+        callKernels(csvFile, M, N);
         M++;
         N += 16;
       }
@@ -172,7 +172,7 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = dim;
-          callKernels(csvFile, 32, dim, sparsity_);
+          callKernels(csvFile, 32, dim);
         }
       }
       if (print_) std::cout << "Made it through all of the kernel" << std::endl;
@@ -188,21 +188,20 @@ public:
 
 private:
     /** Call the appropriate CPU and GPU SPGEMV kernels. */
-    void callKernels(std::ofstream& csvFile, const int M, const int N, const
-    double SPARSITY) {
-      const double probSize = calcKib(M, N, SPARSITY);
-      const uint64_t flops = calcFlops(M, N, SPARSITY);
+    void callKernels(std::ofstream& csvFile, const int M, const int N) {
+      const double probSize = calcKib(M, N, sparsity_);
+      const uint64_t flops = calcFlops(M, N, sparsity_);
       std::string kernelName = getKernelName();
 
 // Perform CPU kernel
 #if CPU_ENABLED
     time_checksum_gflop cpuResult;
     if (doCPU_) {
-      cpu_.initialise(M, N, SPARSITY, type_);
+      cpu_.initialise(M, N, sparsity_, type_);
       cpuResult = cpu_.compute();
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
       // Write result to CSV file
-      writeLineToCsv(csvFile, "cpu", kernelName, M, N, 0, probSize, SPARSITY,
+      writeLineToCsv(csvFile, "cpu", kernelName, M, N, 0, probSize, sparsity_,
                      iterations_, cpuResult.runtime, cpuResult.gflops);
     }
 #endif

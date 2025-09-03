@@ -213,34 +213,34 @@ private:
     time_checksum_gflop gpuResult_unified;
     if (doGPU_) {
       // - ALWAYS: Offload to/from GPU every iteration
-      gpu_.initialise(gpuOffloadType::always, M, N, SPARSITY, type_);
+      gpu_.initialise(gpuOffloadType::always, M, N, sparsity_, type_);
       gpuResult_always = gpu_.compute();
       gpuResult_always.gflops =
           calcGflops(flops, iterations_, gpuResult_always.runtime);
 
       // - ONCE : Offload to/from GPU once before all iterations and once
       // after
-      gpu_.initialise(gpuOffloadType::once, M, N, SPARSITY, type_);
+      gpu_.initialise(gpuOffloadType::once, M, N, sparsity_, type_);
       gpuResult_once = gpu_.compute();
       gpuResult_once.gflops =
           calcGflops(flops, iterations_, gpuResult_once.runtime);
 
       // - UNIFIED : data passed from host to device (and device to host) as
       //             needed
-      gpu_.initialise(gpuOffloadType::unified, M, N, SPARSITY, type_);
+      gpu_.initialise(gpuOffloadType::unified, M, N, sparsity_, type_);
       gpuResult_unified = gpu_.compute();
       gpuResult_unified.gflops =
           calcGflops(flops, iterations_, gpuResult_unified.runtime);
 
       // Write results to CSV file
       writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, 0, probSize,
-                     SPARSITY, iterations_, gpuResult_once.runtime,
+                     sparsity_, iterations_, gpuResult_once.runtime,
                      gpuResult_once.gflops);
       writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, 0,
-                     probSize, SPARSITY, iterations_, gpuResult_always.runtime,
+                     probSize, sparsity_, iterations_, gpuResult_always.runtime,
                      gpuResult_always.gflops);
       writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, 0, probSize,
-                     SPARSITY, iterations_, gpuResult_unified.runtime,
+                     sparsity_, iterations_, gpuResult_unified.runtime,
                      gpuResult_unified.gflops);
     }
 #endif
@@ -270,7 +270,7 @@ private:
       prev_gpuResult_unified = gpuResult_unified;
     }
 #endif
-    }
+  }
 
     /** Todo -- find a sensible way to do this for sparse */
     void checkChecksums(time_checksum_gflop cpuResult,

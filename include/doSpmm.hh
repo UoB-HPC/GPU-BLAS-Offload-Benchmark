@@ -461,7 +461,7 @@ private:
         // std::chrono::time_point<std::chrono::high_resolution_clock> start = 
                 // std::chrono::high_resolution_clock::now();
         if (print_) std::cout << "\tAlways ->\tInitialise";
-        gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity, type_);
+        gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity_, type_);
         // std::chrono::time_point<std::chrono::high_resolution_clock> post_init = 
                 // std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCompute";
@@ -487,7 +487,7 @@ private:
         // after
         if (print_) std::cout << "\tOnce ->\t\tInitialise";
         // start = std::chrono::high_resolution_clock::now();
-        gpu_.initialise(gpuOffloadType::once, N, M, K, sparsity, type_);
+        gpu_.initialise(gpuOffloadType::once, N, M, K, sparsity_, type_);
         // post_init = std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCompute";
         time_checksum_gflop gpuResult_once = gpu_.compute();
@@ -509,7 +509,7 @@ private:
         // ToDo -- non-default GPU operations
         if (print_) std::cout << "\tUnified ->\tInitialise";
         // start = std::chrono::high_resolution_clock::now();
-        gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity, type_);
+        gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity_, type_);
         // post_init = std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCompute";
         time_checksum_gflop gpuResult_unified = gpu_.compute();
@@ -530,13 +530,13 @@ private:
 
         // Write lines to CSV file
         writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, M, K, probSize,
-                      sparsity, iterations_, gpuResult_once.runtime,
+                      sparsity_, iterations_, gpuResult_once.runtime,
                       gpuResult_once.gflops);
         writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, M, K,
-                      probSize, sparsity, iterations_, gpuResult_always.runtime,
+                      probSize, sparsity_, iterations_, gpuResult_always.runtime,
                       gpuResult_always.gflops);
         writeLineToCsv(csvFile, "gpu_unified", kernelName, N, M, K, probSize,
-                       sparsity, iterations_, gpuResult_unified.runtime,
+                       sparsity_, iterations_, gpuResult_unified.runtime,
                        gpuResult_unified.gflops);
 
       }

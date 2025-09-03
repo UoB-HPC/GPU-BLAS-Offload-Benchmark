@@ -118,6 +118,7 @@ protected:
 
     double sparsity_;
 
-    bool print_ = false;
+    matrixType type_;
 
+    bool print_ = false;
 };

@@ -23,6 +23,8 @@ bool doDspmm = true;
 bool doCpu = CPU_ENABLED;
 bool doGpu = GPU_ENABLED;
 
+matrixType type = matrixType::rmat;
+
 std::string CSV_DIR = "CSV_Results";
 
 int main(int argc, char** argv) {
@@ -88,7 +90,7 @@ int main(int argc, char** argv) {
   if (doSspgemv) {
     std::cout << std::endl << "Comparing SSPGEMV Kernels:" << std::endl;
     doSpgemv<float> sspgemv(std::string(absPath), iters, startDim, upperLimit,
-                            sparsity, doCpu, doGpu);
+                            sparsity, type, doCpu, doGpu);
     sspgemv.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -97,7 +99,7 @@ int main(int argc, char** argv) {
   if (doDspgemv) {
     std::cout << std::endl << "Comparing DSPGEMV Kernels:" << std::endl;
     doSpgemv<double> dspgemv(std::string(absPath), iters, startDim, upperLimit,
-                             sparsity, doCpu, doGpu);
+                             sparsity, type, doCpu, doGpu);
     dspgemv.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -107,7 +109,7 @@ int main(int argc, char** argv) {
   if (doSspgemm) {
     std::cout << std::endl << "Comparing SSpGEMM Kernels:" << std::endl;
     doSpgemm<float> sspgemm(std::string(absPath), iters, startDim, upperLimit,
-                            sparsity, doCpu, doGpu);
+                            sparsity, type, doCpu, doGpu);
     sspgemm.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -116,7 +118,7 @@ int main(int argc, char** argv) {
   if (doDspgemm) {
     std::cout << std::endl << "Comparing DSpGEMM Kernels:" << std::endl;
     doSpgemm<double> dspgemm(std::string(absPath), iters, startDim, upperLimit,
-                             sparsity, doCpu, doGpu);
+                             sparsity, type, doCpu, doGpu);
     dspgemm.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -126,7 +128,7 @@ int main(int argc, char** argv) {
   if (doSspmm) {
     std::cout << std::endl << "Comparing SSpMM Kernels:" << std::endl;
     doSpmm<float> sspmm(std::string(absPath), iters, startDim, upperLimit,
-                        sparsity, doCpu, doGpu);
+                        sparsity, type, doCpu, doGpu);
     sspmm.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -135,7 +137,7 @@ int main(int argc, char** argv) {
   if (doDspmm) {
     std::cout << std::endl << "Comparing DSpMM Kernels:" << std::endl;
     doSpmm<double> dspmm(std::string(absPath), iters, startDim, upperLimit,
-                         sparsity, doCpu, doGpu);
+                         sparsity, type, doCpu, doGpu);
     dspmm.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -159,10 +161,12 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
                                                                        "Set";
   const char* ompPlaces =
       (getenv("OMP_PLACES") != nullptr) ? getenv("OMP_PLACES") : "Not Set";
+  const char* matrixType = (type == matrixType::rmat) ? "rMAT" : "random";
   std::cout << "GPU BLAS Offload Benchmark:" << std::endl;
   std::cout << "\tIterations per Kernel: " << iters << std::endl;
   std::cout << "\tStarting Problem Dimension: " << startDim << std::endl;
   std::cout << "\tMaximum Problem Dimension: " << upperLimit << std::endl;
+  std::cout << "\tSparse Matrix Type: " << matrixType << std::endl;
   std::cout << "\tCPU Kernels Enabled: " << cpuEnabledStr << std::endl;
   std::cout << "\tCPU Library: " << CPU_LIB_NAME << std::endl;
   std::cout << "\tGPU Kernels Enabled: " << gpuEnabledStr << std::endl;
@@ -249,6 +253,24 @@ void getParameters(int argc, char** argv) {
         std::cout << "ERROR - Invalid sparsity value" << std::endl;
         exit(1);
       }
+    } else if (!strcmp(argv[i], "--matrix_type") || !strcmp(argv[i], "-t")) {
+      if (++i >= argc) {
+        std::cout << "ERROR - No matrix type specified" << std::endl;
+        exit(1);
+      }
+    } else if (!strcmp(argv[i], "--output_dir") || !strcmp(argv[i], "-o")) {
+      if (++i >= argc) {
+        std::cout << "ERROR - No output directory specified" << std::endl;
+        exit(1);
+      } else if (!strcmp(argv[i], "rmat")) {
+        type = matrixType::rmat;
+      } else if (!strcmp(argv[i], "random")) {
+        type = matrixType::random;
+      } else {
+        std::cout << "ERROR - Unrecognized matrix type '" << argv[i]
+                  << "'" << std::endl;
+        exit(1);
+      }
     } else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       std::cout << std::endl;
       std::cout << "Usage: ./gpu-blob [OPTIONS]" << std::endl << std::endl;
@@ -259,25 +281,32 @@ void getParameters(int argc, char** argv) {
                 << std::endl;
       std::cout << "  --no_gpu                     Disable all GPU kernel Runs"
                 << std::endl;
-      std::cout
-          << "  -o  --output_dir             The CSV file output directory"
-          << std::endl;
+      std::cout << "  -o  --output_dir             The CSV file output directory"
+                << std::endl;
       std::cout << "  -i  --iterations I           Repeat each kernel I times "
-                   "(default: " << iters << ")" << std::endl;
+                   "(default: " << iters << ")" 
+                << std::endl;
       std::cout << "  -s  --start_dimension S      First value of M, N, K is S "
-                   "(default: " << startDim << ")" << std::endl;
+                   "(default: " << startDim << ")" 
+                << std::endl;
       std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
-                   "(default: " << upperLimit << ")" << std::endl;
+                   "(default: " << upperLimit << ")" 
+                << std::endl;
       std::cout << "  -k  --kernels <kernels>      Comma-separated list of "
                    "kernels to be run.  Options are sgemm, dgemm, sspgemm, "
                    "dspgemm, sspmm, dspmm, sgemv, dgemv, sspgemv, dspgemv "
                    "(default: `-k sgemm,dgemm,sspgemm,dspgemm,sspmm,dspmm,"
-                   "sgemv,dgemv,sspgemv,dspgemv`)" << std::endl;
+                   "sgemv,dgemv,sspgemv,dspgemv`)" 
+                << std::endl;
       std::cout << "  --sparsity Sp                Sparsity value, between 0 "
                    "and 1 (double), to be used by the sparse BLAS kernels.  "
                    "Matrices with be generated with this sparsity value.  "
-                   "Defaults to 0.99" << std::endl;
-      std::cout << std::endl;
+                   "Defaults to 0.99" 
+                << std::endl;
+      std::cout << "  -t  --matrix_type M          Type of sparse matrix to use."
+                   ".  Only applies to sparse kernels.  Options are rmat, random"
+                   " (default -t rmat)" 
+                << std::endl;
       exit(0);
     } else {
       std::cout << "Unrecognized argument '" << argv[i] << "' (try '--help')"

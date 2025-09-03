@@ -113,4 +113,6 @@ protected:
     const int vecIncrement_ = 1;
 
     double sparsity_ = 0.0;
+
+    matrixType type_;
 };

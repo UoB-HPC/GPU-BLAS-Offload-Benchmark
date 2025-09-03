@@ -22,11 +22,12 @@ public:
   using spgemm<T>::B_;
   using spgemm<T>::C_;
   using spgemm<T>::sparsity_;
+  using spgemm<T>::type_;
   using spgemm<T>::nnz_;
   using spgemm<T>::iterations_;
 
   void initialise(int m, int n, int k, double sparsity,
-                  bool binary = false) {
+                  matrixType type, bool binary = false) {
     base_ = aoclsparse_index_base_zero;
     order_ = aoclsparse_order_row;
 
@@ -47,6 +48,7 @@ public:
     n_aocl_ = n_ = n;
     k_aocl_ = k_ = k;
     sparsity_ = sparsity;
+    type_ = type;
 
     nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
     nnz_aocl_ = nnz_;
@@ -65,8 +67,15 @@ protected:
     A_cols_ = new aoclsparse_int[nnz_aocl_];
     A_vals_ = new T[nnz_aocl_];
 
-    rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
-
+    if (type_ == matrixType::rmat) {
+      rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
+    } else if (type_ == matrixType::random) {
+      randomCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
+    } else {
+      std::cerr << "Matrix type not supported" << std::endl;
+      exit(1);
+    }
+    
     // Move into the AOCL CSR matrix handle
     if constexpr (std::is_same_v<T, float>) {
       status_ = aoclsparse_create_scsr(&A_aocl_, 

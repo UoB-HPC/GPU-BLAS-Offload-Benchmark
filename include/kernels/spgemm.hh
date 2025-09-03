@@ -125,4 +125,6 @@ protected:
     T* C_;
 
     double sparsity_;
+
+    matrixType type_;
 };

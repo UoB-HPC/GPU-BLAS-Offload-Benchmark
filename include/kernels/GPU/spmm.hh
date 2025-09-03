@@ -18,7 +18,8 @@ public:
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
     virtual void initialise(gpuOffloadType offload, int m, int n, int k,
-                            double sparsity, bool binary = false) = 0;
+                            double sparsity, matrixType type, 
+                            bool binary = false) = 0;
 
 protected:
     /** Whether data should be offloaded to/from the GPU each iteration, or just

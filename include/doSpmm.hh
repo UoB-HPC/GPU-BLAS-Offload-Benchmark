@@ -33,13 +33,14 @@ template <typename T>
 class doSpmm {
 public:
     doSpmm(const std::string csvDir, const int iters, const int startDim,
-           const int upperLimit, const double sparsity,
+           const int upperLimit, const double sparsity, const matrixType type,
            const bool cpuEnabled = true, const bool gpuEnabled = true)
             : CSV_DIR(csvDir),
               iterations_(iters),
               startDimention_(startDim),
               upperLimit_(upperLimit),
               sparsity_(sparsity),
+              type_(type),
               doCPU_(cpuEnabled),
               doGPU_(gpuEnabled)
 #if CPU_ENABLED
@@ -426,7 +427,7 @@ private:
         // std::chrono::time_point<std::chrono::high_resolution_clock> start = 
         //         std::chrono::high_resolution_clock::now();
         if (print_) std::cout << "\tCPU ->\t\tInitialise" << std::endl;
-        cpu_.initialise(N, M, K, sparsity);
+        cpu_.initialise(N, M, K, sparsity, type_);
         // std::chrono::time_point<std::chrono::high_resolution_clock> post_init = 
         //         std::chrono::high_resolution_clock::now();
         if (print_) std::cout << "\t\t\tCompute" << std::endl ;
@@ -460,7 +461,7 @@ private:
         // std::chrono::time_point<std::chrono::high_resolution_clock> start = 
                 // std::chrono::high_resolution_clock::now();
         if (print_) std::cout << "\tAlways ->\tInitialise";
-        gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity);
+        gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity, type_);
         // std::chrono::time_point<std::chrono::high_resolution_clock> post_init = 
                 // std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCompute";
@@ -486,7 +487,7 @@ private:
         // after
         if (print_) std::cout << "\tOnce ->\t\tInitialise";
         // start = std::chrono::high_resolution_clock::now();
-        gpu_.initialise(gpuOffloadType::once, N, M, K, sparsity);
+        gpu_.initialise(gpuOffloadType::once, N, M, K, sparsity, type_);
         // post_init = std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCompute";
         time_checksum_gflop gpuResult_once = gpu_.compute();
@@ -508,7 +509,7 @@ private:
         // ToDo -- non-default GPU operations
         if (print_) std::cout << "\tUnified ->\tInitialise";
         // start = std::chrono::high_resolution_clock::now();
-        gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity);
+        gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity, type_);
         // post_init = std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCompute";
         time_checksum_gflop gpuResult_unified = gpu_.compute();
@@ -531,7 +532,7 @@ private:
         writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, M, K, probSize,
                       sparsity, iterations_, gpuResult_once.runtime,
                       gpuResult_once.gflops);
-       writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, M, K,
+        writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, M, K,
                       probSize, sparsity, iterations_, gpuResult_always.runtime,
                       gpuResult_always.gflops);
         writeLineToCsv(csvFile, "gpu_unified", kernelName, N, M, K, probSize,
@@ -675,6 +676,8 @@ private:
 
     /** The sparsity value of the sparse matrices. */
     const double sparsity_;
+
+    const matrixType type_;
 
     /** Whether the CPU kernels should be run. */
     const bool doCPU_ = true;

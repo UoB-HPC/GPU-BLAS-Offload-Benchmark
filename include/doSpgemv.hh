@@ -32,13 +32,14 @@ template <typename T>
 class doSpgemv {
 public:
     doSpgemv(const std::string csvDir, const int iters, const int startDim,
-           const int upperLimit, const double sparsity,
+           const int upperLimit, const double sparsity, const matrixType type,
            const bool cpuEnabled =true, const bool gpuEnabled = true)
             : CSV_DIR(csvDir),
               iterations_(iters),
               startDimention_(startDim),
               upperLimit_(upperLimit),
               sparsity_(sparsity),
+              type_(type),
               doCPU_(cpuEnabled),
               doGPU_(gpuEnabled)
 #if CPU_ENABLED
@@ -197,7 +198,7 @@ private:
 #if CPU_ENABLED
     time_checksum_gflop cpuResult;
     if (doCPU_) {
-      cpu_.initialise(M, N, SPARSITY);
+      cpu_.initialise(M, N, SPARSITY, type_);
       cpuResult = cpu_.compute();
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
       // Write result to CSV file
@@ -213,21 +214,21 @@ private:
     time_checksum_gflop gpuResult_unified;
     if (doGPU_) {
       // - ALWAYS: Offload to/from GPU every iteration
-      gpu_.initialise(gpuOffloadType::always, M, N, SPARSITY);
+      gpu_.initialise(gpuOffloadType::always, M, N, SPARSITY, type_);
       gpuResult_always = gpu_.compute();
       gpuResult_always.gflops =
           calcGflops(flops, iterations_, gpuResult_always.runtime);
 
       // - ONCE : Offload to/from GPU once before all iterations and once
       // after
-      gpu_.initialise(gpuOffloadType::once, M, N, SPARSITY);
+      gpu_.initialise(gpuOffloadType::once, M, N, SPARSITY, type_);
       gpuResult_once = gpu_.compute();
       gpuResult_once.gflops =
           calcGflops(flops, iterations_, gpuResult_once.runtime);
 
       // - UNIFIED : data passed from host to device (and device to host) as
       //             needed
-      gpu_.initialise(gpuOffloadType::unified, M, N, SPARSITY);
+      gpu_.initialise(gpuOffloadType::unified, M, N, SPARSITY, type_);
       gpuResult_unified = gpu_.compute();
       gpuResult_unified.gflops =
           calcGflops(flops, iterations_, gpuResult_unified.runtime);
@@ -471,6 +472,8 @@ private:
 
     /** The sparsity value of the sparse matrix. */
     const double sparsity_;
+
+    const matrixType type_;
 
     /** Whether the CPU kernels should be run. */
     const bool doCPU_ = true;

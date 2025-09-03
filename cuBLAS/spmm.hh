@@ -25,6 +25,7 @@ class spmm_gpu : public spmm<T> {
   using spmm<T>::k_;
   using spmm<T>::offload_;
   using spmm<T>::sparsity_;
+  using spmm<T>::type_;
   using spmm<T>::C_nnz_;
   using spmm<T>::C_rows_;
   using spmm<T>::C_cols_;
@@ -38,7 +39,8 @@ class spmm_gpu : public spmm<T> {
    *  - Unified: Initialise data as unified memory; no data movement semantics
    *             required */
   void initialise(gpuOffloadType offload, int n, int m, int k, 
-                  double sparsity, bool binary = false) override {
+                  double sparsity, matrixType type, 
+                  bool binary = false) override {
     if (print_) {
       switch (offload) {
         case gpuOffloadType::always: {
@@ -57,7 +59,8 @@ class spmm_gpu : public spmm<T> {
       std::cout << "Initialising " << m << "x" << k << " . " << k << "x" << n <<std::endl;
     }
     offload_ = offload;
-    sparsity_ = sparsity;
+    sparsity_ = sparsity_;
+    type_ = type;
 
     m_ = m;
     n_ = n;
@@ -181,12 +184,20 @@ class spmm_gpu : public spmm<T> {
     // std::cout << "Init timings:" << std::endl;
     // std::cout << "\t\tAlloc:    " << alloc_time.count() << " s" << std::endl;
     cudaCheckError(cudaDeviceSynchronize());
-    // rMatCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_);
+    if (type_ == matrixType::rmat) {
+      rMatCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_);
+      rMatCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, true);
+    } else if (type_ == matrixType::random) {
+      randomCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_);
+      randomCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, true);
+    } else {
+      std::cerr << "Matrix type not supported" << std::endl;
+      exit(1);
+    }
     // std::chrono::time_point<std::chrono::high_resolution_clock> rmat1 =
     //         std::chrono::high_resolution_clock::now();
     // std::chrono::duration<double> rmat1_time = rmat1 - allocated;
     // std::cout << "\t\tRMat1:   " << rmat1_time.count() << " s" << std::endl;
-    rMatCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, true);
     // std::chrono::time_point<std::chrono::high_resolution_clock> rmat2 =
     //         std::chrono::high_resolution_clock::now();
     // std::chrono::duration<double> rmat2_time = rmat2 - rmat1;

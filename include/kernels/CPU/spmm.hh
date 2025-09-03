@@ -18,6 +18,7 @@ public:
   using ::spmm<T>::A_nnz_;
   using ::spmm<T>::B_nnz_;
   using ::spmm<T>::sparsity_;
+  using ::spmm<T>::type_;
   using ::spmm<T>::m_;
   using ::spmm<T>::n_;
   using ::spmm<T>::k_;
@@ -29,17 +30,18 @@ public:
 public:
   /** Initialise the required data structures. */
   void initialise(int n, int m, int k, double sparsity,
-                  bool binary = false) {
+                  matrixType type, bool binary = false) {
     n_ = n;
     m_ = m;
     k_ = k;
 
     sparsity_ = sparsity;
+    type_ = type;
 
     /** Determine the number of nnz elements in A and B */
     A_nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
     B_nnz_ = 1 + (uint64_t)((double)k_ * (double)n_ * (1.0 - sparsity_));
-    
+
     initInputMatrices();
   }
 

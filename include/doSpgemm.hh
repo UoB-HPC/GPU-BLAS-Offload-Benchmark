@@ -36,13 +36,14 @@ template <typename T>
 class doSpgemm {
 public:
     doSpgemm(const std::string csvDir, const int iters, const int startDim,
-             const int upperLimit, const double sparsity, const bool
-             cpuEnabled = true, const bool gpuEnabled = true)
+             const int upperLimit, const double sparsity, const matrixType type,
+             const bool cpuEnabled = true, const bool gpuEnabled = true)
           : CSV_DIR(csvDir),
             iterations_(iters),
             startDimention_(startDim),
             upperLimit_(upperLimit),
             sparsity_(sparsity),
+            type_(type),
             doCPU_(cpuEnabled),
             doGPU_(gpuEnabled)
 #if CPU_ENABLED
@@ -330,7 +331,7 @@ private:
 #if CPU_ENABLED
       time_checksum_gflop cpuResult;
       if (doCPU_) {
-        cpu_.initialise(M, N, K, SPARSITY);
+        cpu_.initialise(M, N, K, SPARSITY, type_);
         cpuResult = cpu_.compute();
         cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
         // Write result to CSV file
@@ -352,7 +353,7 @@ private:
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
         if (print_) std::cout << "\tAbout to init" << std::endl;
-        gpu_.initialise(gpuOffloadType::once, M, N, K, SPARSITY);
+        gpu_.initialise(gpuOffloadType::once, M, N, K, SPARSITY, type_);
         if (print_) std::cout << "\tAbout to compute" << std::endl;
         gpuResult_once = gpu_.compute();
 
@@ -361,7 +362,7 @@ private:
         if (print_) std::cout << "GPU-ONCE DONE" << std::endl;
 
         // - ALWAYS: Offload to/from GPU every iteration
-        gpu_.initialise(gpuOffloadType::always, M, N, K, SPARSITY);
+        gpu_.initialise(gpuOffloadType::always, M, N, K, SPARSITY, type_);
         gpuResult_always = gpu_.compute();
         gpuResult_always.gflops =
             calcGflops(flops, iterations_, gpuResult_always.runtime);
@@ -369,7 +370,7 @@ private:
 
         // - UNIFIED : data passed from host to device (and device to host) as
         //             needed
-        gpu_.initialise(gpuOffloadType::unified, M, N, K, SPARSITY);
+        gpu_.initialise(gpuOffloadType::unified, M, N, K, SPARSITY, type_);
         gpuResult_unified = gpu_.compute();
         gpuResult_unified.gflops =
             calcGflops(flops, iterations_, gpuResult_unified.runtime);
@@ -418,37 +419,27 @@ private:
 
     /** Ensure all CPU and GPU checksums are within the permitted limit of
      * eachother. */
-     // Todo - think of a sensible way to do this for sparse!!!
     void checkChecksums(time_checksum_gflop cpuResult,
                         time_checksum_gflop gpuResult_once,
                         time_checksum_gflop gpuResult_always,
                         time_checksum_gflop gpuResult_unified, const int M,
                         const int N, const int K) {
       // Ensure that each checksum difference is less than 0.1%
-//      double hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
-//      if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) *
-//            hundredOverChecksum)) > 0.1 &&
-//          ((std::fabs(cpuResult.checksum - gpuResult_always.checksum) *
-//            hundredOverChecksum)) > 0.1 &&
-//          ((std::fabs(cpuResult.checksum - gpuResult_unified.checksum) *
-//            hundredOverChecksum)) > 0.1) {
-//        std::cerr << "ERROR - " << getKernelName()
-//                  << " kernel checksums do not match:\n\tInput "
-//                     "dimensions: M="
-//                  << M << ", N=" << N << ", K=" << K << std::endl;
-//        std::cerr << std::setprecision(10)
-//                  << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
-//        std::cerr << std::setprecision(10)
-//                  << "\tGPU (Once) Checksum = " << gpuResult_once.checksum
-//                  << std::endl;
-//        std::cerr << std::setprecision(10)
-//                  << "\tGPU (Always) Checksum = " << gpuResult_always.checksum
-//                  << std::endl;
-//        std::cerr << std::setprecision(10)
-//                  << "\tGPU (Unified) Checksum = " << gpuResult_unified.checksum
-//                  << std::endl;
-//        exit(1);
-//      }
+     double hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
+     if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) *
+           hundredOverChecksum)) > 0.1 &&
+         ((std::fabs(cpuResult.checksum - gpuResult_always.checksum) *
+           hundredOverChecksum)) > 0.1 &&
+         ((std::fabs(cpuResult.checksum - gpuResult_unified.checksum) *
+           hundredOverChecksum)) > 0.1) {
+       std::cerr << "ERROR - " << getKernelName() << " kernel checksums do not match:\n\tInput "
+                    "dimensions: M=" << M << ", N=" << N << ", K=" << K << std::endl;
+       std::cerr << std::setprecision(10) << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
+       std::cerr << std::setprecision(10) << "\tGPU (Once) Checksum = " << gpuResult_once.checksum << std::endl;
+       std::cerr << std::setprecision(10) << "\tGPU (Always) Checksum = " << gpuResult_always.checksum << std::endl;
+       std::cerr << std::setprecision(10) << "\tGPU (Unified) Checksum = " << gpuResult_unified.checksum << std::endl;
+       exit(1);
+     }
     }
 
     /** Check whether the offload structures need to be reset; and doing so if
@@ -637,12 +628,15 @@ private:
 
     /** The sparsity value of the sparse matrix. */
     const double sparsity_;
+    
+    const matrixType type_ = matrixType::rmat;
 
     /** Whether the CPU kernels should be run. */
     const bool doCPU_ = true;
 
     /** Whether the GPU kernels should be run. */
     const bool doGPU_ = true;
+
 
 #if CPU_ENABLED
     /** The SPGEMM CPU kernel. */

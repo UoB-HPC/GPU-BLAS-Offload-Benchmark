@@ -15,6 +15,7 @@ public:
     using ::spgemm<T>::iterations_;
     using ::spgemm<T>::nnz_;
     using ::spgemm<T>::sparsity_;
+    using ::spgemm<T>::type_;
     using ::spgemm<T>::m_;
     using ::spgemm<T>::n_;
     using ::spgemm<T>::k_;
@@ -26,12 +27,13 @@ public:
      * Initialise the required data structures.
      */
     void initialise(int m, int n, int k, double sparsity,
-                    bool binary = false) {
+                    matrixType type, bool binary = false) {
       if (print_) std::cout << ".. setting metadata";
       m_ = m;
       n_ = n;
       k_ = k;
       sparsity_ = sparsity;
+      type_ = type;
 
       nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
 

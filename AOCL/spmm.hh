@@ -21,6 +21,7 @@ public:
     using spmm<T>::n_;
     using spmm<T>::k_;
     using spmm<T>::sparsity_;
+    using spmm<T>::type_;
     using spmm<T>::A_nnz_;
     using spmm<T>::B_nnz_;
     using spmm<T>::iterations_;
@@ -29,7 +30,8 @@ public:
     using spmm<T>::C_vals_;
     using spmm<T>::C_nnz_;
 
-    void initialise(int m, int n, int k, double sparsity, bool binary = false) {
+    void initialise(int m, int n, int k, double sparsity, matrixType type, 
+                    bool binary = false) {
       if (print_) {
           std::cout << "===========  CPU   ===========" << std::endl;
       }
@@ -37,6 +39,7 @@ public:
       if (print_) std::cout << "setting up metadata" << std::endl;
       
       sparsity_ = sparsity;
+      type_ = type;
       
       m_aocl_ = m_ = m;
       n_aocl_ = n_ = n;
@@ -128,7 +131,14 @@ protected:
       }
 
       if (print_) std::cout << "Generating R-MAT matrix for A" << std::endl;
-      rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, nnzA_aocl_);
+      if (type_ == matrixType::rmat){
+        rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, nnzA_aocl_);
+      } else if (type_ == matrixType::random) {
+        randomCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, nnzA_aocl_);
+      } else {
+        std::cerr << "Matrix type not supported" << std::endl;
+        exit(1);
+      }
 
       // Move into the AOCL CSR matrix handle
       if (print_) std::cout << "Creating AOCL CSR matrix for A" << std::endl;
@@ -175,7 +185,14 @@ protected:
       }
 
       if (print_) std::cout << "Generating R-MAT matrix for B" << std::endl;
-      rMatCSR<T, aoclsparse_int>(B_vals_, B_cols_, B_rows_, k_, n_, nnzB_aocl_, true);
+      if (type_ == matrixType::rmat){
+        rMatCSR<T, aoclsparse_int>(B_vals_, B_cols_, B_rows_, k_, n_, nnzB_aocl_, true);
+      } else if (type_ == matrixType::random) {
+        randomCSR<T, aoclsparse_int>(B_vals_, B_cols_, B_rows_, k_, n_, nnzB_aocl_, true);
+      } else {
+        std::cerr << "Matrix type not supported" << std::endl;
+        exit(1);
+      }
       
       // Move into the AOCL CSR matrix handle
       if (print_) std::cout << "Creating AOCL CSR matrix for B" << std::endl;

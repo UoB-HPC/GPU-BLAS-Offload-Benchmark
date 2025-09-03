@@ -25,11 +25,12 @@ class spgemv_gpu : public spgemv<T> {
   using spgemv<T>::y_;
   using spgemv<T>::offload_;
   using spgemv<T>::sparsity_;
+  using spgemv<T>::type_;
 
   ~spgemv_gpu() {}
 
   void initialise(gpuOffloadType offload, int m, int n, 
-                  double sparsity) override {
+                  double sparsity, matrixType type) override {
     if (print_ || debug) {
       switch (offload) {
         case gpuOffloadType::always:
@@ -45,8 +46,8 @@ class spgemv_gpu : public spgemv<T> {
     }
     if (print_) std::cout << "Initialise " << m_ << "x" << n_ << " . " << n_ << std::endl;
     offload_ = offload;
-
     sparsity_ = sparsity;
+    type_ = type;
 
     // Create a handle for cuSPARSE
     cusparseCheckError(cusparseCreate(&handle_));
@@ -157,7 +158,14 @@ protected:
     }
     cudaCheckError(cudaDeviceSynchronize());
 
-    rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
+    if (type_ == matrixType::random) {
+      randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
+    } else if (type_ == matrixType::rmat) {
+      rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
+    } else {
+      std::cerr << "Matrix type not supported" << std::endl;
+      exit(1);
+    }
   }
 
  private:

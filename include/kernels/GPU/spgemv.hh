@@ -18,7 +18,7 @@ namespace gpu {
          *  - Unified: Initialise data as unified memory; no data movement semantics
          *             required */
         virtual void initialise(gpuOffloadType offload, int m, int n,
-                                double sparsity) = 0;
+                                double sparsity, matrixType type) = 0;
 
     protected:
         /** Whether data should be offloaded to/from the GPU each iteration, or just

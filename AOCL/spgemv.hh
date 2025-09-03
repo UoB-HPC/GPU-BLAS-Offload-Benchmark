@@ -20,10 +20,12 @@ public:
     using spgemv<T>::x_;
     using spgemv<T>::y_;
     using spgemv<T>::sparsity_;
+    using spgemv<T>::type_;
     using spgemv<T>::nnz_;
     using spgemv<T>::iterations_;
 
-    void initialise(int m, int n, double sparsity, bool binary = false) {
+    void initialise(int m, int n, double sparsity, matrixType type, 
+                    bool binary = false) {
       if (print_) std::cout << "=========== Matrix = " << m << "x" << n << " ===========" << std::endl;
       base_ = aoclsparse_index_base_zero;
       operation_ = aoclsparse_operation_none;
@@ -31,6 +33,7 @@ public:
       m_aocl_ = m_ = m;
       n_aocl_ = n_ = n;
       sparsity_ = sparsity;
+      type_ = type;
 
       nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
       nnz_aocl_ = nnz_;
@@ -53,7 +56,15 @@ protected:
       A_vals_ = (T*)calloc(nnz_aocl_, sizeof(T));
       A_cols_ = (aoclsparse_int*)calloc(nnz_aocl_, sizeof(aoclsparse_int));
       A_rows_ = (aoclsparse_int*)calloc(m_ + 1, sizeof(aoclsparse_int));
-      rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
+      if (type_ == matrixType::rmat) {
+        rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
+      } else if (type_ == matrixType::random) {
+        randomCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
+      } else {
+        std::cerr << "Matrix type not supported" << std::endl;
+        exit(1);
+      }
+      
 
       // Move into the AOCL CSR matrix handle
       if constexpr (std::is_same_v<T, float>) {

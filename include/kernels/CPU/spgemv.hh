@@ -19,13 +19,15 @@ namespace cpu {
         using ::spgemv<T>::y_;
         using ::spgemv<T>::sparsity_;
         using ::spgemv<T>::nnz_;
+        using ::spgemv<T>::type_; 
 
     public:
         /** Initialise the required data structures. */
-        void initialise(int m, int n, double sparsity) {
+        void initialise(int m, int n, double sparsity, matrixType type) {
           m_ = m;
           n_ = n;
           sparsity_ = sparsity;
+          type_ = type;
 
           // Note that the below should be the same as the edges calculation
           // used in the initInputMatricesSparse function.  If changed here,

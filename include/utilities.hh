@@ -62,6 +62,11 @@ enum class gpuOffloadType : uint8_t {
   unified,
 };
 
+enum class matrixType : uint8_t {
+  rmat = 0,
+  random,
+};
+
 // Define struct which contains a runtime, checksum value, and gflop/s value
 struct time_checksum_gflop {
   double runtime = 0.0;
@@ -404,4 +409,44 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
   //         std::chrono::high_resolution_clock::now();
   // std::chrono::duration<double> checking_duration = checking - fill_rows;
   // std::cout << "\t\t\tCheck CSR: " << checking_duration.count() << " s" << std::endl;
+}
+
+template <typename T, typename int_type>
+void randomCSR(T* vals, int_type* cols, int_type* rows,
+               int nrows, int ncols, int nnz, bool isB = false) {
+  srand((isB ? SEED2 : SEED));
+  std::default_random_engine gen;
+  std::uniform_int_distribution<int_type> col_dist(0, ncols - 1);
+  gen.seed((isB ? SEED2 : SEED));
+
+  // Generate number of non-zeros per row
+  std::vector<int_type> row_counts(nrows, 0);
+  for (int i = 0; i < nnz; i++) {
+    int_type r = rand() % nrows;
+    row_counts[r]++;
+  }
+
+  // Create the row pointer array
+  rows[0] = 0;
+  for (int r = 0; r < nrows; r++) {
+    rows[r + 1] = rows[r] + row_counts[r];
+  }
+
+  int index = 0; 
+  for (int r = 0; r < nrows; r++) {
+    std::vector<int_type> used_cols;
+    used_cols.reserve(row_counts[r]);
+
+    for (int j = 0; j < row_counts[r]; j++) {
+      int_type c;
+      do {
+        c = col_dist(gen);
+      } while (std::find(used_cols.begin(), used_cols.end(), c) != used_cols.end());
+      used_cols.push_back(c);
+      cols[index] = c;
+      vals[index] = (T)((double)(rand() % 100) / 3.0);
+      index++;
+    }
+    std::sort(cols + rows[r], cols + rows[r + 1]);
+  }
 }

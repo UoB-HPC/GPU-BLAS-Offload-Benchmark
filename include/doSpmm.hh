@@ -417,22 +417,38 @@ private:
 
     void callKernels(std::ofstream& csvFile, const int N, const int M,
                      const int K, const float sparsity) {
-      const double probSize = calcKib(N, N, N);
+      const double probSize = calcKib(N, N, N, sparsity);
       const uint64_t flops = calcFlops(N, N, N, sparsity);
       std::string kernelName = getKernelName();
 
 #if CPU_ENABLED
       if (doCPU_) {
+        // std::chrono::time_point<std::chrono::high_resolution_clock> start = 
+        //         std::chrono::high_resolution_clock::now();
         if (print_) std::cout << "\tCPU ->\t\tInitialise" << std::endl;
         cpu_.initialise(N, M, K, sparsity);
+        // std::chrono::time_point<std::chrono::high_resolution_clock> post_init = 
+        //         std::chrono::high_resolution_clock::now();
         if (print_) std::cout << "\t\t\tCompute" << std::endl ;
         time_checksum_gflop cpuResult = cpu_.compute();
+        // std::chrono::time_point<std::chrono::high_resolution_clock> post_compute = 
+                // std::chrono::high_resolution_clock::now();
         if (print_) std::cout << "\t\t\tCalculate" << std::endl ;
         cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
         writeLineToCsv(csvFile, "cpu", kernelName, N, M, K, probSize,
                        sparsity, iterations_, cpuResult.runtime,
                        cpuResult.gflops);
+        // std::chrono::time_point<std::chrono::high_resolution_clock> end = 
+                // std::chrono::high_resolution_clock::now();
         if (print_) std::cout << "\t\t\tDONE" << std::endl;
+
+        // std::chrono::duration<double> init_time = post_init - start;
+        // std::chrono::duration<double> compute_time = post_compute - post_init;
+        // std::chrono::duration<double> calc_time = end - post_compute;
+        // std::cout << "Timings:" << std::endl;
+        // std::cout << "\tInit:    " << init_time.count() << " s" << std::endl;
+        // std::cout << "\tCompute: " << compute_time.count() << " s" << std::endl;
+        // std::cout << "\tCalculate:" << calc_time.count() << " s" << std::endl;
       }
 #endif
 #if GPU_ENABLED
@@ -441,33 +457,74 @@ private:
       //             needed
       if (doGPU_) {
         // - ALWAYS: Offload to/from GPU every iteration
+        // std::chrono::time_point<std::chrono::high_resolution_clock> start = 
+                // std::chrono::high_resolution_clock::now();
         if (print_) std::cout << "\tAlways ->\tInitialise";
         gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity);
+        // std::chrono::time_point<std::chrono::high_resolution_clock> post_init = 
+                // std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCompute";
         time_checksum_gflop gpuResult_always = gpu_.compute();
+        // std::chrono::time_point<std::chrono::high_resolution_clock> post_compute = 
+                // std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCalculate";
         gpuResult_always.gflops =
               calcGflops(flops, iterations_, gpuResult_always.runtime);
+        // std::chrono::time_point<std::chrono::high_resolution_clock> end = 
+                // std::chrono::high_resolution_clock::now();
         if (print_) std::cout << ".. DONE" << std::endl;
+        // std::chrono::duration<double> init_time = post_init - start;
+        // std::chrono::duration<double> compute_time = post_compute - post_init;
+        // std::chrono::duration<double> calc_time = end - post_compute;
+        // std::cout << "Timings:" << std::endl;
+        // std::cout << "\tInit:    " << init_time.count() << " s" << std::endl;
+        // std::cout << "\tCompute: " << compute_time.count() << " s" << std::endl;
+        // std::cout << "\tCalculate:" << calc_time.count() << " s" << std::endl;
+
+
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
         if (print_) std::cout << "\tOnce ->\t\tInitialise";
+        // start = std::chrono::high_resolution_clock::now();
         gpu_.initialise(gpuOffloadType::once, N, M, K, sparsity);
+        // post_init = std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCompute";
         time_checksum_gflop gpuResult_once = gpu_.compute();
+        // post_compute = std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCalculate";
         gpuResult_once.gflops =
               calcGflops(flops, iterations_, gpuResult_once.runtime);
+        // end = std::chrono::high_resolution_clock::now();
         if (print_) std::cout << ".. DONE" << std::endl;
+        // init_time = post_init - start;
+        // compute_time = post_compute - post_init;
+        // calc_time = end - post_compute;
+        // std::cout << "Timings:" << std::endl;
+        // std::cout << "\tInit:    " << init_time.count() << " s" << std::endl;
+        // std::cout << "\tCompute: " << compute_time.count() << " s" << std::endl;
+        // std::cout << "\tCalculate:" << calc_time.count() << " s" << std::endl;
+
+
         // ToDo -- non-default GPU operations
         if (print_) std::cout << "\tUnified ->\tInitialise";
+        // start = std::chrono::high_resolution_clock::now();
         gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity);
+        // post_init = std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCompute";
         time_checksum_gflop gpuResult_unified = gpu_.compute();
+        // post_compute = std::chrono::high_resolution_clock::now();
         if (print_) std::cout << std::endl << "\t\t\tCalculate";
         gpuResult_unified.gflops =
         calcGflops(flops, iterations_, gpuResult_unified.runtime);
+        // end = std::chrono::high_resolution_clock::now();
         if (print_) std::cout << ".. DONE" << std::endl;
+        // init_time = post_init - start;
+        // compute_time = post_compute - post_init;
+        // calc_time = end - post_compute;
+        // std::cout << "Timings:" << std::endl;
+        // std::cout << "\tInit:    " << init_time.count() << " s" << std::endl;
+        // std::cout << "\tCompute: " << compute_time.count() << " s" << std::endl;
+        // std::cout << "\tCalculate:" << calc_time.count() << " s" << std::endl;
 
 
         // Write lines to CSV file
@@ -512,10 +569,10 @@ private:
       (1 - (1 - SPARSITY)^2)^K
       */
     constexpr double calcKib(const int M, const int N, const int K, const double SPARSITY) const {
-      uint64_t M_ = (uint64_t)M, N_ = (uint64_t)N, K_ = (uint64_t)K;
+      uint64_t M_ = (uint64_t)M, K_ = (uint64_t)K;
       uint64_t NNZA = 1 + (uint64_t)((double)M * (double)K * (1.0 - SPARSITY));
       uint64_t NNZB = 1 + (uint64_t)((double)K * (double)N * (1.0 - SPARSITY));
-      double CSPARSITY = (1 - ((1 - SPARSITY) ^ 2)) ^ K;
+      double CSPARSITY = 1 - pow(pow(1.0 - SPARSITY, 2), K);
       uint64_t NNZC = 1 + (uint64_t)((double)M * (double)N * CSPARSITY);
 
       uint64_t probSize = (M_ + 1) + (2 * NNZA) + (K_ + 1) + (2 * NNZB) + (M_ + 1) + (2 * NNZC);

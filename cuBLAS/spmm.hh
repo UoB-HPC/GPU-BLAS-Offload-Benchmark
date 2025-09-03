@@ -141,6 +141,8 @@ class spmm_gpu : public spmm<T> {
 
  protected:
   void toSparseFormat() override {
+    // std::chrono::time_point<std::chrono::high_resolution_clock> start =
+    //         std::chrono::high_resolution_clock::now();
     // Allocate CSR arrays
     if (offload_ == gpuOffloadType::unified) {
       cudaCheckError(cudaMallocManaged(&A_vals_, sizeof(T) * A_nnz_));
@@ -173,9 +175,22 @@ class spmm_gpu : public spmm<T> {
       C_vals_dev_ = nullptr;
       C_cols_dev_ = nullptr;
     }
+    // std::chrono::time_point<std::chrono::high_resolution_clock> allocated =
+    //         std::chrono::high_resolution_clock::now();
+    // std::chrono::duration<double> alloc_time = allocated - start;
+    // std::cout << "Init timings:" << std::endl;
+    // std::cout << "\t\tAlloc:    " << alloc_time.count() << " s" << std::endl;
     cudaCheckError(cudaDeviceSynchronize());
-    rMatCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_);
+    // rMatCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_);
+    // std::chrono::time_point<std::chrono::high_resolution_clock> rmat1 =
+    //         std::chrono::high_resolution_clock::now();
+    // std::chrono::duration<double> rmat1_time = rmat1 - allocated;
+    // std::cout << "\t\tRMat1:   " << rmat1_time.count() << " s" << std::endl;
     rMatCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, true);
+    // std::chrono::time_point<std::chrono::high_resolution_clock> rmat2 =
+    //         std::chrono::high_resolution_clock::now();
+    // std::chrono::duration<double> rmat2_time = rmat2 - rmat1;
+    // std::cout << "\t\tRMat2:   " << rmat2_time.count() << " s" << std::endl;
   }
 
  private:

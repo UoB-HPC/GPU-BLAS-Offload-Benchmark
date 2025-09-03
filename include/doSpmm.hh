@@ -76,7 +76,7 @@ public:
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         if (print_) std::cout << dim << "x" << dim << " . " << dim << "x" << dim << ", ";
         // M = dim, N = dim, K = dim;
-        callKernels(csvFile, dim, dim, dim, sparsity_);
+        callKernels(csvFile, dim, dim, dim);
       }
       if (print_) std::cout << std::endl;
       // Close file
@@ -104,7 +104,7 @@ public:
       int N = 16 * K;
       while (M <= upperLimit_) {
         if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
-        callKernels(csvFile, M, N, K, sparsity_);
+        callKernels(csvFile, M, N, K);
         M += 16;
         N += 16;
         K++;
@@ -133,7 +133,7 @@ public:
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = dim, K = 32;
           if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
-          callKernels(csvFile, dim, dim, 32, sparsity_);
+          callKernels(csvFile, dim, dim, 32);
         }
       }
       if (print_) std::cout << std::endl;
@@ -161,7 +161,7 @@ public:
       K = 16 * M;
       while (K <= upperLimit_) {
           if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
-        callKernels(csvFile, M, N, K, sparsity_);
+        callKernels(csvFile, M, N, K);
         M++;
         N++;
         K += 16;
@@ -190,7 +190,7 @@ public:
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = 32, K = dim;
           if (print_) std::cout << "32x" << dim << " . " << dim << "x32" << ", ";
-          callKernels(csvFile, 32, 32, dim, sparsity_);
+          callKernels(csvFile, 32, 32, dim);
         }
       }
       if (print_) std::cout << std::endl;
@@ -218,7 +218,7 @@ public:
       M = 16 * K;
       while (M <= upperLimit_) {
           if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
-        callKernels(csvFile, M, N, K, sparsity_);
+        callKernels(csvFile, M, N, K);
         M += 16;
         N++;
         K++;
@@ -247,7 +247,7 @@ public:
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = 32, K = 32;
           if (print_) std::cout << dim << "x32" << " . " << "32x32, ";
-          callKernels(csvFile, dim, 32, 32, sparsity_);
+          callKernels(csvFile, dim, 32, 32);
         }
       }
       if (print_) std::cout << std::endl;
@@ -275,7 +275,7 @@ public:
       N = 16 * K;
       while (N <= upperLimit_) {
         if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
-        callKernels(csvFile, M, N, K, sparsity_);
+        callKernels(csvFile, M, N, K);
         M++;
         N += 16;
         K++;
@@ -303,7 +303,7 @@ public:
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = dim, K = 32;
           if (print_) std::cout << "32x32 . " << "32x" << N << ", ";
-          callKernels(csvFile, 32, dim, 32, sparsity_);
+          callKernels(csvFile, 32, dim, 32);
         }
       }
       if (print_) std::cout << std::endl;
@@ -417,9 +417,9 @@ private:
     }
 
     void callKernels(std::ofstream& csvFile, const int N, const int M,
-                     const int K, const float sparsity) {
-      const double probSize = calcKib(N, N, N, sparsity);
-      const uint64_t flops = calcFlops(N, N, N, sparsity);
+                     const int K) {
+      const double probSize = calcKib(N, N, N, sparsity_);
+      const uint64_t flops = calcFlops(N, N, N, sparsity_);
       std::string kernelName = getKernelName();
 
 #if CPU_ENABLED
@@ -427,7 +427,7 @@ private:
         // std::chrono::time_point<std::chrono::high_resolution_clock> start = 
         //         std::chrono::high_resolution_clock::now();
         if (print_) std::cout << "\tCPU ->\t\tInitialise" << std::endl;
-        cpu_.initialise(N, M, K, sparsity, type_);
+        cpu_.initialise(N, M, K, sparsity_, type_);
         // std::chrono::time_point<std::chrono::high_resolution_clock> post_init = 
         //         std::chrono::high_resolution_clock::now();
         if (print_) std::cout << "\t\t\tCompute" << std::endl ;
@@ -437,7 +437,7 @@ private:
         if (print_) std::cout << "\t\t\tCalculate" << std::endl ;
         cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
         writeLineToCsv(csvFile, "cpu", kernelName, N, M, K, probSize,
-                       sparsity, iterations_, cpuResult.runtime,
+                       sparsity_, iterations_, cpuResult.runtime,
                        cpuResult.gflops);
         // std::chrono::time_point<std::chrono::high_resolution_clock> end = 
                 // std::chrono::high_resolution_clock::now();

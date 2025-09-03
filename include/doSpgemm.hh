@@ -79,7 +79,7 @@ public:
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = dim, K = dim;
         if (print_) std::cout << "\t" << dim << "x" << dim << std::endl;
-        callKernels(csvFile, dim, dim, dim, sparsity_);
+        callKernels(csvFile, dim, dim, dim);
       }
       // Close file
       csvFile.close();
@@ -107,7 +107,7 @@ public:
       if (print_) std::cout << "============ TALL/THIN x SHORT/WIDE ==============" << std::endl;
       while (M <= upperLimit_) {
         if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
-        callKernels(csvFile, M, N, K, sparsity_);
+        callKernels(csvFile, M, N, K);
         M += 16;
         N += 16;
         K++;
@@ -136,7 +136,7 @@ public:
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         if (print_) std::cout << dim << "x32" << " . " << "32x" << dim << std::endl;
           // M = dim, N = dim, K = 32;
-          callKernels(csvFile, dim, dim, 32, sparsity_);
+          callKernels(csvFile, dim, dim, 32);
         }
       }
       // Close file
@@ -164,7 +164,7 @@ public:
       if (print_) std::cout << "============ SHORT/WIDE x TALL/THIN ==============" << std::endl;
       while (K <= upperLimit_) {
         if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
-        callKernels(csvFile, M, N, K, sparsity_);
+        callKernels(csvFile, M, N, K);
         M++;
         N++;
         K += 16;
@@ -193,7 +193,7 @@ public:
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = 32, K = dim;
           if (print_) std::cout << "32x" << dim << " . " << dim << "x32" << std::endl;
-          callKernels(csvFile, 32, 32, dim, sparsity_);
+          callKernels(csvFile, 32, 32, dim);
         }
       }
       // Close file
@@ -221,7 +221,7 @@ public:
       if (print_) std::cout << "============ TALL/THIN x SQUARE ==============" << std::endl;
       while (M <= upperLimit_) {
         if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
-        callKernels(csvFile, M, N, K, sparsity_);
+        callKernels(csvFile, M, N, K);
         M += 16;
         N++;
         K++;
@@ -250,7 +250,7 @@ public:
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = 32, K = 32;
         if (print_) std::cout << M << "x32 . 32x32" << std::endl;
-          callKernels(csvFile, dim, 32, 32, sparsity_);
+          callKernels(csvFile, dim, 32, 32);
         }
       }
       // Close file
@@ -278,7 +278,7 @@ public:
       if (print_) std::cout << "============ SQUARE x SHORT/WIDE ==============" << std::endl;
       while (N <= upperLimit_) {
         if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
-        callKernels(csvFile, M, N, K, sparsity_);
+        callKernels(csvFile, M, N, K);
         M++;
         N += 16;
         K++;
@@ -306,7 +306,7 @@ public:
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = dim, K = 32;
         if (print_) std::cout << "32x32 . 32x" << N << std::endl;
-          callKernels(csvFile, 32, dim, 32, sparsity_);
+          callKernels(csvFile, 32, dim, 32);
         }
       }
 #if CPU_ENABLED && GPU_ENABLED
@@ -322,21 +322,21 @@ public:
 private:
     /** Call the appropriate CPU and GPU GEMM kernels. */
     void callKernels(std::ofstream& csvFile, const int M, const int N,
-                     const int K, double SPARSITY) {
-      const double probSize = calcKib(M, N, K, SPARSITY);
-      const uint64_t flops = calcFlops(M, N, K, SPARSITY);
+                     const int K) {
+      const double probSize = calcKib(M, N, K, sparsity_);
+      const uint64_t flops = calcFlops(M, N, K, sparsity_);
       std::string kernelName = getKernelName();
 
 // Perform CPU kernel
 #if CPU_ENABLED
       time_checksum_gflop cpuResult;
       if (doCPU_) {
-        cpu_.initialise(M, N, K, SPARSITY, type_);
+        cpu_.initialise(M, N, K, sparsity_, type_);
         cpuResult = cpu_.compute();
         cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
         // Write result to CSV file
         writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize,
-                       SPARSITY, iterations_, cpuResult.runtime, cpuResult
+                       sparsity_, iterations_, cpuResult.runtime, cpuResult
                        .gflops);
         if (print_) {
           std::cout << "\tCPU DONE" << std::endl;

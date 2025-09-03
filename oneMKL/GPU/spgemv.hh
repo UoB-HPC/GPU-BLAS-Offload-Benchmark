@@ -15,14 +15,15 @@ public:
     using spgemv<T>::nnz_;
     using spgemv<T>::m_;
     using spgemv<T>::n_;
-    using spgemv<T>::A_;
     using spgemv<T>::x_;
     using spgemv<T>::y_;
     using spgemv<T>::offload_;
     using spgemv<T>::sparsity_;
+    using spgemv<T>::type_;
 
 
-    void initialise(gpuOffloadType offload, int m, int n, double sparsity)
+    void initialise(gpuOffloadType offload, int m, int n, double sparsity, 
+                    matrixType type)
     override {
       switch (offload) {
         case gpuOffloadType::always: {
@@ -58,12 +59,12 @@ public:
       gpuQueue_ = sycl::queue(myGpu_, exception_handler);
       context_ = gpuQueue_.get_context();
       
-      A_ = nullptr;
       x_ = nullptr;
       y_ = nullptr;
 
       offload_ = offload;
       sparsity_ = sparsity;
+      type_ = type;
       m_ = m;
       n_ = n;
 
@@ -73,30 +74,24 @@ public:
       nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
 
       if (print_) std::cout << "Allocating arrays" << std::endl;
-      switch (offload_) {
-        case gpuOffloadType::unified: {
-          A_ = sycl::malloc_shared<T>(m_ * n_, gpuQueue_);
-          x_ = sycl::malloc_shared<T>(n_, gpuQueue_);
-          y_ = sycl::malloc_shared<T>(m_, gpuQueue_);
-
-          if (!A_ || !x_ || !y_) {
-            std::cerr << "ERROR - Failed to allocate memory for GPU SPGEMV" << std::endl;
-            exit(1);
-          }
-          break;
+      if (offload_ == gpuOffloadType::unified) {
+        x_ = sycl::malloc_shared<T>(n_, gpuQueue_);
+        y_ = sycl::malloc_shared<T>(m_, gpuQueue_);
+        if (!x_ || !y_) {
+          std::cerr << "ERROR - Failed to allocate memory for GPU SPGEMV" << std::endl;
+          exit(1);
         }
-        case gpuOffloadType::always:
-        case gpuOffloadType::once: {
-          A_ = sycl::malloc_host<T>(m_ * n_, gpuQueue_);
-          x_ = sycl::malloc_host<T>(n_, gpuQueue_);
-          y_ = sycl::malloc_host<T>(m_, gpuQueue_);
-          if (!A_ || !x_ || !y_) {
-            std::cerr << "ERROR - Failed to allocate host memory" << std::endl;
-            exit(1);
-          }
-          break;
+      } else {
+        x_ = sycl::malloc_host<T>(n_, gpuQueue_);
+        y_ = sycl::malloc_host<T>(m_, gpuQueue_);
+        x_device_ = sycl::malloc_device<T>(n_, gpuQueue_, context_);
+        y_device_ = sycl::malloc_device<T>(m_, gpuQueue_, context_);
+        if (!x_ || !y_) {
+          std::cerr << "ERROR - Failed to allocate host memory" << std::endl;
+          exit(1);
         }
       }
+      
       gpuQueue_.wait_and_throw();
 
       if (print_) std::cout << "Initialising matrices" << std::endl;
@@ -108,48 +103,29 @@ public:
 protected:
     void toSparseFormat() override {
       gpuQueue_.wait_and_throw();
-      if (print_) std::cout << "Making sparse now" << std::endl;
-      constexpr double eps = 1e-12;
-
-      // Check for actual nnz, rather than intended nnz
-      uint64_t actual_nnz = 0;
-      for (int i = 0; i < (m_ * n_); i++) {
-        if (std::abs(A_[i]) > eps) actual_nnz++;
-      }
-      nnz_ = actual_nnz;
-
-      // Allocate CSR arrays
       if (offload_ == gpuOffloadType::unified) {
-        A_vals_ = (T*)sycl::malloc_shared(nnz_ * sizeof(T), gpuQueue_, context_);
-        A_cols_ = (int64_t*)sycl::malloc_shared(nnz_ * sizeof(int64_t), gpuQueue_, context_);
-        A_rows_ = (int64_t*)sycl::malloc_shared((m_ + 1) * sizeof(int64_t), gpuQueue_, context_);
-        if (A_vals_ == nullptr || A_cols_ == nullptr || A_rows_ == nullptr) {
-          std::cerr << "Invalid shared memory allocation of CSR arrays" << std::endl;
-        }
+        A_vals_ = sycl::malloc_shared<T>(nnz_, gpuQueue_);
+        A_cols_ = sycl::malloc_shared<int64_t>(nnz_, gpuQueue_);
+        A_rows_ = sycl::malloc_shared<int64_t>(m_ + 1, gpuQueue_);
       } else {
-        A_vals_ = (T*)sycl::malloc_host(nnz_ * sizeof(T), gpuQueue_, context_);
-        A_cols_ = (int64_t*)sycl::malloc_host(nnz_ * sizeof(int64_t), gpuQueue_, context_);
-        A_rows_ = (int64_t*)sycl::malloc_host((m_ + 1) * sizeof(int64_t), gpuQueue_, context_);
-        if (A_vals_ == nullptr || A_cols_ == nullptr || A_rows_ == nullptr) {
-          std::cerr << "Invalid host memory allocation of CSR arrays" << std::endl;
-        }
+        A_vals_ = sycl::malloc_host<T>(nnz_, gpuQueue_);
+        A_cols_ = sycl::malloc_host<int64_t>(nnz_, gpuQueue_);
+        A_rows_ = sycl::malloc_host<int64_t>(m_ + 1, gpuQueue_);
+        A_vals_device_ = (T*)sycl::malloc_device(nnz_ * sizeof(T), gpuQueue_, context_);
+        A_cols_device_ = (int64_t*)sycl::malloc_device(nnz_ * sizeof(int64_t), gpuQueue_, context_);
+        A_rows_device_ = (int64_t*)sycl::malloc_device((m_ + 1) * sizeof(int64_t), gpuQueue_, context_);
       }
 
-      int64_t nnz_encountered = 0;
-      A_rows_[0] = 0;
-
-      for (int64_t row = 0; (row < m_) && (nnz_encountered <= nnz_); row++) {
-        for (int64_t col = 0; (col < n_) && (nnz_encountered <= nnz_); col++) {
-          double val = A_[(row * n_) + col];
-          if (std::abs(val) > eps) {
-            A_cols_[nnz_encountered] = col;
-            A_vals_[nnz_encountered] = static_cast<T>(val);
-            nnz_encountered++;
-          }
-        }
-        A_rows_[row + 1] = nnz_encountered;
+      if (type_ == matrixType::rmat) {
+        if (print_) std::cout << "\tGenerating rMAT matrix" << std::endl;
+        rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
+      } else if (type_ == matrixType::random) {
+        if (print_) std::cout << "\tGenerating random matrix" << std::endl;
+        randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
+      } else {
+        std::cerr << "Matrix type not supported" << std::endl;
+        exit(1);
       }
-      if (nnz_encountered > nnz_) std::cout << "//////////////// TOO MANY NNZ WHEN CONVERTING TO CSR |||||||||||||||||||" << std::endl;
 
       if (print_) {
         std::cout << "=============================================" << std::endl;
@@ -199,18 +175,6 @@ protected:
 private:
     void preLoopRequirements() override {
       if (print_) std::cout << "Pre-loop stuff" << std::endl;
-      if (offload_ != gpuOffloadType::unified) {
-        x_device_ = (T*)sycl::malloc_device(n_ * sizeof(T), gpuQueue_, context_);
-        y_device_ = (T*)sycl::malloc_device(m_ * sizeof(T), gpuQueue_, context_);
-        A_vals_device_ = (T*)sycl::malloc_device(nnz_ * sizeof(T), gpuQueue_, context_);
-        A_cols_device_ = (int64_t*)sycl::malloc_device(nnz_ * sizeof(int64_t), gpuQueue_, context_);
-        A_rows_device_ = (int64_t*)sycl::malloc_device((m_ + 1) * sizeof(int64_t), gpuQueue_, context_);
-        if (!x_device_ || !y_device_ || A_vals_device_ == nullptr || A_cols_device_ == nullptr || A_rows_device_ == nullptr) {
-          std::cerr << "ERROR - Failed to allocate device memory" << std::endl;
-          exit(1);
-        }
-
-      }
       if (offload_ == gpuOffloadType::once) {
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
         gpuQueue_.memcpy(A_vals_device_, A_vals_, sizeof(T) * nnz_);
@@ -411,6 +375,21 @@ private:
       switch (offload_) {
         case gpuOffloadType::always:
         case gpuOffloadType::once: {
+          if (A_vals_ != nullptr) {
+            if (print_) std::cout << "\t\tA_vals_" << std::endl;
+            sycl::free(A_vals_, context_);
+            A_vals_ = nullptr;
+          }
+          if (A_cols_ != nullptr) {
+            if (print_) std::cout << "\t\tA_cols_" << std::endl;
+            sycl::free(A_cols_, context_);
+            A_cols_ = nullptr;
+          }
+          if (A_rows_ != nullptr) {
+            if (print_) std::cout << "\t\tA_rows_" << std::endl;
+            sycl::free(A_rows_, context_);
+            A_rows_ = nullptr;
+          }
           if (A_vals_device_ != nullptr) {
             if (print_) std::cout << "\t\tA_vals_device_" << std::endl;
             sycl::free(A_vals_device_, context_);
@@ -426,6 +405,16 @@ private:
             sycl::free(A_rows_device_, context_);
             A_rows_device_ = nullptr;
           }
+          if (x_ != nullptr) {
+            if (print_) std::cout << "\t\tx_" << std::endl;
+            sycl::free(x_, context_);
+            x_ = nullptr;
+          }
+          if (y_ != nullptr) {
+            if (print_) std::cout << "\t\ty_" << std::endl;
+            sycl::free(y_, context_);
+            y_ = nullptr;
+          }
           if (x_device_ != nullptr) {
             if (print_) std::cout << "\t\tx_device_" << std::endl;
             sycl::free(x_device_, context_);
@@ -438,11 +427,6 @@ private:
           }
         }
         case gpuOffloadType::unified: {
-          if (A_ != nullptr) {
-            if (print_) std::cout << "\t\tA_" << std::endl;
-            sycl::free(A_, context_);
-            A_ = nullptr;
-          }
           if (A_vals_ != nullptr) {
             if (print_) std::cout << "\t\tA_vals_" << std::endl;
             sycl::free(A_vals_, context_);

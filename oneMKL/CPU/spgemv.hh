@@ -20,12 +20,15 @@ public:
     using spgemv<T>::x_;
     using spgemv<T>::y_;
     using spgemv<T>::sparsity_;
+    using spgemv<T>::type_;
     using spgemv<T>::nnz_;
 
-    void initialise(int m, int n, double sparsity) {
+    void initialise(int m, int n, double sparsity, matrixType type, 
+                    bool binary = false) {
       m_ = m;
       n_ = n;
       sparsity_ = sparsity;
+      type_ = type;
 
       nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
 
@@ -42,8 +45,15 @@ protected:
       A_rowsb_ = new MKL_INT[m_ + 1];
       A_rowse_ = new MKL_INT[m_ + 1];
 
-      rMatCSR<T, MKL_INT>(A_vals_, A_cols_, A_rowsb_, m_, n_, nnz_);
-
+      if (type_ == matrixType::rmat) {
+        rMatCSR<T, MKL_INT>(A_vals_, A_cols_, A_rowsb_, m_, n_, nnz_);
+      } else if (type_ == matrixType::random) {
+        randomCSR<T, MKL_INT>(A_vals_, A_cols_, A_rowsb_, m_, n_, nnz_);
+      } else {
+        std::cerr << "Unknown matrix type" << std::endl;
+        exit(1);
+      }
+      
       for (uint64_t i = 0; i < m_; i++) {
         A_rowse_[i] = A_rowsb_[i + 1] - 1;
       }

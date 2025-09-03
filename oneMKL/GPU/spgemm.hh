@@ -18,14 +18,15 @@ public:
     using spgemm<T>::m_;
     using spgemm<T>::n_;
     using spgemm<T>::k_;
-    using spgemm<T>::A_;
     using spgemm<T>::B_;
     using spgemm<T>::C_;
     using spgemm<T>::offload_;
     using spgemm<T>::sparsity_;
+    using spgemm<T>::type_;
 
     void initialise(gpuOffloadType offload, int m, int n, int k,
-                double sparsity, bool binary = false) override {
+                double sparsity, matrixType type, 
+                bool binary = false) override {
       // Perform set-up which doesn't need to happen every problem size change.
       if (firstRun_) {
         firstRun_ = false;
@@ -40,7 +41,6 @@ public:
       
       try {
         // Initialize ALL pointers to nullptr FIRST
-        A_ = nullptr;
         B_ = nullptr;
         C_ = nullptr;
         A_vals_ = nullptr;
@@ -56,6 +56,7 @@ public:
 
         offload_ = offload;
         sparsity_ = sparsity;
+        type_ = type;
         m_ = m;
         n_ = n;
         k_ = k;
@@ -69,40 +70,18 @@ public:
 
         if (print_) std::cout << "\t\tallocating space" << std::endl;
         if (offload_ == gpuOffloadType::unified) {
-          A_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * k_, gpuQueue_);
-          checkPointer(A_, "A_");
-          A_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnz_, gpuQueue_);
-          checkPointer(A_vals_, "A_vals_");
-          A_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnz_, gpuQueue_);
-          checkPointer(A_cols_, "A_cols_");
-          A_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (m_ + 1), gpuQueue_);
-          checkPointer(A_rows_, "A_rows_");
           B_ = (T*)sycl::malloc_shared(sizeof(T) * k_ * n_, gpuQueue_);
           checkPointer(B_, "B_");
           C_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * n_, gpuQueue_);
           checkPointer(C_, "C_");
         } else {
           // Host memory allocation
-          A_ = (T*)sycl::malloc_host(sizeof(T) * m_ * k_, gpuQueue_);
-          checkPointer(A_, "A_");
-          A_vals_ = (T*)sycl::malloc_host(sizeof(T) * nnz_, gpuQueue_);
-          checkPointer(A_vals_, "A_vals_");
-          A_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * nnz_, gpuQueue_);
-          checkPointer(A_cols_, "A_cols_");
-          A_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (m_ + 1), gpuQueue_);
-          checkPointer(A_rows_, "A_rows_");
           B_ = (T*)sycl::malloc_host(sizeof(T) * k_ * n_, gpuQueue_);
           checkPointer(B_, "B_");
           C_ = (T*)sycl::malloc_host(sizeof(T) * m_ * n_, gpuQueue_);
           checkPointer(C_, "C_");
 
           // Device memory allocation
-          A_vals_device_ = (T*)sycl::malloc_device(sizeof(T) * nnz_, gpuQueue_);
-          checkPointer(A_vals_device_, "A_vals_device_");
-          A_cols_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * nnz_, gpuQueue_);
-          checkPointer(A_cols_device_, "A_cols_device_");
-          A_rows_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * (m_ + 1), gpuQueue_);
-          checkPointer(A_rows_device_, "A_rows_device_");
           B_device_ = (T*)sycl::malloc_device(sizeof(T) * k_ * n_, gpuQueue_);
           checkPointer(B_device_, "B_device_");
           C_device_ = (T*)sycl::malloc_device(sizeof(T) * m_ * n_, gpuQueue_);
@@ -119,19 +98,36 @@ public:
 
 protected:
     void toSparseFormat() override {
-      int64_t nnz_encountered = 0;
+      if (offload_ == gpuOffloadType::unified) {
+          A_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnz_, gpuQueue_);
+          checkPointer(A_vals_, "A_vals_");
+          A_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnz_, gpuQueue_);
+          checkPointer(A_cols_, "A_cols_");
+          A_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (m_ + 1), gpuQueue_);
+          checkPointer(A_rows_, "A_rows_");
+      } else {
+          A_vals_ = (T*)sycl::malloc_host(sizeof(T) * nnz_, gpuQueue_);
+          checkPointer(A_vals_, "A_vals_");
+          A_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * nnz_, gpuQueue_);
+          checkPointer(A_cols_, "A_cols_");
+          A_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (m_ + 1), gpuQueue_);
+          checkPointer(A_rows_, "A_rows_");
 
-      A_rows_[0] = 0;
-
-      for (int64_t row = 0; row < m_; row++) {
-        for (int64_t col = 0; col < k_; col++) {
-          if (A_[(row * k_) + col] != 0.0) {
-            A_cols_[nnz_encountered] = col;
-            A_vals_[nnz_encountered] = static_cast<T>(A_[(row * k_) + col]);
-            nnz_encountered++;
-          }
-        }
-        A_rows_[row + 1] = nnz_encountered;
+          A_vals_device_ = (T*)sycl::malloc_device(sizeof(T) * nnz_, gpuQueue_);
+          checkPointer(A_vals_device_, "A_vals_device_");
+          A_cols_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * nnz_, gpuQueue_);
+          checkPointer(A_cols_device_, "A_cols_device_");
+          A_rows_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * (m_ + 1), gpuQueue_);
+          checkPointer(A_rows_device_, "A_rows_device_");
+      }
+      
+      if (type_ == matrixType::rmat) {
+        rmatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
+      } else if (type_ == matrixType::random) {
+        randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
+      } else {
+        std::cerr << "ERROR - Unknown matrix type" << std::endl;
+        exit(1);
       }
     }
 
@@ -297,24 +293,29 @@ private:
       if (offload_ != gpuOffloadType::always) {
         oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
       }
-      
-      if (A_) { sycl::free(A_, gpuQueue_); A_ = nullptr; }
-      if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
-      if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
-      if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
-      if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
-      if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
-      
-      // Free device memory if allocated
-      if (A_vals_device_) { sycl::free(A_vals_device_, gpuQueue_); A_vals_device_ = nullptr; }
-      if (A_cols_device_) { sycl::free(A_cols_device_, gpuQueue_); A_cols_device_ = nullptr; }
-      if (A_rows_device_) { sycl::free(A_rows_device_, gpuQueue_); A_rows_device_ = nullptr; }
-      if (B_device_) { sycl::free(B_device_, gpuQueue_); B_device_ = nullptr; }
-      if (C_device_) { sycl::free(C_device_, gpuQueue_); C_device_ = nullptr; } 
       if (print_) std::cout << "\t\tdone" << std::endl;
     }
 
     void postCallKernelCleanup() override {
+      if (offload_ == gpuOffloadType::unified) {
+        if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
+        if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
+        if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
+        if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
+        if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
+      } else {
+        if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
+        if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
+        if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
+        if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
+        if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
+        
+        if (A_vals_device_) { sycl::free(A_vals_device_, gpuQueue_); A_vals_device_ = nullptr; }
+        if (A_cols_device_) { sycl::free(A_cols_device_, gpuQueue_); A_cols_device_ = nullptr; }
+        if (A_rows_device_) { sycl::free(A_rows_device_, gpuQueue_); A_rows_device_ = nullptr; }
+        if (B_device_) { sycl::free(B_device_, gpuQueue_); B_device_ = nullptr; }
+        if (C_device_) { sycl::free(C_device_, gpuQueue_); C_device_ = nullptr; } 
+      }
     }
 
     void checkPointer(void* ptr, std::string name) {

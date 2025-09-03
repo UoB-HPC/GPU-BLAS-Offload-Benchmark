@@ -19,17 +19,16 @@ public:
     using spmm<T>::m_;
     using spmm<T>::n_;
     using spmm<T>::k_;
-    using spmm<T>::A_;
-    using spmm<T>::B_;
-    using spmm<T>::C_;
     using spmm<T>::C_rows_;
     using spmm<T>::C_cols_;
     using spmm<T>::C_vals_;
     using spmm<T>::offload_;
     using spmm<T>::sparsity_;
+    using spmm<T>::type_;
 
     void initialise(gpuOffloadType offload, int m, int n, int k,
-                    double sparsity, bool binary = false) override {
+                    double sparsity, matrixType type, 
+                    bool binary = false) override {
 
       if (print_) {
         std::cout << "Initialising ";
@@ -50,6 +49,7 @@ public:
       k_ = k;
       sparsity_ = sparsity;
       offload_ = offload;
+      type_ = type;
 
       // Set up the sycl device for the GPU
       if (firstRun_) {
@@ -71,31 +71,23 @@ public:
 
       if (print_) std::cout << "\tMallocing" << std::endl;
       if (offload_ == gpuOffloadType::unified) {
-        A_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * k_, gpuQueue_);
         A_vals_ = (T*)sycl::malloc_shared(sizeof(T) * A_nnz_, gpuQueue_);
         A_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * A_nnz_, gpuQueue_);
         A_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (m_ + 1), gpuQueue_);
 
-        B_ = (T*)sycl::malloc_shared(sizeof(T) * k_ * n_, gpuQueue_);
         B_vals_ = (T*)sycl::malloc_shared(sizeof(T) * B_nnz_, gpuQueue_);
         B_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * B_nnz_, gpuQueue_);
         B_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (k_ + 1), gpuQueue_);
 
-        C_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * n_, gpuQueue_);
-
         gpuQueue_.wait();
       } else {
-        A_ = (T*)sycl::malloc_host<T>(m_ * k_, gpuQueue_);
         A_vals_ = (T*)sycl::malloc_host(sizeof(T) * A_nnz_, gpuQueue_);
         A_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * A_nnz_, gpuQueue_);
         A_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (m_ + 1), gpuQueue_);
 
-        B_ = (T*)sycl::malloc_host(sizeof(T) * k_ * n_, gpuQueue_);
         B_vals_ = (T*)sycl::malloc_host(sizeof(T) * B_nnz_, gpuQueue_);
         B_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * B_nnz_, gpuQueue_);
         B_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (k_ + 1), gpuQueue_);
-
-        C_ = (T*)sycl::malloc_host(sizeof(T) * m_ * n_, gpuQueue_);
 
         A_vals_device_ = (T*)sycl::malloc_device(sizeof(T) * A_nnz_, gpuQueue_);
         A_cols_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * A_nnz_, gpuQueue_);
@@ -113,51 +105,15 @@ public:
 
 protected:
     void toSparseFormat() override {
-      if (print_) std::cout << "Making sparse now" << std::endl;
-      int64_t nnz_encountered = 0;
-
-      if (print_) std::cout << "\tA into CSR" << std::endl;
-      // Convert A to CSR format
-      A_rows_[0] = 0;
-
-      for (int64_t row = 0; row < m_; row++) {
-        for (int64_t col = 0; col < k_; col++) {
-          if (A_[(row * k_) + col] != 0.0) {
-            A_cols_[nnz_encountered] = col;
-            A_vals_[nnz_encountered] = static_cast<T>(A_[(row * k_) + col]);
-            nnz_encountered++;
-          }
-        }
-        A_rows_[row + 1] = nnz_encountered;
-      }
-
-      // Verify A conversion
-      if (nnz_encountered != A_nnz_) {
-        std::cerr << "Warning: A matrix has " << nnz_encountered << " non-zeros, expected " << A_nnz_ << std::endl;
-        A_nnz_ = nnz_encountered;  // Update to actual count
-      }
-
-      if (print_) std::cout << "\tB into CSR" << std::endl;
-      // Convert B to CSR format
-      nnz_encountered = 0;
-
-      B_rows_[0] = 0;
-
-      for (int64_t row = 0; row < k_; row++) {
-        for (int64_t col = 0; col < n_; col++) {
-          if (B_[(row * n_) + col] != 0.0) {
-            B_cols_[nnz_encountered] = col;
-            B_vals_[nnz_encountered] = static_cast<T>(B_[(row * n_) + col]);
-            nnz_encountered++;
-          }
-        }
-        B_rows_[row + 1] = nnz_encountered;
-      }
-
-      // Verify B conversion
-      if (nnz_encountered != B_nnz_) {
-        std::cerr << "Warning: B matrix has " << nnz_encountered << " non-zeros, expected " << B_nnz_ << std::endl;
-        B_nnz_ = nnz_encountered;  // Update to actual count
+      if (type_ == matrixType::rmat) {
+        rmatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
+        rmatCSR<T, int64_t>(B_vals_, B_cols_, B_rows_, k_, n_, nnz_, true);
+      } else if (type_ == matrixType::random) {
+        randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_);
+        randomCSR<T, int64_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, true);
+      } else {
+        std::cerr << "ERROR - Unrecognized matrix type" << std::endl;
+        exit(1);
       }
 
       // Ensure synchronization for unified memory
@@ -847,22 +803,18 @@ private:
     void postCallKernelCleanup() override {
       if (print_) std::cout << "Kernel cleanup" << std::endl;
       if (offload_ == gpuOffloadType::unified) {
-        sycl::free(A_, gpuQueue_);
         sycl::free(A_vals_, gpuQueue_);
         sycl::free(A_cols_, gpuQueue_);
         sycl::free(A_rows_, gpuQueue_);
-        sycl::free(B_, gpuQueue_);
         sycl::free(B_vals_, gpuQueue_);
         sycl::free(B_cols_, gpuQueue_);
         sycl::free(B_rows_, gpuQueue_);
         sycl::free(C_nnz_sycl_, gpuQueue_);
         gpuQueue_.wait();
       } else {
-        sycl::free(A_, gpuQueue_);
         sycl::free(A_vals_, gpuQueue_);
         sycl::free(A_cols_, gpuQueue_);
         sycl::free(A_rows_, gpuQueue_);
-        sycl::free(B_, gpuQueue_);
         sycl::free(B_vals_, gpuQueue_);
         sycl::free(B_cols_, gpuQueue_);
         sycl::free(B_rows_, gpuQueue_);

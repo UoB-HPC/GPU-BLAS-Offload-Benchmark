@@ -449,4 +449,6 @@ void randomCSR(T* vals, int_type* cols, int_type* rows,
     }
     std::sort(cols + rows[r], cols + rows[r + 1]);
   }
+
+  checkCSRValid(nrows, ncols, nnz, rows, cols, vals);
 }

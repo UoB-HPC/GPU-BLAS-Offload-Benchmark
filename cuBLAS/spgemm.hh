@@ -51,7 +51,7 @@ public:
     }
 
     offload_ = offload;
-    sparsity_ = sparsity_;
+    sparsity_ = sparsity;
     type_ = type;
 
     m_ = m;
@@ -62,6 +62,8 @@ public:
     A_rows_ = A_cols_ = A_rows_dev_ = A_cols_dev_ = nullptr;
     /** Determine the number of nnz elements in A and B */
     nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
+    if (print_) std::cout << "\tnnz_ = 1 + (m_ * k_ * (1.0 - sparsity_))" << std::endl;
+    if (print_) std::cout << "\t" << nnz_ << " = 1 + (" << m_ << " * " << k_ << " * (1.0 - " << sparsity_ << "))" << std::endl;
 
     // Set up cuSPARSE metadata
     opA_ = CUSPARSE_OPERATION_NON_TRANSPOSE;
@@ -83,32 +85,25 @@ public:
     cudaCheckError(cudaGetDevice(&gpuDevice_));
 
     // Initialise 3 streams to asynchronously move data between host and device
-    cudaCheckError(cudaStreamCreate(&s1_));
-    cudaCheckError(cudaStreamCreate(&s2_));
-    cudaCheckError(cudaStreamCreate(&s3_));
+    cudaCheckError(cudaStreamCreate(&stream_));
 
     if (offload_ == gpuOffloadType::unified) {
       if (print_) std::cout << "\tAllocating unified memory" << std::endl;
-      if (B_ != nullptr) cudaFreeAdaptive(B_, "B_");
       cudaCheckError(cudaMallocManaged(&B_, sizeof(T) * k_ * n_));
-      if (C_ != nullptr) cudaFreeAdaptive(C_, "C_");
       cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * m_ * n_));
     } else {
       if (print_) std::cout << "\tAllocating host memory" << std::endl;
-      if (B_ != nullptr) cudaFreeAdaptive(B_, "B_");
-      cudaCheckError(cudaMallocHost(&B_, sizeof(T) * k_ * n_));
-      if (C_ != nullptr) cudaFreeAdaptive(C_, "C_");
-      cudaCheckError(cudaMallocHost(&C_, sizeof(T) * m_ * n_));
+      B_ = (T*)malloc(sizeof(T) * k_ * n_);
+      C_ = (T*) malloc(sizeof(T) * m_ * n_);
 
       if (print_) std::cout << "\tAllocating device memory" << std::endl;
-      if (B_dev_ != nullptr) cudaFreeAdaptive(B_dev_, "B_dev_");
       cudaCheckError(cudaMalloc((void**)&B_dev_, sizeof(T) * k_ * n_));
-      if (C_dev_ != nullptr) cudaFreeAdaptive(C_dev_, "C_dev_");
       cudaCheckError(cudaMalloc((void**)&C_dev_, sizeof(T) * m_ * n_));
     }
     cudaCheckError(cudaDeviceSynchronize());
 
     cusparseCheckError(cusparseCreate(&handle_));
+    cusparseCheckError(cusparseSetStream(handle_, stream_));
 
     if (print_) std::cout << "\tInitialising input matrices" << std::endl;
     initInputMatrices();
@@ -117,36 +112,53 @@ public:
 protected:
   void toSparseFormat() override {
     // Allocate CSR arrays
+    if (print_) std::cout << "\tAllocating CSR arrays" << std::endl;
     if (offload_ == gpuOffloadType::unified) {
-      if (A_vals_ != nullptr) cudaFreeAdaptive(A_vals_, "A_vals_");
-      cudaCheckError(cudaMallocManaged(&A_vals_, sizeof(T) * nnz_));
-      if (A_cols_ != nullptr) cudaFreeAdaptive(A_cols_, "A_cols_");
-      cudaCheckError(cudaMallocManaged(&A_cols_, sizeof(int64_t) * nnz_));
-      if (A_rows_ != nullptr) cudaFreeAdaptive(A_rows_, "A_rows_");
-      cudaCheckError(cudaMallocManaged(&A_rows_, sizeof(int64_t) * (m_ + 1)));
+      cudaCheckError(cudaMallocManaged(&A_vals_, nnz_ * sizeof(T)));
+      cudaCheckError(cudaMallocManaged(&A_cols_, nnz_ * sizeof(int64_t)));
+      cudaCheckError(cudaMallocManaged(&A_rows_, (m_ + 1) * sizeof(int64_t)));
     } else {
-      if (A_vals_ != nullptr) cudaFreeAdaptive(A_vals_, "A_vals_");
-      cudaCheckError(cudaMallocHost(&A_vals_, sizeof(T) * nnz_));
-      if (A_cols_ != nullptr) cudaFreeAdaptive(A_cols_, "A_cols_");
-      cudaCheckError(cudaMallocHost(&A_cols_, sizeof(int64_t) * nnz_));
-      if (A_rows_ != nullptr) cudaFreeAdaptive(A_rows_, "A_rows_");
-      cudaCheckError(cudaMallocHost(&A_rows_, sizeof(int64_t) * (m_ + 1)));
-      if (A_vals_dev_ != nullptr) cudaFreeAdaptive(A_vals_dev_, "A_vals_dev_");
-      cudaCheckError(cudaMalloc((void**)&A_vals_dev_, sizeof(T) * nnz_));
-      if (A_cols_dev_ != nullptr) cudaFreeAdaptive(A_cols_dev_, "A_cols_dev_");
-      cudaCheckError(cudaMalloc((void**)&A_cols_dev_, sizeof(int64_t) * nnz_));
-      if (A_rows_dev_ != nullptr) cudaFreeAdaptive(A_rows_dev_, "A_rows_dev_");
-      cudaCheckError(cudaMalloc((void**)&A_rows_dev_, sizeof(int64_t) * (m_ + 1)));
+      A_vals_ = (T*)malloc(nnz_ * sizeof(T));
+      A_cols_ = (int64_t*)malloc(nnz_ * sizeof(int64_t));
+      A_rows_ = (int64_t*)malloc((m_ + 1) * sizeof(int64_t));
+      cudaCheckError(cudaMalloc((void**)&A_vals_dev_, nnz_ * sizeof(T)));
+      cudaCheckError(cudaMalloc((void**)&A_cols_dev_, nnz_ * sizeof(int64_t)));
+      cudaCheckError(cudaMalloc((void**)&A_rows_dev_, (m_ + 1) * sizeof(int64_t)));
     }
     cudaCheckError(cudaDeviceSynchronize());
 
+    if (print_) std::cout << "\tInitialising input matrices" << std::endl;
     if (type_ == matrixType::rmat) {
+      if (print_) std::cout << "\tGenerating R-MAT matrix" << std::endl;
       rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
     } else if (type_ == matrixType::random) {
+      if (print_) std::cout << "\tGenerating random matrix" << std::endl;
       randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
     } else {
       std::cerr << "Matrix type not supported" << std::endl;
       exit(1);
+    }
+    if (false) {
+      std::cout << "=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|" << std::endl;
+      std::cout << "Matrix A (CSR):" << std::endl;
+      std::cout << "Rows: [";
+      for (int i = 0; i < m_ + 1; i++) {
+        std::cout << A_rows_[i];
+        if (i != m_) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      std::cout << "Cols: [";
+      for (int i = 0; i < nnz_; i++) {
+        std::cout << A_cols_[i];
+        if (i != nnz_ - 1) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      std::cout << "Vals: [";
+      for (int i = 0; i < nnz_; i++) {
+        std::cout << A_vals_[i];
+        if (i != nnz_ - 1) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
     }
   }
 
@@ -168,11 +180,11 @@ private:
       }
       case gpuOffloadType::unified: {
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
-        cudaCheckError(cudaMemPrefetchAsync(A_vals_, nnz_ * sizeof(T), gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_cols_, nnz_ * sizeof(int64_t), gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_rows_, (m_ + 1) * sizeof(int64_t), gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(B_, (n_ * k_) * sizeof(T), gpuDevice_, s2_));
-        cudaCheckError(cudaMemPrefetchAsync(C_, (m_ * n_) * sizeof(T), gpuDevice_, s3_));
+        cudaCheckError(cudaMemPrefetchAsync(A_vals_, nnz_ * sizeof(T), gpuDevice_, stream_));
+        cudaCheckError(cudaMemPrefetchAsync(A_cols_, nnz_ * sizeof(int64_t), gpuDevice_, stream_));
+        cudaCheckError(cudaMemPrefetchAsync(A_rows_, (m_ + 1) * sizeof(int64_t), gpuDevice_, stream_));
+        cudaCheckError(cudaMemPrefetchAsync(B_, (n_ * k_) * sizeof(T), gpuDevice_, stream_));
+        cudaCheckError(cudaMemPrefetchAsync(C_, (m_ * n_) * sizeof(T), gpuDevice_, stream_));
         cudaCheckError(cudaDeviceSynchronize());
         break;
       }
@@ -185,19 +197,19 @@ private:
         // Move over data
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
         cudaCheckError(cudaMemcpyAsync(A_vals_dev_, A_vals_, (sizeof(T) * nnz_),
-                                       cudaMemcpyHostToDevice, s1_));
+                                       cudaMemcpyHostToDevice, stream_));
         cudaCheckError(cudaMemcpyAsync(A_cols_dev_, A_cols_,
                                        (sizeof(int64_t) * nnz_),
-                                       cudaMemcpyHostToDevice, s1_));
+                                       cudaMemcpyHostToDevice, stream_));
         cudaCheckError(cudaMemcpyAsync(A_rows_dev_, A_rows_,
                                        (sizeof(int64_t) * (m_ + 1)),
-                                       cudaMemcpyHostToDevice, s1_));
+                                       cudaMemcpyHostToDevice, stream_));
 
         cudaCheckError(cudaMemcpyAsync(B_dev_, B_, (sizeof(T) * k_ * n_),
-                                       cudaMemcpyHostToDevice, s2_));
+                                       cudaMemcpyHostToDevice, stream_));
 
         cudaCheckError(cudaMemcpyAsync(C_dev_, C_, (sizeof(T) * m_ * n_),
-                                       cudaMemcpyHostToDevice, s3_));
+                                       cudaMemcpyHostToDevice, stream_));
 
         // Set up descriptors
         if (print_) std::cout << "\tCreating matrix descriptor for A" << std::endl;
@@ -249,10 +261,7 @@ private:
 
         if (print_) std::cout << "\tBuffer size: " << bufferSize << std::endl;
         // Allocate the temporary buffer
-        if (bufferSize > 0) {
-          if (dBuffer != nullptr) cudaFreeAdaptive(dBuffer, "dBuffer");
-          cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
-        }
+        if (bufferSize > 0) cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
 
         if (print_) std::cout << "\tPreprocessing" << std::endl;
         cusparseCheckError(cusparseSpMM_preprocess(handle_, 
@@ -287,14 +296,11 @@ private:
         cusparseCheckError(cusparseDestroyDnMat(C_descr_));
 
         // Free up the temporary buffer
-        if (dBuffer != nullptr) {
-          cudaFreeAdaptive(dBuffer, "dBuffer");
-          dBuffer = nullptr;
-        }
+          if (bufferSize > 0) cudaCheckError(cudaFree(dBuffer));
 
         // Move result back to CPU
         cudaCheckError(cudaMemcpyAsync(C_, C_dev_, (sizeof(T) * m_ * n_),
-                                       cudaMemcpyDeviceToHost, s3_));
+                                       cudaMemcpyDeviceToHost, stream_));
         break;
       }
       case gpuOffloadType::once: {
@@ -348,10 +354,7 @@ private:
 
         if (print_) std::cout << "\tBuffer size: " << bufferSize << std::endl;
         // Allocate the temporary buffer
-        if (bufferSize > 0) {
-          if (dBuffer != nullptr) cudaFreeAdaptive(dBuffer, "dBuffer");
-          cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
-        }
+        if (bufferSize > 0) cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
 
         if (print_) std::cout << "\tPreprocessing" << std::endl;
         cusparseCheckError(cusparseSpMM_preprocess(handle_, 
@@ -385,11 +388,7 @@ private:
         cusparseCheckError(cusparseDestroyDnMat(C_descr_));
 
         // Free up the temporary buffer
-        if (dBuffer != nullptr) {
-          cudaFreeAdaptive(dBuffer, "dBuffer");
-          dBuffer = nullptr;
-        }
-        break;
+        if (bufferSize > 0) cudaCheckError(cudaFree(dBuffer));
       }
       case gpuOffloadType::unified: {
         // Create descriptors for the matrices
@@ -442,10 +441,7 @@ private:
 
         if (print_) std::cout << "\tBuffer size: " << bufferSize << std::endl;
         // Allocate the temporary buffer
-        if (bufferSize > 0) {
-          if (dBuffer != nullptr) cudaFreeAdaptive(dBuffer, "dBuffer");
-          cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
-        }
+        if (bufferSize > 0) cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
 
         if (print_) std::cout << "\tPreprocessing" << std::endl;
         cusparseCheckError(cusparseSpMM_preprocess(handle_, 
@@ -482,10 +478,7 @@ private:
         cudaCheckError(cudaDeviceSynchronize());
 
         // Free up the temporary buffer
-        if (dBuffer != nullptr) {
-          cudaFreeAdaptive(dBuffer, "dBuffer");
-          dBuffer = nullptr;
-        }
+        if (bufferSize > 0)cudaCheckError(cudaFree(dBuffer));
         break;
       }
     }
@@ -500,98 +493,44 @@ private:
         if (print_) std::cout << "\tMoving data to CPU" << std::endl;
         // Move result back to CPU
         cudaCheckError(cudaMemcpyAsync(C_, C_dev_, (sizeof(T) * m_ * n_),
-                                       cudaMemcpyDeviceToHost, s3_));
+                                       cudaMemcpyDeviceToHost, stream_));
         break;
       }
       case gpuOffloadType::unified: {
         if (print_) std::cout << "\tMoving data to CPU" << std::endl;
         // Move result back to CPU
         cudaCheckError(cudaMemPrefetchAsync(C_, sizeof(T) * m_ * n_, 
-                                            cudaCpuDeviceId, s3_));
+                                            cudaCpuDeviceId, stream_));
         break;
       }
     }
   }
 
   void postCallKernelCleanup() override {
-    if (A_vals_ != nullptr) {
-      if (print_) std::cout << "Freeing A_vals_" << std::endl;
-      cudaFreeAdaptive(A_vals_, "A_vals_"); 
-      A_vals_ = nullptr;
+    if (offload_ == gpuOffloadType::unified) {
+      cudaCheckError(cudaFree(A_vals_));
+      cudaCheckError(cudaFree(A_cols_));
+      cudaCheckError(cudaFree(A_rows_));
+      cudaCheckError(cudaFree(B_));
+      cudaCheckError(cudaFree(C_));
+    } else {
+      free(A_vals_);
+      free(A_cols_);
+      free(A_rows_);
+      free(B_);
+      free(C_);
+      cudaCheckError(cudaFree(A_vals_dev_));
+      cudaCheckError(cudaFree(A_cols_dev_));
+      cudaCheckError(cudaFree(A_rows_dev_));
+      cudaCheckError(cudaFree(B_dev_));
+      cudaCheckError(cudaFree(C_dev_));
     }
-    if (A_cols_ != nullptr) {
-      if (print_) std::cout << "Freeing A_cols_" << std::endl;
-      cudaFreeAdaptive(A_cols_, "A_cols_"); 
-      A_cols_ = nullptr; 
-    }
-    if (A_rows_ != nullptr) {
-      if (print_) std::cout << "Freeing A_rows_" << std::endl;
-      cudaFreeAdaptive(A_rows_, "A_rows_"); 
-      A_rows_ = nullptr;
-    }
-    if (B_ != nullptr) {
-      if (print_) std::cout << "Freeing B_" << std::endl;
-      cudaFreeAdaptive(B_, "B_"); 
-      B_ = nullptr;
-    }
-    if (C_ != nullptr) {
-      if (print_) std::cout << "Freeing C_" << std::endl;
-      cudaFreeAdaptive(C_, "C_"); 
-      C_ = nullptr;
-    }
-    if (A_vals_dev_ != nullptr) {
-      if (print_) std::cout << "Freeing A_vals_dev_" << std::endl;
-      cudaFreeAdaptive(A_vals_dev_, "A_vals_dev_");
-      A_vals_dev_ = nullptr;
-    }
-    if (A_cols_dev_ != nullptr) {
-      if (print_) std::cout << "Freeing A_cols_dev_" << std::endl;
-      cudaFreeAdaptive(A_cols_dev_, "A_cols_dev_");
-      A_cols_dev_ = nullptr;
-    }
-    if (A_rows_dev_ != nullptr) {
-      if (print_) std::cout << "Freeing A_rows_dev_" << std::endl;
-      cudaFreeAdaptive(A_rows_dev_, "A_rows_dev_");
-      A_rows_dev_ = nullptr;
-    }
-    if (B_dev_ != nullptr) {
-      if (print_) std::cout << "Freeing B_dev_" << std::endl;
-      cudaFreeAdaptive(B_dev_, "B_dev_");
-      B_dev_ = nullptr;
-    }
-    if (C_dev_ != nullptr) {
-      if (print_) std::cout << "Freeing C_dev_" << std::endl;
-      cudaFreeAdaptive(C_dev_, "C_dev_");
-      C_dev_ = nullptr;
-    }
-  }
 
-  inline void cudaFreeAdaptive(void* ptr, std::string name) {
-    if (!ptr) return;
-    cudaPointerAttributes attr;
-    cudaError_t err = cudaPointerGetAttributes(&attr, ptr);
-    if (err != cudaSuccess) {
-      // Pointer not recognized by CUDA (e.g. malloc) → just free?
-      // But since you've moved to cudaMallocHost, we should treat this as error.
-      std::cerr << "cudaPointerGetAttributes failed: " << cudaGetErrorString(err) << std::endl;
-      return;
-    }
-    switch (attr.type) {
-      case cudaMemoryTypeDevice:
-      case cudaMemoryTypeManaged:
-        // cudaMallocManaged
-        cudaCheckError(cudaFree(ptr));
-        break;
+    // Destroy the handle
+    cusparseCheckError(cusparseDestroy(handle_));
 
-      case cudaMemoryTypeHost:
-        // cudaMallocHost
-        cudaCheckError(cudaFreeHost(ptr));
-        break;
-
-      default:
-        std::cerr << "Unknown CUDA pointer type in cudaFreeAdaptive for: " << name << std::endl;
-        break;
-    }
+    // Destroy streams after use
+    cudaCheckError(cudaStreamDestroy(stream_));
   }
 
   bool print_ = false;
@@ -599,11 +538,8 @@ private:
   /** Handle used when calling cuBLAS. */
   cusparseHandle_t handle_;
 
-  /** CUDA Streams - used to asynchronously move data between host and device.
-   */
-  cudaStream_t s1_;
-  cudaStream_t s2_;
-  cudaStream_t s3_;
+  /** CUDA Stream - used to asynchronously move data between host and device. */
+  cudaStream_t stream_;
 
   /** The ID of the target GPU Device. */
   int gpuDevice_;

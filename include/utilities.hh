@@ -414,6 +414,14 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
 template <typename T, typename int_type>
 void randomCSR(T* vals, int_type* cols, int_type* rows,
                int nrows, int ncols, int nnz, bool isB = false) {
+  if (nnz >= nrows * ncols) {
+    std::cerr << "ERROR: nnz exceeds maximum possible non-zeros." << std::endl;
+    return;
+  } else if (nnz <= 0) {
+    std::cerr << "ERROR: nnz must be positive." << std::endl;
+    return;
+  }
+
   srand((isB ? SEED2 : SEED));
   std::default_random_engine gen;
   std::uniform_int_distribution<int_type> col_dist(0, ncols - 1);
@@ -421,9 +429,12 @@ void randomCSR(T* vals, int_type* cols, int_type* rows,
 
   // Generate number of non-zeros per row
   std::vector<int_type> row_counts(nrows, 0);
-  for (int i = 0; i < nnz; i++) {
+  int total_nonzeros = 0;
+  while (total_nonzeros < nnz) {
     int_type r = rand() % nrows;
+    if (row_counts[r] >= ncols) continue; // Skip if row is already full
     row_counts[r]++;
+    total_nonzeros++;
   }
 
   // Create the row pointer array
@@ -432,23 +443,35 @@ void randomCSR(T* vals, int_type* cols, int_type* rows,
     rows[r + 1] = rows[r] + row_counts[r];
   }
 
-  int index = 0; 
+  int index = 0;
+  // Make a bitmap of the columns that are going to be used in this row
+  std::vector<bool> rCols(ncols, false);
   for (int r = 0; r < nrows; r++) {
-    std::vector<int_type> used_cols;
-    used_cols.reserve(row_counts[r]);
-
+    int c = 0;
+    while (c < row_counts[r]) {
+      int_type col = col_dist(gen);
+      if (!rCols[col]) {
+        rCols[col] = true;
+        c++;
+      }
+    }
+    // Create the column index array
+    for (int_type cIndex = 0; cIndex < ncols; cIndex++) {
+      if (rCols[cIndex]) {
+        cols[index] = cIndex;
+        index++;
+        rCols[cIndex] = false;  // Reset the bitmap for the next row
+      }
+    }
+  }
+  
+  // Randomise the values array
+  index = 0; 
+  for (int r = 0; r < nrows; r++) {
     for (int j = 0; j < row_counts[r]; j++) {
-      int_type c;
-      do {
-        c = col_dist(gen);
-      } while (std::find(used_cols.begin(), used_cols.end(), c) != used_cols.end());
-      used_cols.push_back(c);
-      cols[index] = c;
       vals[index] = (T)((double)(rand() % 100) / 3.0);
       index++;
     }
-    std::sort(cols + rows[r], cols + rows[r + 1]);
   }
-
   checkCSRValid(nrows, ncols, nnz, rows, cols, vals);
 }

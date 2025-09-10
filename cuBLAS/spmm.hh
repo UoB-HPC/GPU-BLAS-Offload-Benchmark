@@ -59,7 +59,7 @@ class spmm_gpu : public spmm<T> {
       std::cout << "Initialising " << m << "x" << k << " . " << k << "x" << n <<std::endl;
     }
     offload_ = offload;
-    sparsity_ = sparsity_;
+    sparsity_ = sparsity;
     type_ = type;
 
     m_ = m;

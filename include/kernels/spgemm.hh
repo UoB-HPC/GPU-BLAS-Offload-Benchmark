@@ -98,7 +98,7 @@ protected:
       if (print_) std::cout << "DEBUG: initInputMatrices - Complete" << std::endl;
     }
 
-    bool print_ = true;
+    bool print_ = false;
 
     /** Move matrices into the sparse representation of for the given library */
     virtual void toSparseFormat() = 0;

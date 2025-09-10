@@ -61,9 +61,7 @@ public:
     }
 
     void collectData() {
-      // ToDo -- I've hard coded false here as kernel selection was not working
-      //  .  Needs to be fixed
-
+      if (print_) std::cout << "sparsity_ = " << sparsity_ << std::endl;
       // Square Problem Sizes...
       // Re-initialise offload threshold structures
       cpuGpu_always_ = cpuGpu_offloadThreshold();
@@ -249,7 +247,7 @@ public:
       if (print_) std::cout << "============ TALL/THIN x SQUARE ==============" << std::endl;
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = 32, K = 32;
-        if (print_) std::cout << M << "x32 . 32x32" << std::endl;
+        if (print_) std::cout << dim << "x32 . 32x32" << std::endl;
           callKernels(csvFile, dim, 32, 32);
         }
       }
@@ -305,7 +303,7 @@ public:
       if (print_) std::cout << "============ SQUARE x SHORT/WIDE ==============" << std::endl;
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = dim, K = 32;
-        if (print_) std::cout << "32x32 . 32x" << N << std::endl;
+        if (print_) std::cout << "32x32 . 32x" << dim << std::endl;
           callKernels(csvFile, 32, dim, 32);
         }
       }
@@ -323,8 +321,8 @@ private:
     /** Call the appropriate CPU and GPU GEMM kernels. */
     void callKernels(std::ofstream& csvFile, const int M, const int N,
                      const int K) {
-      const double probSize = calcKib(M, N, K, sparsity_);
-      const uint64_t flops = calcFlops(M, N, K, sparsity_);
+      const double probSize = calcKib(M, N, K);
+      const uint64_t flops = calcFlops(M, N, K);
       std::string kernelName = getKernelName();
 
 // Perform CPU kernel
@@ -338,9 +336,7 @@ private:
         writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize,
                        sparsity_, iterations_, cpuResult.runtime, cpuResult
                        .gflops);
-        if (print_) {
-          std::cout << "\tCPU DONE" << std::endl;
-        }
+        if (print_) std::cout << "CPU DONE" << std::endl;
       }
 #endif
 
@@ -352,9 +348,7 @@ private:
       if (doGPU_) {
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
-        if (print_) std::cout << "\tAbout to init" << std::endl;
         gpu_.initialise(gpuOffloadType::once, M, N, K, sparsity_, type_);
-        if (print_) std::cout << "\tAbout to compute" << std::endl;
         gpuResult_once = gpu_.compute();
 
         gpuResult_once.gflops =
@@ -517,16 +511,16 @@ private:
 
     /** A function for calculating FLOPs performed by a SpGEMM.
      * C = alpha*AB + beta*C */
-    constexpr uint64_t calcFlops(const int M, const int N, const int K, const double SPARSITY) const {
+    constexpr uint64_t calcFlops(const int M, const int N, const int K) const {
       // Sparse Matrix x Dense Matrix is just a series of SpGEMV - one for each column
-      uint64_t NNZ = (uint64_t)((double)M * (double)K * (1.0 - SPARSITY));
+      uint64_t NNZ = (uint64_t)((double)M * (double)K * (1.0 - sparsity_));
       return 2 * NNZ * N;
     }
 
     /** A function for calculating the total GEMM problem size in KiB.
       Uses a single CSR format matrix: (M+1) + 2NNZ; and two dense matrices */
-    constexpr double calcKib(const int M, const int N, const int K, const double SPARSITY) const {
-      uint64_t NNZ = 1 + (uint64_t)((double)M * (double)K * (1.0 - SPARSITY));
+    constexpr double calcKib(const int M, const int N, const int K) const {
+      uint64_t NNZ = 1 + (uint64_t)((double)M * (double)K * (1.0 - sparsity_));
       uint64_t M_ = (uint64_t)M, N_ = (uint64_t)N, K_ = (uint64_t)K;
       uint64_t probSize = (M_ + 1) + (2 * NNZ) + (K_ * N_) + (M_ * N_);
       return ((double)(probSize * (sizeof(T))) / 1024);

@@ -257,11 +257,6 @@ void getParameters(int argc, char** argv) {
       if (++i >= argc) {
         std::cout << "ERROR - No matrix type specified" << std::endl;
         exit(1);
-      }
-    } else if (!strcmp(argv[i], "--output_dir") || !strcmp(argv[i], "-o")) {
-      if (++i >= argc) {
-        std::cout << "ERROR - No output directory specified" << std::endl;
-        exit(1);
       } else if (!strcmp(argv[i], "rmat")) {
         type = matrixType::rmat;
       } else if (!strcmp(argv[i], "random")) {
@@ -271,6 +266,12 @@ void getParameters(int argc, char** argv) {
                   << "'" << std::endl;
         exit(1);
       }
+    } else if (!strcmp(argv[i], "--output_dir") || !strcmp(argv[i], "-o")) {
+      if (++i >= argc) {
+        std::cout << "ERROR - No output directory specified" << std::endl;
+        exit(1);
+      }
+      CSV_DIR = argv[i];
     } else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       std::cout << std::endl;
       std::cout << "Usage: ./gpu-blob [OPTIONS]" << std::endl << std::endl;

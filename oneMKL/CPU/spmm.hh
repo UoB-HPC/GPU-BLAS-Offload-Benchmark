@@ -25,12 +25,10 @@ public:
     using spmm<T>::A_nnz_;
     using spmm<T>::B_nnz_;
     using spmm<T>::C_nnz_;
-    using spmm<T>::C_rows_;
-    using spmm<T>::C_cols_;
     using spmm<T>::C_vals_;
 
     void initialise(int m, int n, int k, double sparsity,
-                    bool binary = false) {
+                    matrixType type, bool binary = false) {
       m_ = m;
       n_ = n;
       k_ = k;
@@ -56,9 +54,9 @@ protected:
       A_rowse_ = new MKL_INT[m_ + 1];
 
       if (type_ == matrixType::rmat) {
-        rMatCSR<T, MKL_INT>(A_vals_, A_cols_, A_rowsb_, m_, k_, nnz_);
+        rMatCSR<T, MKL_INT>(A_vals_, A_cols_, A_rowsb_, m_, k_, A_nnz_);
       } else if (type_ == matrixType::random) {
-        randomCSR<T, MKL_INT>(A_vals_, A_cols_, A_rowsb_, m_, k_, nnz_);
+        randomCSR<T, MKL_INT>(A_vals_, A_cols_, A_rowsb_, m_, k_, A_nnz_);
       } else {
         std::cerr << "Unknown matrix type" << std::endl;
         exit(1);
@@ -76,9 +74,9 @@ protected:
       B_rowse_ = new MKL_INT[k_ + 1];
 
       if (type_ == matrixType::rmat) {
-        rMatCSR<T, MKL_INT>(B_vals_, B_cols_, B_rowsb_, k_, n_, nnz_, true);
+        rMatCSR<T, MKL_INT>(B_vals_, B_cols_, B_rowsb_, k_, n_, B_nnz_, true);
       } else if (type_ == matrixType::random) {
-        randomCSR<T, MKL_INT>(B_vals_, B_cols_, B_rowsb_, k_, n_, nnz_, true);
+        randomCSR<T, MKL_INT>(B_vals_, B_cols_, B_rowsb_, k_, n_, B_nnz_, true);
       } else {
         std::cerr << "Unknown matrix type" << std::endl;
         exit(1);

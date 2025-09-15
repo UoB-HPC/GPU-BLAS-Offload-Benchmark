@@ -106,8 +106,8 @@ public:
 protected:
     void toSparseFormat() override {
       if (type_ == matrixType::rmat) {
-        rmatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
-        rmatCSR<T, int64_t>(B_vals_, B_cols_, B_rows_, k_, n_, nnz_, true);
+        rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_);
+        rMatCSR<T, int64_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, true);
       } else if (type_ == matrixType::random) {
         randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_);
         randomCSR<T, int64_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, true);

@@ -27,6 +27,7 @@ public:
     void initialise(gpuOffloadType offload, int m, int n, int k,
                 double sparsity, matrixType type, 
                 bool binary = false) override {
+      // print_ = (m==480 && n==480 && k==30);
       // Perform set-up which doesn't need to happen every problem size change.
       if (firstRun_) {
         firstRun_ = false;
@@ -122,13 +123,15 @@ protected:
       }
       
       if (type_ == matrixType::rmat) {
-        rmatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
+        rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
       } else if (type_ == matrixType::random) {
         randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
       } else {
         std::cerr << "ERROR - Unknown matrix type" << std::endl;
         exit(1);
       }
+
+      if (print_) printInputMatrices();
     }
 
 private:
@@ -297,6 +300,7 @@ private:
     }
 
     void postCallKernelCleanup() override {
+      if (print_) printOutputMatrix();
       if (offload_ == gpuOffloadType::unified) {
         if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
         if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
@@ -325,6 +329,47 @@ private:
       }
     }
 
+    void printInputMatrices() {
+      std::cout << "Matrix A (CSR format):" << std::endl;
+      std::cout << "Rows: [";
+      for (int i = 0; i <= m_; i++) {
+        std::cout << A_rows_[i];
+        if (i < m_) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      std::cout << "Cols: [";
+      for (int i = 0; i < nnz_; i++) {
+        std::cout << A_cols_[i];
+        if (i < nnz_ - 1) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      std::cout << "Vals: [";
+      for (int i = 0; i < nnz_; i++) {
+        std::cout << A_vals_[i];
+        if (i < nnz_ - 1) std::cout << ", ";
+      }
+      std::cout << "]" << std::endl;
+      std::cout << "B: [";
+      for (int i = 0; i < k_ * n_; i++) {
+        std::cout << B_[i];
+        if (i == (m_ * n_) - 1) std::cout << "]" << std::endl;
+        else if (i % n_ == n_ - 1) std::cout << std::endl;
+        else if (i < k_ * n_ - 1) std::cout << ", ";
+      }
+    }
+
+    void printOutputMatrix() {
+      std::cout << "Matrix C: [";
+      for (int i = 0; i < m_ * n_; i++) {
+        std::cout << C_[i];
+        if (i == (m_ * n_) - 1) std::cout << "]" << std::endl;
+        else if (i % n_ == n_ - 1) std::cout << std::endl;
+        else if (i < m_ * n_ - 1) std::cout << ", ";
+      }
+    }
+
+    bool print_ = false;
+
     bool firstRun_ = true;
 
     /** The GPU Device. */
@@ -352,8 +397,6 @@ private:
 
     const T alpha = ALPHA;
     const T beta = BETA;
-
-    bool print_ = false;
 };
 }
 

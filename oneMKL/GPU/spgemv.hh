@@ -84,8 +84,8 @@ public:
       } else {
         x_ = sycl::malloc_host<T>(n_, gpuQueue_);
         y_ = sycl::malloc_host<T>(m_, gpuQueue_);
-        x_device_ = sycl::malloc_device<T>(n_, gpuQueue_, context_);
-        y_device_ = sycl::malloc_device<T>(m_, gpuQueue_, context_);
+        x_device_ = sycl::malloc_device<T>(n_, gpuQueue_);
+        y_device_ = sycl::malloc_device<T>(m_, gpuQueue_);
         if (!x_ || !y_) {
           std::cerr << "ERROR - Failed to allocate host memory" << std::endl;
           exit(1);
@@ -111,9 +111,9 @@ protected:
         A_vals_ = sycl::malloc_host<T>(nnz_, gpuQueue_);
         A_cols_ = sycl::malloc_host<int64_t>(nnz_, gpuQueue_);
         A_rows_ = sycl::malloc_host<int64_t>(m_ + 1, gpuQueue_);
-        A_vals_device_ = (T*)sycl::malloc_device(nnz_ * sizeof(T), gpuQueue_, context_);
-        A_cols_device_ = (int64_t*)sycl::malloc_device(nnz_ * sizeof(int64_t), gpuQueue_, context_);
-        A_rows_device_ = (int64_t*)sycl::malloc_device((m_ + 1) * sizeof(int64_t), gpuQueue_, context_);
+        A_vals_device_ = (T*)sycl::malloc_device(nnz_ * sizeof(T), gpuQueue_);
+        A_cols_device_ = (int64_t*)sycl::malloc_device(nnz_ * sizeof(int64_t), gpuQueue_);
+        A_rows_device_ = (int64_t*)sycl::malloc_device((m_ + 1) * sizeof(int64_t), gpuQueue_);
       }
 
       if (type_ == matrixType::rmat) {
@@ -133,15 +133,7 @@ protected:
         std::cout << "=============================================" << std::endl;
         std::cout << "                    INPUT"  << std::endl;
         std::cout << "_____________________________________________" << std::endl;
-        std::cout << "A (dense):" << std::endl;
-        std::cout << "[";
-        for (int i = 0; i < (m_ * n_); i++) {
-          std::cout << A_[i];
-          if (i == ((m_ * n_) - 1)) std::cout << "]" << std::endl;
-          else if ((i % n_) == (n_ - 1)) std::cout << std::endl << " ";
-          else std::cout << ", ";
-        }
-        
+               
         std::cout << "x:" << std::endl;
         std::cout << "[";
         for (int i = 0; i < n_; i++) {
@@ -238,8 +230,8 @@ private:
             std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;
           } catch (std::exception const &e) {
             std::cout << "\t\tCaught std exception:\n" << e.what() << std::endl;
-            main_queue.wait();
-            oneapi::mkl::sparse::release_matrix_handle(main_queue, &handle).wait();
+            gpuQueue_.wait();
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_);
             exit(1);
           }
           gpuQueue_.memcpy(y_, y_device_, sizeof(T) * m_);
@@ -289,8 +281,8 @@ private:
             std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;
           } catch (std::exception const &e) {
             std::cout << "\t\tCaught std exception:\n" << e.what() << std::endl;
-            main_queue.wait();
-            oneapi::mkl::sparse::release_matrix_handle(main_queue, &handle).wait();
+            gpuQueue_.wait();
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_);
             exit(1);
           }
           break;
@@ -351,8 +343,8 @@ private:
             std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;
           } catch (std::exception const &e) {
             std::cout << "\t\tCaught std exception:\n" << e.what() << std::endl;
-            main_queue.wait();
-            oneapi::mkl::sparse::release_matrix_handle(main_queue, &handle).wait();
+            gpuQueue_.wait();
+            oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_).wait();
             exit(1);
           }
           break;
@@ -459,7 +451,7 @@ private:
       gpuQueue_.wait_and_throw();
     }
 
-    bool print_ = true;
+    bool print_ = false;
 
     /** Whether the initialise function has been called before. */
     bool alreadyInitialised_ = false;

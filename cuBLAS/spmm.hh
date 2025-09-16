@@ -184,15 +184,29 @@ class spmm_gpu : public spmm<T> {
     // std::cout << "Init timings:" << std::endl;
     // std::cout << "\t\tAlloc:    " << alloc_time.count() << " s" << std::endl;
     cudaCheckError(cudaDeviceSynchronize());
+    int seedOffset = 0;
     if (type_ == matrixType::rmat) {
-      rMatCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_);
-      rMatCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, true);
+      rMatCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
+      rMatCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
     } else if (type_ == matrixType::random) {
-      randomCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_);
-      randomCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, true);
+      randomCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
+      randomCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
     } else {
       std::cerr << "Matrix type not supported" << std::endl;
       exit(1);
+    }
+
+    while (calcCNNZ<int32_t>(m_, A_nnz_, A_rows_, A_cols_, k_, B_nnz_, B_rows_, B_cols_) == 0) {
+      if (type_ == matrixType::rmat) {
+        rMatCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
+        rMatCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
+      } else if (type_ == matrixType::random) {
+        randomCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
+        randomCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
+      } else {
+        std::cerr << "Matrix type not supported" << std::endl;
+        exit(1);
+      }
     }
     // std::chrono::time_point<std::chrono::high_resolution_clock> rmat1 =
     //         std::chrono::high_resolution_clock::now();

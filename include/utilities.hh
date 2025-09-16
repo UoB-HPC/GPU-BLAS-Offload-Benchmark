@@ -53,7 +53,6 @@
 // Define seed for random number generation - use seeded srand() to ensure
 // inputs across libraries are consistent & comparable
 const unsigned int SEED = 19123005;
-const unsigned int SEED2 = 19123027;
 
 // Define enum class for GPU offload type
 enum class gpuOffloadType : uint8_t {
@@ -243,7 +242,7 @@ void checkCSRValid(uint64_t nRows,
 template <typename T, typename int_type>
 void rMatCSR(T* vals, int_type* cols, int_type* rows,
              int nrows, int ncols, int nnz, 
-             bool isB = false,
+             unsigned int seed = SEED,
              double a = 0.57,
              double b = 0.19,
              double c = 0.19,
@@ -260,10 +259,10 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
 
   // Set up RNG.  Uses srand for value generation, and uniform[0,1)
   // for quadrant selection
-  srand((isB ? SEED2 : SEED));
+  srand(seed);
   std::default_random_engine gen;
   std::uniform_real_distribution<double> dist(0.0, 1.0);
-  gen.seed((isB ? SEED2 : SEED));
+  gen.seed(seed);
 
 
   // Temporary storage of sampled edges as (row, col) pairs.
@@ -413,7 +412,7 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
 
 template <typename T, typename int_type>
 void randomCSR(T* vals, int_type* cols, int_type* rows,
-               int nrows, int ncols, int nnz, bool isB = false) {
+               int nrows, int ncols, int nnz, unsigned int seed = SEED) {
   if (nnz >= nrows * ncols) {
     std::cerr << "ERROR: nnz exceeds maximum possible non-zeros." << std::endl;
     return;
@@ -422,10 +421,10 @@ void randomCSR(T* vals, int_type* cols, int_type* rows,
     return;
   }
 
-  srand((isB ? SEED2 : SEED));
+  srand(seed);
   std::default_random_engine gen;
   std::uniform_int_distribution<int_type> col_dist(0, ncols - 1);
-  gen.seed((isB ? SEED2 : SEED));
+  gen.seed(seed);
 
   // Generate number of non-zeros per row
   std::vector<int_type> row_counts(nrows, 0);
@@ -474,4 +473,24 @@ void randomCSR(T* vals, int_type* cols, int_type* rows,
     }
   }
   checkCSRValid(nrows, ncols, nnz, rows, cols, vals);
+}
+
+template <typename int_type>
+int64_t calcCNNZ(int_type A_n_rows, int_type A_nnz, int_type* A_rows, int_type* A_cols,
+                 int_type B_n_cols, int_type B_nnz, int_type* B_rows, int_type* B_cols) {
+  int64_t C_nnz = 0;
+
+  for (int_type i = 0; i < A_n_rows; i++) {
+    for (int_type j = A_rows[i]; j < A_rows[i + 1]; j++) {
+      int_type a_col = A_cols[j];
+      for (int_type k = B_rows[a_col]; k < B_rows[a_col + 1]; k++) {
+        if (B_cols[k] == i) {
+          C_nnz++;
+          break;
+        }
+      }
+    }
+  }
+
+  return C_nnz;
 }

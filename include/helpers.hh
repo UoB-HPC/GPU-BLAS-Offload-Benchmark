@@ -18,8 +18,7 @@ std::ofstream initCSVFile(const std::string filename) {
   std::ofstream newFile(filename);
 
   newFile << "Device,Kernel,M,N,K,Total Problem Size (KiB),sparsity,Iterations,"
-             "Total Seconds,GFLOP/s"
-          << std::endl;
+             "Total Seconds,GFLOP/s" << std::endl;
 
   return newFile;
 }
@@ -32,20 +31,13 @@ void writeLineToCsv(std::ofstream& file, const std::string device,
                     sparsity, const int iters, const double totalTime,
                     const double gflops) {
   if (!file.is_open()) {
-    std::cout << "ERROR - Attempted to write line to a closed CSV file."
-              << std::endl;
+    std::cout << "ERROR - Attempted to write line to a closed CSV file." << std::endl;
     exit(1);
   }
-  file << device << "," << kernel << "," << M << "," << N << "," << K << ","
-       << std::fixed << std::setprecision(3) << totalProbSize << ","
-       << std::fixed << std::setprecision(8) << sparsity << "," << iters
-       << "," << std::fixed << std::setprecision(5) << totalTime << ","
-       << std::fixed << std::setprecision(3) << gflops << std::endl;
+  file << device << "," << kernel << "," << M << "," << N << "," << K << "," << std::fixed << std::setprecision(3) << totalProbSize << "," << std::fixed << std::setprecision(8) << sparsity << "," << iters << "," << std::fixed << std::setprecision(5) << totalTime << "," << std::fixed << std::setprecision(3) << gflops << std::endl;
 }
 
 /** Calculate average GFLOPs. */
 double calcGflops(const uint64_t flops, const int iters, const double seconds) {
-  return (seconds == 0.0)
-             ? 0.0
-             : ((double)(flops * iters) / seconds) * 1e-9;
+  return (seconds == 0.0) ? 0.0 : ((double)(flops * iters) / seconds) * 1e-9;
 }

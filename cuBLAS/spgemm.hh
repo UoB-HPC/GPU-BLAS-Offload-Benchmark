@@ -32,6 +32,26 @@ public:
 
   void initialise(gpuOffloadType offload, int m, int n, int k,
                   double sparsity, matrixType type, bool binary = false) override {
+    if (!alreadyInitialised_) {
+      alreadyInitialised_ = true;
+      // Perform set-up which doesn't need to happen every problem size change.
+      // Create a handle for CUBLAS
+      cublasCheckError(cublasCreate(&handle_));
+
+      // Default maths mode will enable tensor cores where possible
+      cublasCheckError(cublasSetMathMode(handle_, CUBLAS_DEFAULT_MATH));
+
+      // Allow atomics.  This might mess with checksum -- investigate
+      cublasCheckError(cublasSetAtomicsMode(handle_, CUBLAS_ATOMICS_ALLOWED));
+
+      // Get device identifier
+      cudaCheckError(cudaGetDevice(&gpuDevice_));
+
+      // Initialise 3 streams to asynchronously move data between host and
+      // device
+      cudaCheckError(cudaStreamCreate(&stream_));
+    }
+
     if (print_) {
       switch (offload) {
         case gpuOffloadType::always: {
@@ -79,13 +99,6 @@ public:
       std::cout << "INVALID DATA TYPE PASSED TO cuSPARSE" << std::endl;
       exit(1);
     }
-
-    if (print_) std::cout << "\tSetting up cuda streams" << std::endl;
-    // Get device identifier
-    cudaCheckError(cudaGetDevice(&gpuDevice_));
-
-    // Initialise 3 streams to asynchronously move data between host and device
-    cudaCheckError(cudaStreamCreate(&stream_));
 
     if (offload_ == gpuOffloadType::unified) {
       if (print_) std::cout << "\tAllocating unified memory" << std::endl;
@@ -170,12 +183,11 @@ private:
       }
       case gpuOffloadType::once: {
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
-        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, nnz_ * sizeof(T), cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, nnz_ * sizeof(int64_t), cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, (m_ + 1) * sizeof(int64_t), cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(B_dev_, B_, (k_ * n_) * sizeof(T), cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(C_dev_, C_, (m_ * n_) * sizeof(T), cudaMemcpyHostToDevice));
-        cudaCheckError(cudaDeviceSynchronize());
+        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, nnz_ * sizeof(T), cudaMemcpyHostToDevice, stream_));
+        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, nnz_ * sizeof(int64_t), cudaMemcpyHostToDevice, stream_));
+        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, (m_ + 1) * sizeof(int64_t), cudaMemcpyHostToDevice, stream_));
+        cudaCheckError(cudaMemcpy(B_dev_, B_, (k_ * n_) * sizeof(T), cudaMemcpyHostToDevice, stream_));
+        cudaCheckError(cudaMemcpy(C_dev_, C_, (m_ * n_) * sizeof(T), cudaMemcpyHostToDevice, stream_));
         break;
       }
       case gpuOffloadType::unified: {
@@ -196,20 +208,11 @@ private:
       case gpuOffloadType::always: {
         // Move over data
         if (print_) std::cout << "\tMoving data to GPU" << std::endl;
-        cudaCheckError(cudaMemcpyAsync(A_vals_dev_, A_vals_, (sizeof(T) * nnz_),
-                                       cudaMemcpyHostToDevice, stream_));
-        cudaCheckError(cudaMemcpyAsync(A_cols_dev_, A_cols_,
-                                       (sizeof(int64_t) * nnz_),
-                                       cudaMemcpyHostToDevice, stream_));
-        cudaCheckError(cudaMemcpyAsync(A_rows_dev_, A_rows_,
-                                       (sizeof(int64_t) * (m_ + 1)),
-                                       cudaMemcpyHostToDevice, stream_));
-
-        cudaCheckError(cudaMemcpyAsync(B_dev_, B_, (sizeof(T) * k_ * n_),
-                                       cudaMemcpyHostToDevice, stream_));
-
-        cudaCheckError(cudaMemcpyAsync(C_dev_, C_, (sizeof(T) * m_ * n_),
-                                       cudaMemcpyHostToDevice, stream_));
+        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, nnz_ * sizeof(T), cudaMemcpyHostToDevice, stream_));
+        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, nnz_ * sizeof(int64_t), cudaMemcpyHostToDevice, stream_));
+        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, (m_ + 1) * sizeof(int64_t), cudaMemcpyHostToDevice, stream_));
+        cudaCheckError(cudaMemcpy(B_dev_, B_, (k_ * n_) * sizeof(T), cudaMemcpyHostToDevice, stream_));
+        cudaCheckError(cudaMemcpy(C_dev_, C_, (m_ * n_) * sizeof(T), cudaMemcpyHostToDevice, stream_));
 
         // Set up descriptors
         if (print_) std::cout << "\tCreating matrix descriptor for A" << std::endl;
@@ -296,11 +299,12 @@ private:
         cusparseCheckError(cusparseDestroyDnMat(C_descr_));
 
         // Free up the temporary buffer
-          if (bufferSize > 0) cudaCheckError(cudaFree(dBuffer));
+        if (bufferSize > 0) cudaCheckError(cudaFree(dBuffer));
 
         // Move result back to CPU
         cudaCheckError(cudaMemcpyAsync(C_, C_dev_, (sizeof(T) * m_ * n_),
                                        cudaMemcpyDeviceToHost, stream_));
+        cudaCheckError(cudaDeviceSynchronize());
         break;
       }
       case gpuOffloadType::once: {
@@ -494,6 +498,7 @@ private:
         // Move result back to CPU
         cudaCheckError(cudaMemcpyAsync(C_, C_dev_, (sizeof(T) * m_ * n_),
                                        cudaMemcpyDeviceToHost, stream_));
+        cudaCheckError(cudaDeviceSynchronize());
         break;
       }
       case gpuOffloadType::unified: {
@@ -501,6 +506,7 @@ private:
         // Move result back to CPU
         cudaCheckError(cudaMemPrefetchAsync(C_, sizeof(T) * m_ * n_, 
                                             cudaCpuDeviceId, stream_));
+        cudaCheckError(cudaDeviceSynchronize());
         break;
       }
     }
@@ -528,12 +534,11 @@ private:
 
     // Destroy the handle
     cusparseCheckError(cusparseDestroy(handle_));
-
-    // Destroy streams after use
-    cudaCheckError(cudaStreamDestroy(stream_));
   }
 
   bool print_ = false;
+
+  bool alreadyInitialised_ = false;
 
   /** Handle used when calling cuBLAS. */
   cusparseHandle_t handle_;

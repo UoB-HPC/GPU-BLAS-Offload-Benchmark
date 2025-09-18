@@ -56,8 +56,8 @@ public:
 #endif
     {
       static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
-      "ERROR - doSpgemm can only be constructed using one of the "
-      "following types: [float, double].");
+                    "ERROR - doSpgemm can only be constructed using one of the "
+                    "following types: [float, double].");
     }
 
     void collectData() {
@@ -72,7 +72,6 @@ public:
       prev_gpuResult_unified = time_checksum_gflop();
       std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                                           "_square_square_M=N=K.csv");
-
       if (print_) std::cout << "============ SQUARE x SQUARE ==============" << std::endl;
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
         // M = dim, N = dim, K = dim;
@@ -83,9 +82,9 @@ public:
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-      // Print offload results to stdout
-      printOffloadThreshold("Square x Square (M=N=K)");
-    }
+        // Print offload results to stdout
+        printOffloadThreshold("Square x Square (M=N=K)");
+      }
 #endif
 
       // Rectangular Problem Sizes:
@@ -114,9 +113,9 @@ public:
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-    // Print offload results to stdout
-    printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, M=16K)");
-  }
+        // Print offload results to stdout
+        printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, M=16K)");
+      }
 #endif
 
       // Tall and thin x Short and wide
@@ -141,9 +140,9 @@ public:
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-    // Print offload results to stdout
-    printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, K=32)");
-  }
+        // Print offload results to stdout
+        printOffloadThreshold("Tall-and-Thin x Short-and-Wide (M=N, K=32)");
+      }
 #endif
 
       // Short and wide x Tall and thin
@@ -171,9 +170,9 @@ public:
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-    // Print offload results to stdout
-    printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N, K=16M)");
-  }
+        // Print offload results to stdout
+        printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N, K=16M)");
+      }
 #endif
 
       // Short and wide x Tall and thin
@@ -198,9 +197,9 @@ public:
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-    // Print offload results to stdout
-    printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N=32, K)");
-  }
+        // Print offload results to stdout
+        printOffloadThreshold("Short-and-Wide x Tall-and-Thin (M=N=32, K)");
+      }
 #endif
 
       // Tall and Thin x Square
@@ -228,9 +227,9 @@ public:
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-    // Print offload results to stdout
-    printOffloadThreshold("Tall-and-Thin x Square (K=N, M=16K)");
-  }
+        // Print offload results to stdout
+        printOffloadThreshold("Tall-and-Thin x Square (K=N, M=16K)");
+      }
 #endif
 
       // Tall and Thin x Square
@@ -255,9 +254,9 @@ public:
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-    // Print offload results to stdout
-    printOffloadThreshold("Tall-and-Thin x Square (M, K=N=32)");
-  }
+        // Print offload results to stdout
+        printOffloadThreshold("Tall-and-Thin x Square (M, K=N=32)");
+      }
 #endif
 
       // Square x Short and Wide
@@ -285,9 +284,9 @@ public:
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-    // Print offload results to stdout
-    printOffloadThreshold("Square x Short-and-Wide (M=K, N=16K)");
-  }
+        // Print offload results to stdout
+        printOffloadThreshold("Square x Short-and-Wide (M=K, N=16K)");
+      }
 #endif
       // Square x Short and Wide
       // Re-initialise offload threshold structures & previous results
@@ -303,15 +302,15 @@ public:
       if (print_) std::cout << "============ SQUARE x SHORT/WIDE ==============" << std::endl;
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = dim, K = 32;
-        if (print_) std::cout << "32x32 . 32x" << dim << std::endl;
+          if (print_) std::cout << "32x32 . 32x" << dim << std::endl;
           callKernels(csvFile, 32, dim, 32);
         }
       }
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-    // Print offload results to stdout
-    printOffloadThreshold("Square x Short-and-Wide (M=K=32, N)");
-  }
+        // Print offload results to stdout
+        printOffloadThreshold("Square x Short-and-Wide (M=K=32, N)");
+      }
 #endif
       // Close file
       csvFile.close();
@@ -350,24 +349,20 @@ private:
         // after
         gpu_.initialise(gpuOffloadType::once, M, N, K, sparsity_, type_);
         gpuResult_once = gpu_.compute();
-
-        gpuResult_once.gflops =
-            calcGflops(flops, iterations_, gpuResult_once.runtime);
+        gpuResult_once.gflops = calcGflops(flops, iterations_, gpuResult_once.runtime);
         if (print_) std::cout << "GPU-ONCE DONE" << std::endl;
 
         // - ALWAYS: Offload to/from GPU every iteration
         gpu_.initialise(gpuOffloadType::always, M, N, K, sparsity_, type_);
         gpuResult_always = gpu_.compute();
-        gpuResult_always.gflops =
-            calcGflops(flops, iterations_, gpuResult_always.runtime);
+        gpuResult_always.gflops = calcGflops(flops, iterations_, gpuResult_always.runtime);
         if (print_) std::cout << "GPU-ALWAYS DONE" << std::endl;
 
         // - UNIFIED : data passed from host to device (and device to host) as
         //             needed
         gpu_.initialise(gpuOffloadType::unified, M, N, K, sparsity_, type_);
         gpuResult_unified = gpu_.compute();
-        gpuResult_unified.gflops =
-            calcGflops(flops, iterations_, gpuResult_unified.runtime);
+        gpuResult_unified.gflops = calcGflops(flops, iterations_, gpuResult_unified.runtime);
         if (print_) std::cout << "GPU-UNIFIED DONE" << std::endl;
 
         // Write results to CSV file
@@ -385,28 +380,28 @@ private:
 
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
-      // Make sure all checksums match if CPU and GPU kernels are run.
-      //  - The majority of BLAS Libraries guarentee the same result if a
-      //  function
-      //    is called multiple times. Given all input matrices are identical for
-      //    each GPU offload type, we need only to compare the CPU and GPU
-      //    checksums.
-      checkChecksums(cpuResult, gpuResult_once, gpuResult_always,
-                     gpuResult_unified, M, N, K);
+        // Make sure all checksums match if CPU and GPU kernels are run.
+        //  - The majority of BLAS Libraries guarentee the same result if a
+        //  function
+        //    is called multiple times. Given all input matrices are identical for
+        //    each GPU offload type, we need only to compare the CPU and GPU
+        //    checksums.
+        checkChecksums(cpuResult, gpuResult_once, gpuResult_always,
+                      gpuResult_unified, M, N, K);
 
-      // Check if offload structs should be reset
-      checkOffloadStructReset(cpuResult, gpuResult_once, gpuResult_always,
-                              gpuResult_unified);
+        // Check if offload structs should be reset
+        checkOffloadStructReset(cpuResult, gpuResult_once, gpuResult_always,
+                                gpuResult_unified);
 
-      // Check if offload threshold has been achieved for each GPU offload type.
-      updateOffloadStructs(cpuResult, gpuResult_once, gpuResult_always,
-                           gpuResult_unified, M, N, K, probSize);
+        // Check if offload threshold has been achieved for each GPU offload type.
+        updateOffloadStructs(cpuResult, gpuResult_once, gpuResult_always,
+                            gpuResult_unified, M, N, K, probSize);
 
-      // Update previous results
-      prev_gpuResult_once = gpuResult_once;
-      prev_gpuResult_always = gpuResult_always;
-      prev_gpuResult_unified = gpuResult_unified;
-    }
+        // Update previous results
+        prev_gpuResult_once = gpuResult_once;
+        prev_gpuResult_always = gpuResult_always;
+        prev_gpuResult_unified = gpuResult_unified;
+      }
 #endif
     }
 
@@ -416,8 +411,8 @@ private:
     void checkChecksums(time_checksum_gflop cpuResult,
                         time_checksum_gflop gpuResult_once,
                         time_checksum_gflop gpuResult_always,
-                        time_checksum_gflop gpuResult_unified, const int M,
-                        const int N, const int K) {
+                        time_checksum_gflop gpuResult_unified, 
+                        const int M, const int N, const int K) {
       // Ensure that each checksum difference is less than 0.1%
      double hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
      if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) *

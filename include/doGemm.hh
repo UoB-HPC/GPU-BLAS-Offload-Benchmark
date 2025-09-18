@@ -56,9 +56,6 @@ class doGemm {
 
   /** Run all problem types and write data to CSV files. */
   void collectData() {
-    // ToDo -- I've hard coded false here as kernel selection was not working
-    //  .  Needs to be fixed
-
     // Square Problem Sizes...
     // Re-initialise offload threshold structures
     cpuGpu_always_ = cpuGpu_offloadThreshold();
@@ -387,8 +384,8 @@ class doGemm {
   void checkChecksums(time_checksum_gflop cpuResult,
                       time_checksum_gflop gpuResult_once,
                       time_checksum_gflop gpuResult_always,
-                      time_checksum_gflop gpuResult_unified, const int M,
-                      const int N, const int K) {
+                      time_checksum_gflop gpuResult_unified, 
+                      const int M, const int N, const int K) {
     // Ensure that each checksum difference is less than 0.1%
     double hundredOverChecksum = 100 / std::fabs(cpuResult.checksum);
     if (((std::fabs(cpuResult.checksum - gpuResult_once.checksum) *
@@ -397,21 +394,12 @@ class doGemm {
           hundredOverChecksum)) > 0.1 &&
         ((std::fabs(cpuResult.checksum - gpuResult_unified.checksum) *
           hundredOverChecksum)) > 0.1) {
-      std::cerr << "ERROR - " << getKernelName()
-                << " kernel checksums do not match:\n\tInput "
-                   "dimensions: M="
-                << M << ", N=" << N << ", K=" << K << std::endl;
-      std::cerr << std::setprecision(10)
-                << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
-      std::cerr << std::setprecision(10)
-                << "\tGPU (Once) Checksum = " << gpuResult_once.checksum
-                << std::endl;
-      std::cerr << std::setprecision(10)
-                << "\tGPU (Always) Checksum = " << gpuResult_always.checksum
-                << std::endl;
-      std::cerr << std::setprecision(10)
-                << "\tGPU (Unified) Checksum = " << gpuResult_unified.checksum
-                << std::endl;
+      std::cerr << "ERROR - " << getKernelName() << " kernel checksums do not match:\n\tInput "
+                   "dimensions: M=" << M << ", N=" << N << ", K=" << K << std::endl;
+      std::cerr << std::setprecision(10) << "\tCPU Checksum = " << cpuResult.checksum << std::endl;
+      std::cerr << std::setprecision(10) << "\tGPU (Once) Checksum = " << gpuResult_once.checksum << std::endl;
+      std::cerr << std::setprecision(10) << "\tGPU (Always) Checksum = " << gpuResult_always.checksum << std::endl;
+      std::cerr << std::setprecision(10) << "\tGPU (Unified) Checksum = " << gpuResult_unified.checksum << std::endl;
       exit(1);
     }
   }
@@ -535,8 +523,7 @@ class doGemm {
     std::stringstream probSize_o;
     std::stringstream gpuGflops_o;
     std::stringstream cpuGflops_o;
-    probSize_o << std::fixed << std::setprecision(2)
-               << cpuGpu_once_.probSize_kib;
+    probSize_o << std::fixed << std::setprecision(2) << cpuGpu_once_.probSize_kib;
     gpuGflops_o << std::fixed << std::setprecision(2) << cpuGpu_once_.gpuGflops;
     cpuGflops_o << std::fixed << std::setprecision(2) << cpuGpu_once_.cpuGflops;
     if (cpuGpu_once_.M == 0) {
@@ -555,12 +542,9 @@ class doGemm {
     std::stringstream probSize_a;
     std::stringstream gpuGflops_a;
     std::stringstream cpuGflops_a;
-    probSize_a << std::fixed << std::setprecision(2)
-               << cpuGpu_always_.probSize_kib;
-    gpuGflops_a << std::fixed << std::setprecision(2)
-                << cpuGpu_always_.gpuGflops;
-    cpuGflops_a << std::fixed << std::setprecision(2)
-                << cpuGpu_always_.cpuGflops;
+    probSize_a << std::fixed << std::setprecision(2) << cpuGpu_always_.probSize_kib;
+    gpuGflops_a << std::fixed << std::setprecision(2) << cpuGpu_always_.gpuGflops;
+    cpuGflops_a << std::fixed << std::setprecision(2) << cpuGpu_always_.cpuGflops;
     if (cpuGpu_always_.M == 0) {
       // No offload threshold found
       rows.push_back({"GPU (Offload Always)", std::to_string(0),
@@ -577,12 +561,9 @@ class doGemm {
     std::stringstream probSize_u;
     std::stringstream gpuGflops_u;
     std::stringstream cpuGflops_u;
-    probSize_u << std::fixed << std::setprecision(2)
-               << cpuGpu_unified_.probSize_kib;
-    gpuGflops_u << std::fixed << std::setprecision(2)
-                << cpuGpu_unified_.gpuGflops;
-    cpuGflops_u << std::fixed << std::setprecision(2)
-                << cpuGpu_unified_.cpuGflops;
+    probSize_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.probSize_kib;
+    gpuGflops_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.gpuGflops;
+    cpuGflops_u << std::fixed << std::setprecision(2) << cpuGpu_unified_.cpuGflops;
     if (cpuGpu_unified_.M == 0) {
       // No offload threshold found
       rows.push_back({"GPU (Unified Memory)", std::to_string(0),

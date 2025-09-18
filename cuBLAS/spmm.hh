@@ -41,6 +41,23 @@ class spmm_gpu : public spmm<T> {
   void initialise(gpuOffloadType offload, int n, int m, int k, 
                   double sparsity, matrixType type, 
                   bool binary = false) override {
+    if (!alreadyInitialised_) {
+      alreadyInitialised_ = true;
+      cusparseCheckError(cusparseCreate(&handle_));
+      
+      cudaCheckError(cudaStreamCreate(&s1_));
+      cudaCheckError(cudaStreamCreate(&s2_));
+      cudaCheckError(cudaStreamCreate(&s3_));
+      cudaCheckError(cudaStreamCreate(&s4_));
+      cudaCheckError(cudaStreamCreate(&s5_));
+      cudaCheckError(cudaStreamCreate(&s6_));
+
+      cusparseCheckError(cusparseSetStream(handle_, s1_));
+
+      // Get device identifier
+      cudaCheckError(cudaGetDevice(&gpuDevice_));
+    }                
+
     if (print_) {
       switch (offload) {
         case gpuOffloadType::always: {
@@ -81,18 +98,6 @@ class spmm_gpu : public spmm<T> {
       std::cout << "INVALID DATA TYPE PASSED TO cuSPARSE" << std::endl;
       exit(1);
     }
-
-    if (print_) std::cout << "\tSetting up cuda streams" << std::endl;
-    // Get device identifier
-    cudaCheckError(cudaGetDevice(&gpuDevice_));
-
-    // Initialise 3 streams to asynchronously move data between host and device
-    cudaCheckError(cudaStreamCreate(&s1_));
-    cudaCheckError(cudaStreamCreate(&s2_));
-    cudaCheckError(cudaStreamCreate(&s3_));
-
-    if (print_) std::cout << "\tAllocating handle" << std::endl;
-    cusparseCheckError(cusparseCreate(&handle_));
 
     initInputMatrices();
 
@@ -229,13 +234,12 @@ class spmm_gpu : public spmm<T> {
       }
       case gpuOffloadType::once: {
         if (print_) std::cout << "\tCopying data to GPU" << std::endl;
-        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, sizeof(T) * A_nnz_, cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, sizeof(int32_t) * A_nnz_, cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, sizeof(int32_t) * (m_ + 1), cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(B_vals_dev_, B_vals_, sizeof(T) * B_nnz_, cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(B_cols_dev_, B_cols_, sizeof(int32_t) * B_nnz_, cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(B_rows_dev_, B_rows_, sizeof(int32_t) * (k_ + 1), cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(C_rows_dev_, C_rows_32_, sizeof(int32_t) * (m_ + 1), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpyAsync(A_vals_dev_, A_vals_, sizeof(T) * A_nnz_, cudaMemcpyHostToDevice, s1_));
+        cudaCheckError(cudaMemcpyAsync(A_cols_dev_, A_cols_, sizeof(int32_t) * A_nnz_, cudaMemcpyHostToDevice, s2_));
+        cudaCheckError(cudaMemcpyAsync(A_rows_dev_, A_rows_, sizeof(int32_t) * (m_ + 1), cudaMemcpyHostToDevice, s3_));
+        cudaCheckError(cudaMemcpyAsync(B_vals_dev_, B_vals_, sizeof(T) * B_nnz_, cudaMemcpyHostToDevice, s4_));
+        cudaCheckError(cudaMemcpyAsync(B_cols_dev_, B_cols_, sizeof(int32_t) * B_nnz_, cudaMemcpyHostToDevice, s5_));
+        cudaCheckError(cudaMemcpyAsync(B_rows_dev_, B_rows_, sizeof(int32_t) * (k_ + 1), cudaMemcpyHostToDevice, s6_));
         cudaCheckError(cudaDeviceSynchronize());
         break;
       }
@@ -243,12 +247,11 @@ class spmm_gpu : public spmm<T> {
         if (print_) std::cout << "\tPrefetching data to GPU" << std::endl;
         // Prefetch memory to device
         cudaCheckError(cudaMemPrefetchAsync(A_vals_, sizeof(T) * A_nnz_, gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_cols_, sizeof(int32_t) * A_nnz_, gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(A_rows_, sizeof(int32_t) * (m_ + 1), gpuDevice_, s1_));
-        cudaCheckError(cudaMemPrefetchAsync(B_vals_, sizeof(T) * B_nnz_, gpuDevice_, s2_));
-        cudaCheckError(cudaMemPrefetchAsync(B_cols_, sizeof(int32_t) * B_nnz_, gpuDevice_, s2_));
-        cudaCheckError(cudaMemPrefetchAsync(B_rows_, sizeof(int32_t) * (k_ + 1), gpuDevice_, s2_));
-        cudaCheckError(cudaMemPrefetchAsync(C_rows_32_, sizeof(int32_t) * (m_ + 1), gpuDevice_, s3_));
+        cudaCheckError(cudaMemPrefetchAsync(A_cols_, sizeof(int32_t) * A_nnz_, gpuDevice_, s2_));
+        cudaCheckError(cudaMemPrefetchAsync(A_rows_, sizeof(int32_t) * (m_ + 1), gpuDevice_, s3_));
+        cudaCheckError(cudaMemPrefetchAsync(B_vals_, sizeof(T) * B_nnz_, gpuDevice_, s4_));
+        cudaCheckError(cudaMemPrefetchAsync(B_cols_, sizeof(int32_t) * B_nnz_, gpuDevice_, s5_));
+        cudaCheckError(cudaMemPrefetchAsync(B_rows_, sizeof(int32_t) * (k_ + 1), gpuDevice_, s6_));
         cudaCheckError(cudaDeviceSynchronize());
         break;
       }
@@ -268,13 +271,12 @@ class spmm_gpu : public spmm<T> {
         }
 
         if (print_) std::cout << "\tCopying data to GPU" << std::endl;
-        cudaCheckError(cudaMemcpy(A_vals_dev_, A_vals_, sizeof(T) * A_nnz_, cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_cols_dev_, A_cols_, sizeof(int32_t) * A_nnz_, cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(A_rows_dev_, A_rows_, sizeof(int32_t) * (m_ + 1), cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(B_vals_dev_, B_vals_, sizeof(T) * B_nnz_, cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(B_cols_dev_, B_cols_, sizeof(int32_t) * B_nnz_, cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(B_rows_dev_, B_rows_, sizeof(int32_t) * (k_ + 1), cudaMemcpyHostToDevice));
-        cudaCheckError(cudaMemcpy(C_rows_dev_, C_rows_32_, sizeof(int32_t) * (m_ + 1), cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpyAsync(A_vals_dev_, A_vals_, sizeof(T) * A_nnz_, cudaMemcpyHostToDevice, s1_));
+        cudaCheckError(cudaMemcpyAsync(A_cols_dev_, A_cols_, sizeof(int32_t) * A_nnz_, cudaMemcpyHostToDevice, s2_));
+        cudaCheckError(cudaMemcpyAsync(A_rows_dev_, A_rows_, sizeof(int32_t) * (m_ + 1), cudaMemcpyHostToDevice, s3_));
+        cudaCheckError(cudaMemcpyAsync(B_vals_dev_, B_vals_, sizeof(T) * B_nnz_, cudaMemcpyHostToDevice, s4_));
+        cudaCheckError(cudaMemcpyAsync(B_cols_dev_, B_cols_, sizeof(int32_t) * B_nnz_, cudaMemcpyHostToDevice, s5_));
+        cudaCheckError(cudaMemcpyAsync(B_rows_dev_, B_rows_, sizeof(int32_t) * (k_ + 1), cudaMemcpyHostToDevice, s6_));
         cudaCheckError(cudaDeviceSynchronize());
 
         // Make matrix descriptors
@@ -430,9 +432,9 @@ class spmm_gpu : public spmm<T> {
         C_allocated = true;
 
         if (print_) std::cout << "\tCopying results back to the CPU" << std::endl;
-        cudaCheckError(cudaMemcpy(C_rows_32_, C_rows_dev_, sizeof(int32_t) * (m_ + 1), cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(C_cols_32_, C_cols_dev_, sizeof(int32_t) * C_nnz_, cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(C_vals_, C_vals_dev_, sizeof(T) * C_nnz_, cudaMemcpyDeviceToHost));
+        cudaCheckError(cudaMemcpyAsync(C_rows_32_, C_rows_dev_, sizeof(int32_t) * (m_ + 1), cudaMemcpyDeviceToHost), s1_);
+        cudaCheckError(cudaMemcpyAsync(C_cols_32_, C_cols_dev_, sizeof(int32_t) * C_nnz_, cudaMemcpyDeviceToHost), s2_);
+        cudaCheckError(cudaMemcpyAsync(C_vals_, C_vals_dev_, sizeof(T) * C_nnz_, cudaMemcpyDeviceToHost), s3_);
         cudaCheckError(cudaDeviceSynchronize());
 
         cudaCheckError(cudaFree(C_vals_dev_));
@@ -768,9 +770,9 @@ class spmm_gpu : public spmm<T> {
         C_cols_32_ = (int32_t*)malloc(sizeof(int32_t) * C_nnz_);
         
         if (print_) std::cout << "\tCopying results back to the CPU" << std::endl;
-        cudaCheckError(cudaMemcpy(C_rows_32_, C_rows_dev_, sizeof(int32_t) * (m_ + 1), cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(C_cols_32_, C_cols_dev_, sizeof(int32_t) * C_nnz_, cudaMemcpyDeviceToHost));
-        cudaCheckError(cudaMemcpy(C_vals_, C_vals_dev_, sizeof(T) * C_nnz_, cudaMemcpyDeviceToHost));
+        cudaCheckError(cudaMemcpyAsync(C_rows_32_, C_rows_dev_, sizeof(int32_t) * (m_ + 1), cudaMemcpyDeviceToHost), s1_);
+        cudaCheckError(cudaMemcpyAsync(C_cols_32_, C_cols_dev_, sizeof(int32_t) * C_nnz_, cudaMemcpyDeviceToHost), s2_);
+        cudaCheckError(cudaMemcpyAsync(C_vals_, C_vals_dev_, sizeof(T) * C_nnz_, cudaMemcpyDeviceToHost), s3_);
         cudaCheckError(cudaDeviceSynchronize());
 
         if (print_) std::cout << "\tFreeing device C arrays" << std::endl;
@@ -904,6 +906,8 @@ class spmm_gpu : public spmm<T> {
 
   bool print_ = false;
 
+  bool alreadyInitialised_ = false;
+
   /** Handle used when calling cuBLAS. */
   cusparseHandle_t handle_;
 
@@ -912,6 +916,9 @@ class spmm_gpu : public spmm<T> {
   cudaStream_t s1_;
   cudaStream_t s2_;
   cudaStream_t s3_;
+  cudaStream_t s4_;
+  cudaStream_t s5_;
+  cudaStream_t s6_;
 
   /** The ID of the target GPU Device. */
   int gpuDevice_;

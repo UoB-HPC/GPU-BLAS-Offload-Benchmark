@@ -864,14 +864,6 @@ class spmm_gpu : public spmm<T> {
         break;
       }
     }
-    if (print_) std::cout << "\tFreeing handle and streams" << std::endl;
-    // Destroy the handle
-    cusparseCheckError(cusparseDestroy(handle_));
-
-    // Destroy streams after use
-    cudaCheckError(cudaStreamDestroy(s1_));
-    cudaCheckError(cudaStreamDestroy(s2_));
-    cudaCheckError(cudaStreamDestroy(s3_));
   }
 
   // ToDo -- the two following functons are useful for debugging.  I'm

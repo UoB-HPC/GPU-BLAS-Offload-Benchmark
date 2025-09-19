@@ -525,9 +525,6 @@ private:
       cudaCheckError(cudaFree(B_dev_));
       cudaCheckError(cudaFree(C_dev_));
     }
-
-    // Destroy the handle
-    cusparseCheckError(cusparseDestroy(handle_));
   }
 
   bool print_ = false;

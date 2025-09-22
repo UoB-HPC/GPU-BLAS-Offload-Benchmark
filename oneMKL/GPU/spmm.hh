@@ -585,57 +585,12 @@ private:
           break;
         }
         case gpuOffloadType::unified: {
-          break;
-        }
-      }
-    }
-
-    void postLoopRequirements() override {
-      if (print_) std::cout << "postLoopRequirements" << std::endl;
-      switch (offload_) {
-        case gpuOffloadType::always: {
-          break;
-        }
-        case gpuOffloadType::once: {
-          if (print_) std::cout << "\tAllocate host CSR arrays for C" << std::endl;
-          if (C_rows_ != nullptr) {
-            if (print_) std::cout << "\t\tFreeing old C rows" << std::endl;
-            sycl::free(C_rows_, queue_);
-          }
-          if (C_cols_ != nullptr) {
-            if (print_) std::cout << "\t\tFreeing old C cols" << std::endl;
-            sycl::free(C_cols_, queue_);
-          }
-          if (C_vals_ != nullptr) {
-            if (print_) std::cout << "\t\tFreeing old C vals" << std::endl;
-            sycl::free(C_vals_, queue_);
-          }
-          if (print_) std::cout << "\t\tAllocating C rows" << std::endl;
-          C_rows_ = sycl::malloc_host<int64_t>(m_ + 1, queue_);
-          if (print_) std::cout << "\t\tAllocating C cols" << std::endl;
-          C_cols_ = sycl::malloc_host<int64_t>(C_nnz_, queue_);
-          if (print_) std::cout << "\t\tAllocating C vals" << std::endl;
-          C_vals_ = sycl::malloc_host<T>(C_nnz_, queue_);
-
-          if (print_) std::cout << "\tCopying C back to host" << std::endl;
-          auto CRows = queue_.copy<int64_t>(C_rows_device_, C_rows_, m_ + 1);
-          auto CCols = queue_.copy<int64_t>(C_cols_device_, C_cols_, C_nnz_);
-          auto CVals = queue_.copy<T>(C_vals_device_, C_vals_, C_nnz_);
-          CRows.wait();
-          CCols.wait();
-          CVals.wait();
-
-          if (C_rows_device_ != nullptr) sycl::free(C_rows_device_, queue_);
-          if (C_cols_device_ != nullptr) sycl::free(C_cols_device_, queue_);
-          if (C_vals_device_ != nullptr) sycl::free(C_vals_device_, queue_);
-          break;
-        }
-        case gpuOffloadType::unified: {
+          // If already allocated, free the device C arrays
           if (C_rows_ != nullptr) sycl::free(C_rows_, queue_);
           if (C_cols_ != nullptr) sycl::free(C_cols_, queue_);
           if (C_vals_ != nullptr) sycl::free(C_vals_, queue_);
 
-          if (print_) std::cout << "\tAllocating C rows array" << std::endl;
+          if (print_) std::cout << "\tAllocating device memory for C rows" << std::endl;
           C_rows_ = sycl::malloc_shared<int64_t>(m_ + 1, queue_);
 
           if (print_) std::cout << "\tMaking handles for matrices" << std::endl;
@@ -716,8 +671,10 @@ private:
 
           if (print_) std::cout << "\tQuerying size of compute buffer" << std::endl;
           request_ = oneapi::mkl::sparse::matmat_request::get_compute_buf_size;
+          if (print_) std::cout << "\t\tAllocating temp buffer" << std::endl;
           sizeTempBuffer = sycl::malloc_host<int64_t>(1, queue_);
           if (!sizeTempBuffer) throw std::runtime_error("Could not allocate memory");
+          if (print_) std::cout << "\t\tCalling matmat" << std::endl;
           auto ev2_1 = oneapi::mkl::sparse::matmat(queue_,
                                                    A_handle_,
                                                    B_handle_,
@@ -762,9 +719,12 @@ private:
 
           if (print_) std::cout << "\tCopying C_nnz_ and allocating cols and vals for C on device" << std::endl;
           C_nnz_ = cNnzBuffer[0];
+          if (C_cols_) sycl::free(C_cols_, queue_);
           C_cols_ = sycl::malloc_shared<int64_t>(C_nnz_, queue_);
+          if (!C_cols_) throw std::runtime_error("Could not allocate memory");
+          if (C_vals_) sycl::free(C_vals_, queue_);
           C_vals_ = sycl::malloc_shared<T>(C_nnz_, queue_);
-          if (!C_cols_ || !C_vals_) throw std::runtime_error("Could not allocate memory");
+          if (!C_vals_) throw std::runtime_error("Could not allocate memory");
 
           if (print_) std::cout << "\tSetting C csr arrays" << std::endl;
           setC = oneapi::mkl::sparse::set_csr_data(queue_,
@@ -802,6 +762,52 @@ private:
           if (tempBuffer != nullptr) sycl::free(tempBuffer, queue_);
           if (tempBuffer2 != nullptr) sycl::free(tempBuffer2, queue_);
           if (cNnzBuffer != nullptr) sycl::free(cNnzBuffer, queue_);
+          break;
+        }
+      }
+    }
+
+    void postLoopRequirements() override {
+      if (print_) std::cout << "postLoopRequirements" << std::endl;
+      switch (offload_) {
+        case gpuOffloadType::always: {
+          break;
+        }
+        case gpuOffloadType::once: {
+          if (print_) std::cout << "\tAllocate host CSR arrays for C" << std::endl;
+          if (C_rows_ != nullptr) {
+            if (print_) std::cout << "\t\tFreeing old C rows" << std::endl;
+            sycl::free(C_rows_, queue_);
+          }
+          if (C_cols_ != nullptr) {
+            if (print_) std::cout << "\t\tFreeing old C cols" << std::endl;
+            sycl::free(C_cols_, queue_);
+          }
+          if (C_vals_ != nullptr) {
+            if (print_) std::cout << "\t\tFreeing old C vals" << std::endl;
+            sycl::free(C_vals_, queue_);
+          }
+          if (print_) std::cout << "\t\tAllocating C rows" << std::endl;
+          C_rows_ = sycl::malloc_host<int64_t>(m_ + 1, queue_);
+          if (print_) std::cout << "\t\tAllocating C cols" << std::endl;
+          C_cols_ = sycl::malloc_host<int64_t>(C_nnz_, queue_);
+          if (print_) std::cout << "\t\tAllocating C vals" << std::endl;
+          C_vals_ = sycl::malloc_host<T>(C_nnz_, queue_);
+
+          if (print_) std::cout << "\tCopying C back to host" << std::endl;
+          auto CRows = queue_.copy<int64_t>(C_rows_device_, C_rows_, m_ + 1);
+          auto CCols = queue_.copy<int64_t>(C_cols_device_, C_cols_, C_nnz_);
+          auto CVals = queue_.copy<T>(C_vals_device_, C_vals_, C_nnz_);
+          CRows.wait();
+          CCols.wait();
+          CVals.wait();
+
+          if (C_rows_device_ != nullptr) sycl::free(C_rows_device_, queue_);
+          if (C_cols_device_ != nullptr) sycl::free(C_cols_device_, queue_);
+          if (C_vals_device_ != nullptr) sycl::free(C_vals_device_, queue_);
+          break;
+        }
+        case gpuOffloadType::unified: {
           break;
         }
       }
@@ -870,6 +876,7 @@ private:
     void printInputMatrices() {
       std::cout << "---------------------------------------------" << std::endl;
       std::cout << "Matrix A" << std::endl;
+      std::cout << "NNZ = " << A_nnz_ << std::endl;
       std::cout << "\tRows: [";
       for (int64_t i = 0; i < m_ + 1; i++) {
         std::cout << A_rows_[i];
@@ -889,6 +896,7 @@ private:
       }
       std::cout << "]" << std::endl;
       std::cout << "Matrix B" << std::endl;
+      std::cout << "NNZ = " << B_nnz_ << std::endl;
       std::cout << "\tRows: [";
       for (int64_t i = 0; i < k_ + 1; i++) {
         std::cout << B_rows_[i];

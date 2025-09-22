@@ -173,6 +173,7 @@ protected:
       std::cerr << "Matrix type not supported" << std::endl;
       exit(1);
     }
+    cudaCheckError(cudaDeviceSynchronize());  
   }
 
  private:
@@ -470,27 +471,6 @@ protected:
       cudaCheckError(cudaFree(A_rows_dev_));
       cudaCheckError(cudaFree(x_dev_));
       cudaCheckError(cudaFree(y_dev_));
-    }
-
-    // Destroy the handle
-    cusparseCheckError(cusparseDestroy(handle_));
-
-    // Destroy streams after use
-    cudaCheckError(cudaStreamDestroy(s1_));
-    cudaCheckError(cudaStreamDestroy(s2_));
-    cudaCheckError(cudaStreamDestroy(s3_));
-  }
-
-  // ToDo -- the two following functons are useful for debugging.  I'm
-  //  keeping them in to that end, though they are not used by the benchmark
-  //  itself
-  void printDenseMatrix(T* M, int rows, int cols) {
-    for (int row = 0; row < rows; row++) {
-      std::cout << "| ";
-      for (int col = 0; col < cols; col++) {
-        std::cout << M[(row * cols) + col] << " | ";
-      }
-      std::cout << std::endl;
     }
   }
 

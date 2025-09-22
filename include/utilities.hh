@@ -250,8 +250,6 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
              double noise = 0.0,
              bool no_self_loops = false,
              bool undirected = false) {
-  // std::chrono::time_point<std::chrono::high_resolution_clock> start = 
-  //         std::chrono::high_resolution_clock::now();
   // Number of bits needed to index into the row/col ranges.
   // R-MAT decides each bit from MSB→LSB by picking a quadrant.
   int row_bits = static_cast<int>(std::ceil(std::log2(nrows)));
@@ -269,10 +267,6 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
   // We reserve exactly nnz slots and will push_back exactly nnz valid edges.
   std::vector<std::pair<int_type, int_type>> edges;
   edges.reserve(nnz);
-  // std::chrono::time_point<std::chrono::high_resolution_clock> prep = 
-  //         std::chrono::high_resolution_clock::now();
-  // std::chrono::duration<double> setup_duration = prep - start;
-  // std::cout << "\t\t\tPrep: " << setup_duration.count() << " s" << std::endl;
 
   // Keep sampling until we have nnz valid edges.
   // Invalid candidates (out-of-bounds due to non-powers-of-two, self-loops, etc.)
@@ -347,10 +341,6 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
     ++edge_idx;
   }
   
-  // std::chrono::time_point<std::chrono::high_resolution_clock> allocating = 
-  //         std::chrono::high_resolution_clock::now();
-  // std::chrono::duration<double> alloc_duration = allocating - prep;
-  // std::cout << "\t\t\tAllocating: " << alloc_duration.count() << " s" << std::endl;
 
   // Sort edges primarily by row, and secondarily by column.
   // CSR expects nonzeros grouped by row; sorting also makes columns within
@@ -361,10 +351,6 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
                         (a.first == b.first && a.second < b.second);
             });
 
-  // std::chrono::time_point<std::chrono::high_resolution_clock> sorting = 
-  //         std::chrono::high_resolution_clock::now();
-  // std::chrono::duration<double> sort_duration = sorting - allocating;
-  // std::cout << "\t\t\tSort: " << sort_duration.count() << " s" << std::endl;
   // Initialize row pointer array with zeros.
   // rows[i] will eventually hold the starting index in (vals, cols) of row i.
   // rows[nrows] will equal nnz after prefix-sum (the total number of nonzeros).
@@ -384,30 +370,11 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
     // After this loop, rows[k+1] holds the count of nonzeros in row k.
     ++rows[static_cast<size_t>(r) + 1];
   }
-  // std::chrono::time_point<std::chrono::high_resolution_clock> fill_cols = 
-  //         std::chrono::high_resolution_clock::now();
-  // std::chrono::duration<double> fill_duration = fill_cols - sorting;
-  // std::cout << "\t\t\tFill cols: " << fill_duration.count() << " s" << std::endl;
-
-
-  // Convert per-row counts into exclusive prefix sums:
-  // rows[0] = 0
-  // rows[i+1] = rows[i] + (count of row i)
-  // After this, rows[i] is the starting offset of row i in (vals, cols),
-  // and rows[nrows] == nnz.
   for (int i = 0; i < nrows; i++) {
       rows[static_cast<size_t>(i) + 1] += rows[static_cast<size_t>(i)];
   }
-  // std::chrono::time_point<std::chrono::high_resolution_clock> fill_rows = 
-  //         std::chrono::high_resolution_clock::now();
-  // std::chrono::duration<double> fill_rows_duration = fill_rows - fill_cols;
-  // std::cout << "\t\t\tFill Rows: " << fill_rows_duration.count() << " s" << std::endl;
 
   checkCSRValid(nrows, ncols, nnz, rows, cols, vals);
-  // std::chrono::time_point<std::chrono::high_resolution_clock> checking = 
-  //         std::chrono::high_resolution_clock::now();
-  // std::chrono::duration<double> checking_duration = checking - fill_rows;
-  // std::cout << "\t\t\tCheck CSR: " << checking_duration.count() << " s" << std::endl;
 }
 
 template <typename T, typename int_type>

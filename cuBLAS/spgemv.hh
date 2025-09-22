@@ -514,6 +514,8 @@ protected:
   bool print_ = false;
   bool debug = false;
 
+  bool alreadyInitialised_ = false;
+
 
   /**
    * ################################

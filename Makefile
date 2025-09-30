@@ -52,7 +52,7 @@ CXX = $(CXX_$(COMPILER))
 CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_GNU     = -std=c++17 -Wall -Wno-deprecated-declarations -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native -Wno-tautological-constant-compare
+CXXFLAGS_INTEL   = -std=c++17 -Wall -O3 -ffast-math -$(ARCHFLAG)=native -Wno-tautological-constant-compare
 CXXFLAGS_NVIDIA  = -std=c++17 -Wall -O3 -fast -$(ARCHFLAG)=native
 CXXFLAGS_HIP     = -std=c++17 -Wall -O3 -ffast-math -$(ARCHFLAG)=native
 
@@ -98,16 +98,16 @@ $(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Libra
 endif
 # Add INTEL compiler options
 ifeq ($(COMPILER), INTEL)
-override CXXFLAGS += -L$(MKLROOT)/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qmkl=parallel -DMKL_INT=int
+override CXXFLAGS += -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qmkl=parallel -DMKL_INT=int
 # Add GNU compiler options
 else ifeq ($(COMPILER), GNU)
-override CXXFLAGS += -m64 -L$(MKLROOT)/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -I"${MKLROOT}/include" -DMKL_INT=int
+override CXXFLAGS += -m64 -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -I"${MKLROOT}/include" -DMKL_INT=int
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
 $(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
 $(info )
 # Add CLANG compiler options
 else ifeq ($(COMPILER), CLANG)
-override CXXFLAGS += -L$(MKLROOT)/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -m64 -I"${MKLROOT}/include" -DMKL_INT=int
+override CXXFLAGS += -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -m64 -I"${MKLROOT}/include" -DMKL_INT=int
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
 $(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
 $(info )
@@ -189,7 +189,7 @@ ifndef MKLROOT
 $(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Library)
 endif
 # Add compiler and link options
-override CXXFLAGS += -fsycl -L$(MKLROOT)/lib -lmkl_sycl_blas -lmkl_sycl_sparse -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -lsycl -lpthread -lm -ldl  -fsycl -DMKL_ILP64  -I"$(MKLROOT)/include"
+override CXXFLAGS += -fsycl -L$(MKLROOT)/lib/intel64 -lmkl_sycl_blas -lmkl_sycl_sparse -lmkl_intel_lp64 -lmkl_tbb_thread -ltbb -lmkl_core -lsycl -lpthread -lm -ldl  -fsycl -DMKL_LP64  -I"$(MKLROOT)/include"
 # `lmkl_tbb_thread` can replace `lmkl_sequential`
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
 $(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)

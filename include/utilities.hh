@@ -165,7 +165,7 @@ void checkCSRValid(uint64_t nRows,
   }
 
   for (uint64_t r = 0; r < nRows; r++) {
-    for (int_type j = rows[r]; j < (rows[r + 1] - 1); j++) {
+    for (int_type j = rows[r]; j + 1 < (rows[r + 1]); j++) {
       if (cols[j] > cols[j + 1]) {
         std::cerr << "[ERROR]: CSR INVALID - column indices not sorted in row " << r << std::endl;
         printCSR(nRows, nnz, rows, cols, vals);
@@ -241,8 +241,8 @@ void checkCSRValid(uint64_t nRows,
  */
 template <typename T, typename int_type>
 void rMatCSR(T* vals, int_type* cols, int_type* rows,
-             int nrows, int ncols, int nnz, 
-             unsigned int seed = SEED,
+             int_type nrows, int_type ncols, int_type nnz, 
+             uint64_t seed = SEED,
              double a = 0.57,
              double b = 0.19,
              double c = 0.19,
@@ -354,12 +354,12 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
   // Initialize row pointer array with zeros.
   // rows[i] will eventually hold the starting index in (vals, cols) of row i.
   // rows[nrows] will equal nnz after prefix-sum (the total number of nonzeros).
-  std::fill(rows, rows + nrows + 1, 0);
+  for (size_t i = 0; i < (nrows + 1); i++) rows[i] = 0;
 
   // Linear pass over sorted edges to fill cols/vals and count entries per row.
   // We write the k-th edge's column into cols[k] and its value into vals[k].
   // Simultaneously, we increment a per-row count into rows[r+1].
-  for (int i = 0; i < nnz; ++i) {
+  for (size_t i = 0; i < nnz; ++i) {
     const int_type r = edges[static_cast<size_t>(i)].first;
     const int_type c = edges[static_cast<size_t>(i)].second;
 
@@ -368,9 +368,9 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
 
     // Count one nonzero in row r by bumping rows[r+1].
     // After this loop, rows[k+1] holds the count of nonzeros in row k.
-    ++rows[static_cast<size_t>(r) + 1];
+    rows[static_cast<size_t>(r) + 1]++;
   }
-  for (int i = 0; i < nrows; i++) {
+  for (size_t i = 0; i < nrows; i++) {
       rows[static_cast<size_t>(i) + 1] += rows[static_cast<size_t>(i)];
   }
 
@@ -450,6 +450,10 @@ int64_t calcCNNZ(int_type A_n_rows, int_type A_nnz, int_type* A_rows, int_type* 
   for (int_type i = 0; i < A_n_rows; i++) {
     for (int_type j = A_rows[i]; j < A_rows[i + 1]; j++) {
       int_type a_col = A_cols[j];
+      if (a_col < 0 || a_col >= B_n_cols) {
+        std::cerr << "[ERROR]: calcCNNZ - A column index out of bounds for B" << std::endl;
+        continue;
+      }
       for (int_type k = B_rows[a_col]; k < B_rows[a_col + 1]; k++) {
         if (B_cols[k] == i) {
           C_nnz++;

@@ -76,7 +76,6 @@ private:
 protected:
     /** Set up the starting matrices */
     void initInputMatrices() {    
-      
       toSparseFormat();
     }
 

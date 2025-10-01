@@ -31,6 +31,27 @@ int main(int argc, char** argv) {
   getParameters(argc, argv);
   printBenchmarkConfig(iters, upperLimit);
 
+#ifdef CPU_ARMPL
+  if (doSspgemm || doDspgemm) {
+    std::cout << "WARNING - ArmPL does not currently provide a Sparse Matrix-Dense Matrix kernel. Disabling Sparse Matrix-Dense Matrix tests." << std::endl;
+    doSspgemm = false;
+    doDspgemm = false;
+  }
+#endif
+
+#ifdef CPU_NVPL
+  if (doSspgemm || doDspgemm) {
+    std::cout << "WARNING - NVPL does not currently provide a Sparse Matrix-Dense Matrix kernel. Disabling Sparse Matrix-Dense Matrix tests." << std::endl;
+    doSspgemm = false;
+    doDspgemm = false;
+  }
+  if (doSspmm || doDspmm) {
+    std::cout << "WARNING - NVPL does not currently provide a Sparse Matrix-Sparse Matrix kernel. Disabling Sparse Matrix-Sparse Matrix tests." << std::endl;
+    doSspmm = false;
+    doDspmm = false;
+  }
+#endif
+
   if (!doCpu && !doGpu) {
     std::cout << "Finished!" << std::endl;
     exit(0);

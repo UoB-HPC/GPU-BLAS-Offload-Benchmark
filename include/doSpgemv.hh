@@ -14,8 +14,6 @@
 #include "../AOCL/spgemv.hh"
 #elif defined CPU_NVPL
 // Todo #include "../NVPL/spgemv.hh"
-#elif defined CPU_OPENBLAS
-// Todo #include "../OpenBLAS/spgemv.hh"
 #endif
 
 #if defined GPU_CUBLAS

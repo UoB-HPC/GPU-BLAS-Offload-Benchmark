@@ -142,29 +142,18 @@ protected:
 
       if (print_) std::cout << "Generating R-MAT matrix for A" << std::endl;
       int seedOffset = 0;
-      if (type_ == matrixType::rmat){
-        rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, nnzA_aocl_, SEED + seedOffset++);
-        rMatCSR<T, aoclsparse_int>(B_vals_, B_cols_, B_rows_, k_, n_, nnzB_aocl_, SEED + seedOffset++);
-      } else if (type_ == matrixType::random) {
-        randomCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, nnzA_aocl_, SEED + seedOffset++);
-        randomCSR<T, aoclsparse_int>(B_vals_, B_cols_, B_rows_, k_, n_, nnzB_aocl_, SEED + seedOffset++);
-      } else {
-        std::cerr << "Matrix type not supported" << std::endl;
-        exit(1);
+      do {
+        if (type_ == matrixType::rmat) {
+          rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
+          rMatCSR<T, aoclsparse_int>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
+        } else if (type_ == matrixType::random) {
+          randomCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
+          randomCSR<T, aoclsparse_int>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
+        } else {
+          std::cerr << "Matrix type not supported" << std::endl;
+          exit(1);
+        } while (calcCNNZ<aoclsparse_int>(m_, A_nnz_, A_rows_, A_cols_, k_, B_nnz_, B_rows_, B_cols_) == 0);
       }
-
-      while (calcCNNZ<aoclsparse_int>(m_, A_nnz_, A_rows_, A_cols_, k_, B_nnz_, B_rows_, B_cols_) == 0) {
-      if (type_ == matrixType::rmat) {
-        rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
-        rMatCSR<T, aoclsparse_int>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
-      } else if (type_ == matrixType::random) {
-        randomCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
-        randomCSR<T, aoclsparse_int>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
-      } else {
-        std::cerr << "Matrix type not supported" << std::endl;
-        exit(1);
-      }
-    }
 
       // Move into the AOCL CSR matrix handle
       if (print_) std::cout << "Creating AOCL CSR matrix for A" << std::endl;

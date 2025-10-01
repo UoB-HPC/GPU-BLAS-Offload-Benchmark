@@ -13,10 +13,6 @@
 #include "../oneMKL/CPU/spgemm.hh"
 #elif defined CPU_AOCL
 #include "../AOCL/spgemm.hh"
-#elif defined CPU_NVPL
-// Todo #include "../NVPL/spgemm.hh"
-#elif defined CPU_OPENBLAS
-// Todo #include "../OpenBLAS/spgemm.hh"
 #endif
 
 #if defined GPU_CUBLAS

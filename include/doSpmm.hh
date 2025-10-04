@@ -417,7 +417,9 @@ private:
         time_checksum_gflop gpuResult_always = gpu_.compute();
         gpuResult_always.gflops =
               calcGflops(flops, iterations_, gpuResult_always.runtime);
-
+        writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, M, K,
+                       probSize, sparsity_, iterations_, gpuResult_always.runtime,
+                       gpuResult_always.gflops);
 
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
@@ -426,27 +428,20 @@ private:
         time_checksum_gflop gpuResult_once = gpu_.compute();
         gpuResult_once.gflops =
               calcGflops(flops, iterations_, gpuResult_once.runtime);
+        writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, M, K, probSize,
+                       sparsity_, iterations_, gpuResult_once.runtime,
+                       gpuResult_once.gflops);
         
         std::cout << "||||||||| UNIFIED |||||||||";
         gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity_, type_);
         time_checksum_gflop gpuResult_unified = gpu_.compute();
         gpuResult_unified.gflops =
         calcGflops(flops, iterations_, gpuResult_unified.runtime);
-        
-        // Write lines to CSV file
-        writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, M, K, probSize,
-                       sparsity_, iterations_, gpuResult_once.runtime,
-                       gpuResult_once.gflops);
-        writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, M, K,
-                       probSize, sparsity_, iterations_, gpuResult_always.runtime,
-                       gpuResult_always.gflops);
         writeLineToCsv(csvFile, "gpu_unified", kernelName, N, M, K, probSize,
                        sparsity_, iterations_, gpuResult_unified.runtime,
                        gpuResult_unified.gflops);
-
       }
 #endif
-
     }
 
     /** A function for calculating FLOPs performed by a GEMM.

@@ -50,31 +50,25 @@ public:
     {
       static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
                     "ERROR - doSpmm can only be constructed using one of the "
-                    "following types: [float, double].");
-      if (print_) std::cout << "doSpmm initialised" << std::endl;                    
+                    "following types: [float, double].");                   
     }
 
     /** Run all problem types and write data to CSV files. */
     void collectData() {
       // Square Problem Sizes...
       // Re-initialise offload threshold structures
-      if (print_) std::cout << "Setting up data collection structures" << std::endl;
       cpuGpu_always_ = cpuGpu_offloadThreshold();
       cpuGpu_once_ = cpuGpu_offloadThreshold();
       cpuGpu_unified_ = cpuGpu_offloadThreshold();
       prev_gpuResult_always = time_checksum_gflop();
       prev_gpuResult_once = time_checksum_gflop();
       prev_gpuResult_unified = time_checksum_gflop();
-      if (print_) std::cout << "Making CSV file" << std::endl;
       std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                                           "_square_square_M=N=K.csv");
-      if (print_) std::cout << "======= SQUARE =======" << std::endl;
       for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-        if (print_) std::cout << dim << "x" << dim << " . " << dim << "x" << dim << ", ";
         // M = dim, N = dim, K = dim;
         callKernels(csvFile, dim, dim, dim);
       }
-      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -99,13 +93,11 @@ public:
       int M = 16 * K;
       int N = 16 * K;
       while (M <= upperLimit_) {
-        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
         callKernels(csvFile, M, N, K);
         M += 16;
         N += 16;
         K++;
       }
-      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -128,11 +120,9 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = dim, K = 32;
-          if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
           callKernels(csvFile, dim, dim, 32);
         }
       }
-      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -156,13 +146,11 @@ public:
       N = startDimention_;
       K = 16 * M;
       while (K <= upperLimit_) {
-          if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
         callKernels(csvFile, M, N, K);
         M++;
         N++;
         K += 16;
       }
-      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -185,11 +173,9 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = 32, K = dim;
-          if (print_) std::cout << "32x" << dim << " . " << dim << "x32" << ", ";
           callKernels(csvFile, 32, 32, dim);
         }
       }
-      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -213,13 +199,11 @@ public:
       N = startDimention_;
       M = 16 * K;
       while (M <= upperLimit_) {
-          if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
         callKernels(csvFile, M, N, K);
         M += 16;
         N++;
         K++;
       }
-      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -242,11 +226,9 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = dim, N = 32, K = 32;
-          if (print_) std::cout << dim << "x32" << " . " << "32x32, ";
           callKernels(csvFile, dim, 32, 32);
         }
       }
-      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -270,13 +252,11 @@ public:
       K = startDimention_;
       N = 16 * K;
       while (N <= upperLimit_) {
-        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << ", ";
         callKernels(csvFile, M, N, K);
         M++;
         N += 16;
         K++;
       }
-      if (print_) std::cout << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -298,11 +278,9 @@ public:
       if (upperLimit_ >= 32) {
         for (int dim = startDimention_; dim <= upperLimit_; dim++) {
           // M = 32, N = dim, K = 32;
-          if (print_) std::cout << "32x32 . " << "32x" << N << ", ";
           callKernels(csvFile, 32, dim, 32);
         }
       }
-      if (print_) std::cout << std::endl;
 #if CPU_ENABLED && GPU_ENABLED
       if (doCPU_ && doGPU_) {
     // Print offload results to stdout
@@ -420,32 +398,12 @@ private:
 
 #if CPU_ENABLED
       if (doCPU_) {
-        // std::chrono::time_point<std::chrono::high_resolution_clock> start = 
-        //         std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << "\tCPU ->\t\tInitialise" << std::endl;
         cpu_.initialise(N, M, K, sparsity_, type_);
-        // std::chrono::time_point<std::chrono::high_resolution_clock> post_init = 
-        //         std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << "\t\t\tCompute" << std::endl ;
         time_checksum_gflop cpuResult = cpu_.compute();
-        // std::chrono::time_point<std::chrono::high_resolution_clock> post_compute = 
-                // std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << "\t\t\tCalculate" << std::endl ;
         cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
         writeLineToCsv(csvFile, "cpu", kernelName, N, M, K, probSize,
                        sparsity_, iterations_, cpuResult.runtime,
                        cpuResult.gflops);
-        // std::chrono::time_point<std::chrono::high_resolution_clock> end = 
-                // std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << "\t\t\tDONE" << std::endl;
-
-        // std::chrono::duration<double> init_time = post_init - start;
-        // std::chrono::duration<double> compute_time = post_compute - post_init;
-        // std::chrono::duration<double> calc_time = end - post_compute;
-        // std::cout << "Timings:" << std::endl;
-        // std::cout << "\tInit:    " << init_time.count() << " s" << std::endl;
-        // std::cout << "\tCompute: " << compute_time.count() << " s" << std::endl;
-        // std::cout << "\tCalculate:" << calc_time.count() << " s" << std::endl;
       }
 #endif
 #if GPU_ENABLED
@@ -454,83 +412,34 @@ private:
       //             needed
       if (doGPU_) {
         // - ALWAYS: Offload to/from GPU every iteration
-        // std::chrono::time_point<std::chrono::high_resolution_clock> start = 
-                // std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << "\tAlways ->\tInitialise";
+        std::cout << "||||||||| ALWAYS  |||||||||";
         gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity_, type_);
-        // std::chrono::time_point<std::chrono::high_resolution_clock> post_init = 
-                // std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << std::endl << "\t\t\tCompute";
         time_checksum_gflop gpuResult_always = gpu_.compute();
-        // std::chrono::time_point<std::chrono::high_resolution_clock> post_compute = 
-                // std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << std::endl << "\t\t\tCalculate";
         gpuResult_always.gflops =
               calcGflops(flops, iterations_, gpuResult_always.runtime);
-        // std::chrono::time_point<std::chrono::high_resolution_clock> end = 
-                // std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << ".. DONE" << std::endl;
-        // std::chrono::duration<double> init_time = post_init - start;
-        // std::chrono::duration<double> compute_time = post_compute - post_init;
-        // std::chrono::duration<double> calc_time = end - post_compute;
-        // std::cout << "Timings:" << std::endl;
-        // std::cout << "\tInit:    " << init_time.count() << " s" << std::endl;
-        // std::cout << "\tCompute: " << compute_time.count() << " s" << std::endl;
-        // std::cout << "\tCalculate:" << calc_time.count() << " s" << std::endl;
 
 
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
-        if (print_) std::cout << "\tOnce ->\t\tInitialise";
-        // start = std::chrono::high_resolution_clock::now();
+        std::cout << "|||||||||  ONCE   |||||||||";
         gpu_.initialise(gpuOffloadType::once, N, M, K, sparsity_, type_);
-        // post_init = std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << std::endl << "\t\t\tCompute";
         time_checksum_gflop gpuResult_once = gpu_.compute();
-        // post_compute = std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << std::endl << "\t\t\tCalculate";
         gpuResult_once.gflops =
               calcGflops(flops, iterations_, gpuResult_once.runtime);
-        // end = std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << ".. DONE" << std::endl;
-        // init_time = post_init - start;
-        // compute_time = post_compute - post_init;
-        // calc_time = end - post_compute;
-        // std::cout << "Timings:" << std::endl;
-        // std::cout << "\tInit:    " << init_time.count() << " s" << std::endl;
-        // std::cout << "\tCompute: " << compute_time.count() << " s" << std::endl;
-        // std::cout << "\tCalculate:" << calc_time.count() << " s" << std::endl;
-
-
-        // ToDo -- non-default GPU operations
-        if (print_) std::cout << "\tUnified ->\tInitialise";
-        // start = std::chrono::high_resolution_clock::now();
+        
+        std::cout << "||||||||| UNIFIED |||||||||";
         gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity_, type_);
-        // post_init = std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << std::endl << "\t\t\tCompute";
         time_checksum_gflop gpuResult_unified = gpu_.compute();
-        // post_compute = std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << std::endl << "\t\t\tCalculate";
         gpuResult_unified.gflops =
         calcGflops(flops, iterations_, gpuResult_unified.runtime);
-        // end = std::chrono::high_resolution_clock::now();
-        if (print_) std::cout << ".. DONE" << std::endl;
-        // init_time = post_init - start;
-        // compute_time = post_compute - post_init;
-        // calc_time = end - post_compute;
-        // std::cout << "Timings:" << std::endl;
-        // std::cout << "\tInit:    " << init_time.count() << " s" << std::endl;
-        // std::cout << "\tCompute: " << compute_time.count() << " s" << std::endl;
-        // std::cout << "\tCalculate:" << calc_time.count() << " s" << std::endl;
-
-
+        
         // Write lines to CSV file
         writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, M, K, probSize,
-                      sparsity_, iterations_, gpuResult_once.runtime,
-                      gpuResult_once.gflops);
+                       sparsity_, iterations_, gpuResult_once.runtime,
+                       gpuResult_once.gflops);
         writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, M, K,
-                      probSize, sparsity_, iterations_, gpuResult_always.runtime,
-                      gpuResult_always.gflops);
+                       probSize, sparsity_, iterations_, gpuResult_always.runtime,
+                       gpuResult_always.gflops);
         writeLineToCsv(csvFile, "gpu_unified", kernelName, N, M, K, probSize,
                        sparsity_, iterations_, gpuResult_unified.runtime,
                        gpuResult_unified.gflops);
@@ -690,8 +599,6 @@ private:
     /** The GPU kernel. */
 	gpu::spmm_gpu<T> gpu_;
 #endif
-
-    bool print_ = false;
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */
     cpuGpu_offloadThreshold cpuGpu_once_;

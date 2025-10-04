@@ -23,13 +23,22 @@ public:
               std::chrono::high_resolution_clock::now();
 
       // perform the SPMM calls
-//      std::cout << ".. pre";
       preLoopRequirements();
+      std::chrono::time_point<std::chrono::high_resolution_clock> preLoopTime =
+              std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> preLoopDuration = preLoopTime - startTime;
+      std::cout << "\tpre-loop = " << preLoopDuration << std::endl;
+      std::chrono::time_point<std::chrono::high_resolution_clock> kernelTime;
       for (int i = 0; i < iterations_; i++) {
-//        std::cout << ".. SPMM";
+        std::chrono::time_point<std::chrono::high_resolution_clock> preKernelTime =
+              std::chrono::high_resolution_clock::now();
         callSpmm();
+        kernelTime = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> kernelDuration = kernelTime - preKernelTime;
+        std::cout << "\t\tkernel call = " << kernelDuration << std::endl;
       }
-//      std::cout << ".. post";
+      std::chrono::duration<double> totalKernelDuration = kernelTime - preLoopTime;
+      std::cout << "\tall loops = " << totalKernelDuration;
       postLoopRequirements();
 
       // Stop the timer
@@ -37,12 +46,14 @@ public:
               std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> time_s = endTime - startTime;
 
+      std::chrono::duration<double> postLoopDuration = endTime - kernelTime;
+      std::cout << "\tpost-loop = " << postLoopDuration << std::endl;
+      std::cout << "=== TOTAL = " << time_s << " ===" << std::endl;
+
       double checksum = calcChecksum();
 
-//      std::cout << ".. cleanup";
       postCallKernelCleanup();
 
-//      std::cout << ".. DONE";
       return {time_s.count(), checksum, 0.0};
     }
 

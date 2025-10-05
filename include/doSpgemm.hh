@@ -341,18 +341,24 @@ private:
       time_checksum_gflop gpuResult_always;
       time_checksum_gflop gpuResult_unified;
       if (doGPU_) {
+        // - ALWAYS: Offload to/from GPU every iteration
+        gpu_.initialise(gpuOffloadType::always, M, N, K, sparsity_, type_);
+        gpuResult_always = gpu_.compute();
+        gpuResult_always.gflops = calcGflops(flops, iterations_, gpuResult_always.runtime);
+        writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K,
+                       probSize, sparsity_, iterations_, gpuResult_always.runtime,
+                       gpuResult_always.gflops);
+        if (print_) std::cout << "GPU-ALWAYS DONE" << std::endl;
+
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
         gpu_.initialise(gpuOffloadType::once, M, N, K, sparsity_, type_);
         gpuResult_once = gpu_.compute();
         gpuResult_once.gflops = calcGflops(flops, iterations_, gpuResult_once.runtime);
         if (print_) std::cout << "GPU-ONCE DONE" << std::endl;
-
-        // - ALWAYS: Offload to/from GPU every iteration
-        gpu_.initialise(gpuOffloadType::always, M, N, K, sparsity_, type_);
-        gpuResult_always = gpu_.compute();
-        gpuResult_always.gflops = calcGflops(flops, iterations_, gpuResult_always.runtime);
-        if (print_) std::cout << "GPU-ALWAYS DONE" << std::endl;
+        writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,
+                       sparsity_, iterations_, gpuResult_once.runtime,
+                       gpuResult_once.gflops);
 
         // - UNIFIED : data passed from host to device (and device to host) as
         //             needed
@@ -360,14 +366,6 @@ private:
         gpuResult_unified = gpu_.compute();
         gpuResult_unified.gflops = calcGflops(flops, iterations_, gpuResult_unified.runtime);
         if (print_) std::cout << "GPU-UNIFIED DONE" << std::endl;
-
-        // Write results to CSV file
-        writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,
-                       sparsity_, iterations_, gpuResult_once.runtime,
-                       gpuResult_once.gflops);
-        writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K,
-                       probSize, sparsity_, iterations_, gpuResult_always.runtime,
-                       gpuResult_always.gflops);
         writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, K, probSize,
                        sparsity_, iterations_, gpuResult_unified.runtime,
                        gpuResult_unified.gflops);

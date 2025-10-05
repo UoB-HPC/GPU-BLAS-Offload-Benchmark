@@ -412,7 +412,7 @@ private:
       //             needed
       if (doGPU_) {
         // - ALWAYS: Offload to/from GPU every iteration
-        std::cout << "||||||||| ALWAYS  |||||||||";
+        if (print_) std::cout << "||||||||| ALWAYS  |||||||||";
         gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity_, type_);
         time_checksum_gflop gpuResult_always = gpu_.compute();
         gpuResult_always.gflops =
@@ -423,7 +423,7 @@ private:
 
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
-        std::cout << "|||||||||  ONCE   |||||||||";
+        if (print_) std::cout << "|||||||||  ONCE   |||||||||";
         gpu_.initialise(gpuOffloadType::once, N, M, K, sparsity_, type_);
         time_checksum_gflop gpuResult_once = gpu_.compute();
         gpuResult_once.gflops =
@@ -432,7 +432,7 @@ private:
                        sparsity_, iterations_, gpuResult_once.runtime,
                        gpuResult_once.gflops);
         
-        std::cout << "||||||||| UNIFIED |||||||||";
+        if (print_) std::cout << "||||||||| UNIFIED |||||||||";
         gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity_, type_);
         time_checksum_gflop gpuResult_unified = gpu_.compute();
         gpuResult_unified.gflops =
@@ -614,4 +614,6 @@ private:
 
     /** The previous problem size's GPU (unified memory) performance results. */
     time_checksum_gflop prev_gpuResult_unified;
+
+    bool print_ = false;
 };

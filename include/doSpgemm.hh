@@ -32,12 +32,13 @@ template <typename T>
 class doSpgemm {
 public:
     doSpgemm(const std::string csvDir, const int iters, const int startDim,
-             const int upperLimit, const double sparsity, const matrixType type,
+             const int upperLimit, const int step, const double sparsity, const matrixType type,
              const bool cpuEnabled = true, const bool gpuEnabled = true)
           : CSV_DIR(csvDir),
             iterations_(iters),
             startDimention_(startDim),
             upperLimit_(upperLimit),
+            step_(step),
             sparsity_(sparsity),
             type_(type),
             doCPU_(cpuEnabled),

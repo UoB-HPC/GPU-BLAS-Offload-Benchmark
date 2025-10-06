@@ -62,5 +62,9 @@ Graphs*
 # MAC metadata
 .DS_Store
 
+# CSV files and graphs
+*.csv 
+*.png
+
 # Bash scripts to run on different systems
 *.sh

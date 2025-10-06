@@ -589,12 +589,13 @@ class doGemm {
   /** The number of iterations to perform per problem size. */
   const int iterations_;
 
-  /** The value of the first probelm size dimention run. */
+  /** The value of the first problem size dimension run. */
   const int startDimention_;
 
-  /** The maximum value of the largest problem size dimention. */
+  /** The maximum value of the largest problem size dimension. */
   const int upperLimit_;
 
+  /** The step size between each problem size dimension. */
   const int step_;
 
   /** Whether the CPU kernels should be run. */

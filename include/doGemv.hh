@@ -488,6 +488,7 @@ class doGemv {
   /** The maximum value of the largest problem size dimention. */
   const int upperLimit_;
 
+  /** The step size between each problem size dimension. */
   const int step_;
 
   /** Whether the CPU kernels should be run. */

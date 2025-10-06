@@ -465,6 +465,7 @@ private:
     /** The maximum value of the largest problem size dimention. */
     const int upperLimit_;
 
+    /** The step size between each problem size dimension. */
     const int step_;
 
     /** The sparsity value of the sparse matrix. */

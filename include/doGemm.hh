@@ -32,12 +32,13 @@ template <typename T>
 class doGemm {
  public:
   doGemm(const std::string csvDir, const int iters, const int startDim,
-         const int upperLimit, const bool cpuEnabled = true,
+         const int upperLimit, const int step, const bool cpuEnabled = true,
          const bool gpuEnabled = true)
       : CSV_DIR(csvDir),
         iterations_(iters),
         startDimention_(startDim),
         upperLimit_(upperLimit),
+        step_(step),
         doCPU_(cpuEnabled),
         doGPU_(gpuEnabled)
 #if CPU_ENABLED
@@ -66,7 +67,7 @@ class doGemm {
     prev_gpuResult_unified = time_checksum_gflop();
     std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                                         "_square_square_M=N=K.csv");
-    for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+    for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
       // M = dim, N = dim, K = dim;
       callKernels(csvFile, dim, dim, dim);
     }
@@ -95,9 +96,9 @@ class doGemm {
   int N = 16 * K;
   while (M <= upperLimit_) {
     callKernels(csvFile, M, N, K);
-    M += 16;
-    N += 16;
-    K++;
+    M += 16 * step_;
+    N += 16 * step_;
+    K != step_;
   }
   // Close file
   csvFile.close();
@@ -119,7 +120,7 @@ class doGemm {
   csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                         "_tall-thin_short-wide_M=N_K=32.csv");
   if (upperLimit_ >= 32) {
-    for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+    for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
       // M = dim, N = dim, K = 32;
       callKernels(csvFile, dim, dim, 32);
     }
@@ -148,9 +149,9 @@ class doGemm {
   K = 16 * M;
   while (K <= upperLimit_) {
     callKernels(csvFile, M, N, K);
-    M++;
-    N++;
-    K += 16;
+    M += step_;
+    N += step_;
+    K += 16 * step_;
   }
   // Close file
   csvFile.close();
@@ -172,7 +173,7 @@ class doGemm {
   csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                         "_short-wide_tall-thin_M=N=32_K.csv");
   if (upperLimit_ >= 32) {
-    for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+    for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
       // M = 32, N = 32, K = dim;
       callKernels(csvFile, 32, 32, dim);
     }
@@ -201,9 +202,9 @@ class doGemm {
   M = 16 * K;
   while (M <= upperLimit_) {
     callKernels(csvFile, M, N, K);
-    M += 16;
-    N++;
-    K++;
+    M += 16 * step_;
+    N += step_;
+    K += step_;
   }
   // Close file
   csvFile.close();
@@ -225,7 +226,7 @@ class doGemm {
   csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                         "_tall-thin_square_K=N=32_M.csv");
   if (upperLimit_ >= 32) {
-    for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+    for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
       // M = dim, N = 32, K = 32;
       callKernels(csvFile, dim, 32, 32);
     }
@@ -254,9 +255,9 @@ class doGemm {
   N = 16 * K;
   while (N <= upperLimit_) {
     callKernels(csvFile, M, N, K);
-    M++;
-    N += 16;
-    K++;
+    M += step_;
+    N += 16 * step_;
+    K += step_;
   }
   // Close file
   csvFile.close();
@@ -277,7 +278,7 @@ class doGemm {
   csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                         "_square_short-wide_M=K=32_N.csv");
   if (upperLimit_ >= 32) {
-    for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+    for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
       // M = 32, N = dim, K = 32;
       callKernels(csvFile, 32, dim, 32);
     }
@@ -593,6 +594,8 @@ class doGemm {
 
   /** The maximum value of the largest problem size dimention. */
   const int upperLimit_;
+
+  const int step_;
 
   /** Whether the CPU kernels should be run. */
   const bool doCPU_ = true;

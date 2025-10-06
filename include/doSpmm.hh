@@ -29,12 +29,13 @@ template <typename T>
 class doSpmm {
 public:
     doSpmm(const std::string csvDir, const int iters, const int startDim,
-           const int upperLimit, const double sparsity, const matrixType type,
+           const int upperLimit, const int step, const double sparsity, const matrixType type,
            const bool cpuEnabled = true, const bool gpuEnabled = true)
             : CSV_DIR(csvDir),
               iterations_(iters),
               startDimention_(startDim),
               upperLimit_(upperLimit),
+              step_(step),
               sparsity_(sparsity),
               type_(type),
               doCPU_(cpuEnabled),
@@ -65,7 +66,7 @@ public:
       prev_gpuResult_unified = time_checksum_gflop();
       std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                                           "_square_square_M=N=K.csv");
-      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+      for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
         // M = dim, N = dim, K = dim;
         callKernels(csvFile, dim, dim, dim);
       }
@@ -94,9 +95,9 @@ public:
       int N = 16 * K;
       while (M <= upperLimit_) {
         callKernels(csvFile, M, N, K);
-        M += 16;
-        N += 16;
-        K++;
+        M += 16 * step_;
+        N += 16 * step_;
+        K += step_;
       }
       // Close file
       csvFile.close();
@@ -118,7 +119,7 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_tall-thin_short-wide_M=N_K=32.csv");
       if (upperLimit_ >= 32) {
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
           // M = dim, N = dim, K = 32;
           callKernels(csvFile, dim, dim, 32);
         }
@@ -147,9 +148,9 @@ public:
       K = 16 * M;
       while (K <= upperLimit_) {
         callKernels(csvFile, M, N, K);
-        M++;
-        N++;
-        K += 16;
+        M += step_;
+        N += step_;
+        K += 16 * step_;
       }
       // Close file
       csvFile.close();
@@ -171,7 +172,7 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_short-wide_tall-thin_M=N=32_K.csv");
       if (upperLimit_ >= 32) {
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
           // M = 32, N = 32, K = dim;
           callKernels(csvFile, 32, 32, dim);
         }
@@ -200,9 +201,9 @@ public:
       M = 16 * K;
       while (M <= upperLimit_) {
         callKernels(csvFile, M, N, K);
-        M += 16;
-        N++;
-        K++;
+        M += 16 * step_;
+        N += step_;
+        K += step_;
       }
       // Close file
       csvFile.close();
@@ -224,7 +225,7 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_tall-thin_square_K=N=32_M.csv");
       if (upperLimit_ >= 32) {
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
           // M = dim, N = 32, K = 32;
           callKernels(csvFile, dim, 32, 32);
         }
@@ -253,9 +254,9 @@ public:
       N = 16 * K;
       while (N <= upperLimit_) {
         callKernels(csvFile, M, N, K);
-        M++;
-        N += 16;
-        K++;
+        M += step_;
+        N += 16 * step_;
+        K += step_;
       }
       // Close file
       csvFile.close();
@@ -276,7 +277,7 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_square_short-wide_M=K=32_N.csv");
       if (upperLimit_ >= 32) {
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
           // M = 32, N = dim, K = 32;
           callKernels(csvFile, 32, dim, 32);
         }
@@ -412,7 +413,6 @@ private:
       //             needed
       if (doGPU_) {
         // - ALWAYS: Offload to/from GPU every iteration
-        if (print_) std::cout << "||||||||| ALWAYS  |||||||||";
         gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity_, type_);
         time_checksum_gflop gpuResult_always = gpu_.compute();
         gpuResult_always.gflops =
@@ -423,7 +423,6 @@ private:
 
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
-        if (print_) std::cout << "|||||||||  ONCE   |||||||||";
         gpu_.initialise(gpuOffloadType::once, N, M, K, sparsity_, type_);
         time_checksum_gflop gpuResult_once = gpu_.compute();
         gpuResult_once.gflops =
@@ -432,7 +431,6 @@ private:
                        sparsity_, iterations_, gpuResult_once.runtime,
                        gpuResult_once.gflops);
         
-        if (print_) std::cout << "||||||||| UNIFIED |||||||||";
         gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity_, type_);
         time_checksum_gflop gpuResult_unified = gpu_.compute();
         gpuResult_unified.gflops =
@@ -574,6 +572,8 @@ private:
     /** The maximum value of the largest problem size dimention. */
     const int upperLimit_;
 
+    const int step_;
+
     /** The sparsity value of the sparse matrices. */
     const double sparsity_;
 
@@ -614,6 +614,4 @@ private:
 
     /** The previous problem size's GPU (unified memory) performance results. */
     time_checksum_gflop prev_gpuResult_unified;
-
-    bool print_ = false;
 };

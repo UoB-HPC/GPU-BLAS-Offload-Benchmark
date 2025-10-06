@@ -28,10 +28,6 @@ public:
 
     void initialise(int m, int n, int k, double sparsity,
                     matrixType type, bool binary = false) {
-      // print_ = (m==480 && n==480 && k==30);
-
-      if (print_) std::cout << "Initialise CPU" << std::endl;
-
       m_ = m;
       n_ = n;
       k_ = k;
@@ -43,7 +39,6 @@ public:
       sparsity_ = sparsity;
       type_ = type;
 
-      if (print_) std::cout << "\tAllcoating B and C" << std::endl;
       /** Determine the number of nnz elements in A and B */
       nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
       B_ = (T*)mkl_malloc(sizeof(T) * k_ * n_, 64);
@@ -54,7 +49,6 @@ public:
 
 protected:
     void toSparseFormat() override {
-      if (print_) std::cout << "toSparse" << std::endl;
       A_vals_ = (T*)mkl_malloc(sizeof(T) * nnz_, 64);
       A_cols_ = (MKL_INT*)mkl_malloc(sizeof(MKL_INT) * nnz_, 64);
       // Make a temporary rows array of the ususal CSR type, to then turn into the two-array MKL version
@@ -62,7 +56,6 @@ protected:
       A_rowsb_ = (MKL_INT*)mkl_malloc(sizeof(MKL_INT) * m_, 64);
       A_rowse_ = (MKL_INT*)mkl_malloc(sizeof(MKL_INT) * m_, 64);
 
-      if (print_) std::cout << "\tGenerating matrix" << std::endl;
       if (type_ == matrixType::rmat) {
         rMatCSR<T, MKL_INT>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
       } else if (type_ == matrixType::random) {
@@ -78,13 +71,10 @@ protected:
       }
       // Clean up the temporary array
       mkl_free(A_rows_);
-
-      if (print_) printInputMatrices();
     }
 
 private:
     void preLoopRequirements() override {
-      if (print_) std::cout << "preLoopRequirements" << std::endl;
       if constexpr (std::is_same_v<T, float>) {
         status_ = mkl_sparse_s_create_csr(&A_csr_,
                                           indexing_,
@@ -115,22 +105,6 @@ private:
     }
     
     void callSpgemm() override {
-      if (print_) std::cout << "callSpgemm" << std::endl;
-      /**
-       * Using:
-       * sparse_status_t mkl_sparse_s_mm (
-       *    const sparse_operation_t operation,
-       *    const float alpha,
-       *    const sparse_matrix_t A,
-       *    const struct matrix_descr descr,
-       *    const sparse_layout_t layout,
-       *    const float *B,
-       *    const MKL_INT columns,
-       *    const MKL_INT ldb,
-       *    const float beta,
-       *    float *C,
-       *    const MKL_INT ldc);
-       */
       if constexpr (std::is_same_v<T, float>) {
         status_ = mkl_sparse_s_mm(operation_, alpha, A_csr_, description_,
                                   layout_, B_, n_mkl_, n_mkl_, beta, C_,
@@ -141,7 +115,7 @@ private:
                                   n_mkl_);
       } else {
         // Un-specialised class will not do any work - print error and exit.
-        std::cout << "ERROR - Datatype for OneMKL CPU SpGEMV kernel not "
+        std::cerr << "ERROR - Datatype for OneMKL CPU SpGEMV kernel not "
                      "supported." << std::endl;
         exit(1);
       }
@@ -150,17 +124,14 @@ private:
     }
 
     void postLoopRequirements() override {
-      if (print_) std::cout << "postLoopRequirements" << std::endl;
       status_ = mkl_sparse_destroy(A_csr_);
       if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
+        std::cerr << "ERROR " << status_ << std::endl;
         exit(1);
       }
     }
 
     void postCallKernelCleanup() override {
-      if (print_) printOutputMatrix();
-      if (print_) std::cout << "postCallKernelCleanup" << std::endl;
       mkl_free(A_rowsb_);
       mkl_free(A_rowse_);
       mkl_free(A_cols_);
@@ -215,7 +186,6 @@ private:
       }
     }
 
-    bool print_ = false;
 
     sparse_status_t status_;
 
@@ -242,6 +212,5 @@ private:
     const T beta = BETA;
 };
 }
-
 
 #endif

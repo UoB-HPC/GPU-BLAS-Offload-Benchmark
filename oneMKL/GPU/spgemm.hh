@@ -27,7 +27,6 @@ public:
     void initialise(gpuOffloadType offload, int m, int n, int k,
                 double sparsity, matrixType type, 
                 bool binary = false) override {
-      // print_ = (m==480 && n==480 && k==30);
       // Perform set-up which doesn't need to happen every problem size change.
       if (firstRun_) {
         firstRun_ = false;
@@ -53,8 +52,6 @@ public:
         B_device_ = nullptr;
         C_device_ = nullptr;
 
-        if (print_) std::cout << "\t\tsetting up metadata" << std::endl;
-
         offload_ = offload;
         sparsity_ = sparsity;
         type_ = type;
@@ -69,7 +66,6 @@ public:
 
         nnz_ = 1 + (uint64_t)((double)m_ * (double)k_ * (1.0 - sparsity_));
 
-        if (print_) std::cout << "\t\tallocating space" << std::endl;
         if (offload_ == gpuOffloadType::unified) {
           B_ = (T*)sycl::malloc_shared(sizeof(T) * k_ * n_, gpuQueue_);
           checkPointer(B_, "B_");
@@ -92,7 +88,7 @@ public:
 
       } catch (const std::exception& e) {
         std::cerr << "ERROR in initialise(): " << e.what() << std::endl;
-              exit(1);
+        exit(1);
       }
     }
 
@@ -130,8 +126,6 @@ protected:
         std::cerr << "ERROR - Unknown matrix type" << std::endl;
         exit(1);
       }
-
-      if (print_) printInputMatrices();
     }
 
 private:
@@ -140,15 +134,12 @@ private:
         case gpuOffloadType::always: break;
         case gpuOffloadType::once: {
           // Moving memory over to device from host
-          if (print_) std::cout << "\t\tCopying data to device for 'once' mode" << std::endl;
           gpuQueue_.memcpy(A_vals_device_, A_vals_, sizeof(T) * nnz_);
           gpuQueue_.memcpy(A_cols_device_, A_cols_, sizeof(int64_t) * nnz_);
           gpuQueue_.memcpy(A_rows_device_, A_rows_, sizeof(int64_t) * (m_ + 1));
           gpuQueue_.memcpy(B_device_, B_, sizeof(T) * k_ * n_);
           gpuQueue_.wait();
-          if (print_) std::cout << "\t\tSetting up matrix handle for unified memory" << std::endl;
           oneapi::mkl::sparse::init_matrix_handle(&A_device_);
-          if (print_) std::cout << "\t\tLoading data into the matrix handle" << std::endl;
           oneapi::mkl::sparse::set_csr_data(gpuQueue_,
                                             A_device_,
                                             m_,
@@ -162,9 +153,7 @@ private:
         }
         case gpuOffloadType::unified: {
           // For unified memory, set up matrix handle once
-          if (print_) std::cout << "\t\tSetting up matrix handle for unified memory" << std::endl;
           oneapi::mkl::sparse::init_matrix_handle(&A_device_);
-          if (print_) std::cout << "\t\tLoading data into the matrix handle" << std::endl;
           oneapi::mkl::sparse::set_csr_data(gpuQueue_,
                                             A_device_,
                                             m_,
@@ -189,9 +178,7 @@ private:
           gpuQueue_.memcpy(B_device_, B_, sizeof(T) * k_ * n_);
           gpuQueue_.wait();
 
-          if (print_) std::cout << "\t\tMaking matrix handle" << std::endl;
           oneapi::mkl::sparse::init_matrix_handle(&A_device_);
-          if (print_) std::cout << "\t\tSetting CSR data" << std::endl;
           oneapi::mkl::sparse::set_csr_data(gpuQueue_,
                                             A_device_,
                                             m_,
@@ -218,7 +205,7 @@ private:
                                       n_);
             gpuQueue_.wait();
           } catch (sycl::exception const& e) {
-            std::cout << "ERROR - Caught synchronous SYCL exception during "
+            std::cerr << "ERROR - Caught synchronous SYCL exception during "
                           "SPGEMM (Always):\n" << e.what() << std::endl <<
                           "OpenCL status: " << e.code().value() << std::endl;
             exit(1);
@@ -227,7 +214,6 @@ private:
           // Copy result back to host
           gpuQueue_.memcpy(C_, C_device_, sizeof(T) * m_ * n_);
           gpuQueue_.wait();
-
           
           // Clean up matrix handle
           oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
@@ -237,7 +223,6 @@ private:
         case gpuOffloadType::once: {
           // Buffers already exist, just do computation
           try {
-            if (print_) std::cout << "\t\tAbout to call oneapi::mkl::sparse::gemm()" << std::endl;
             oneapi::mkl::sparse::gemm(gpuQueue_,
                                       layout_,
                                       operationA_,
@@ -252,7 +237,7 @@ private:
                                       n_);
             gpuQueue_.wait();
           } catch (sycl::exception const& e) {
-            std::cout << "ERROR - Caught synchronous SYCL exception during "
+            std::cerr << "ERROR - Caught synchronous SYCL exception during "
                           "SPGEMM (Once):\n" << e.what() << std::endl <<
                           "OpenCL status: " << e.code().value() << std::endl;
             exit(1);
@@ -287,20 +272,16 @@ private:
     void postLoopRequirements() override {
       // Clean up buffers that were created for the entire loop duration
       if (offload_ == gpuOffloadType::once) {
-        if (print_) std::cout << "\t\tCleaning up 'once' mode resources" << std::endl;
         gpuQueue_.memcpy(C_, C_device_, sizeof(T) * m_ * n_);
         gpuQueue_.wait();
       }
-      if (print_) std::cout << "\t\tFinal cleanup" << std::endl;
       
       if (offload_ != gpuOffloadType::always) {
         oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &A_device_);
       }
-      if (print_) std::cout << "\t\tdone" << std::endl;
     }
 
     void postCallKernelCleanup() override {
-      if (print_) printOutputMatrix();
       if (offload_ == gpuOffloadType::unified) {
         if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
         if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
@@ -324,7 +305,7 @@ private:
 
     void checkPointer(void* ptr, std::string name) {
       if (ptr == nullptr) {
-        std::cout << "Pointer " << name << " is a null pointer" << std::endl;
+        std::cerr << "Pointer " << name << " is a null pointer" << std::endl;
         exit(1);
       }
     }
@@ -367,8 +348,6 @@ private:
         else if (i < m_ * n_ - 1) std::cout << ", ";
       }
     }
-
-    bool print_ = false;
 
     bool firstRun_ = true;
 

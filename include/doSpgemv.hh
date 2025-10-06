@@ -30,12 +30,13 @@ template <typename T>
 class doSpgemv {
 public:
     doSpgemv(const std::string csvDir, const int iters, const int startDim,
-           const int upperLimit, const double sparsity, const matrixType type,
+           const int upperLimit, const int step, const double sparsity, const matrixType type,
            const bool cpuEnabled =true, const bool gpuEnabled = true)
             : CSV_DIR(csvDir),
               iterations_(iters),
               startDimention_(startDim),
               upperLimit_(upperLimit),
+              step_(step),
               sparsity_(sparsity),
               type_(type),
               doCPU_(cpuEnabled),
@@ -66,7 +67,7 @@ public:
       prev_gpuResult_unified = time_checksum_gflop();
       std::ofstream csvFile =
               initCSVFile(CSV_DIR + "/" + getKernelName() + "_square_vector_M=N.csv");
-      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+      for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
         // M = dim, N = dim;
         callKernels(csvFile, dim, dim);
       }
@@ -94,8 +95,8 @@ public:
       int M = 16 * N;
       while (M <= upperLimit_) {
         callKernels(csvFile, M, N);
-        M += 16;
-        N++;
+        M += 16 * step_;
+        N += step_;
       }
       // Close file
       csvFile.close();
@@ -117,7 +118,7 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_tall-thin_vector_M_N=32.csv");
       if (upperLimit_ >= 32) {
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
           // M = dim, N = 32;
           callKernels(csvFile, dim, 32);
         }
@@ -145,8 +146,8 @@ public:
       N = 16 * M;
       while (N <= upperLimit_) {
         callKernels(csvFile, M, N);
-        M++;
-        N += 16;
+        M += step_;
+        N += 16 * step_;
       }
       // Close file
       csvFile.close();
@@ -168,12 +169,11 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_short-wide_vector_M=32_N.csv");
       if (upperLimit_ >= 32) {
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
           // M = 32, N = dim;
           callKernels(csvFile, 32, dim);
         }
       }
-      if (print_) std::cout << "Made it through all of the kernel" << std::endl;
       // Close file
       csvFile.close();
 #if CPU_ENABLED && GPU_ENABLED
@@ -465,6 +465,8 @@ private:
     /** The maximum value of the largest problem size dimention. */
     const int upperLimit_;
 
+    const int step_;
+
     /** The sparsity value of the sparse matrix. */
     const double sparsity_;
 
@@ -485,8 +487,6 @@ private:
     /** The GEMV GPU kernel. */
   gpu::spgemv_gpu<T> gpu_;
 #endif
-
-    bool print_ = false;
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */
     cpuGpu_offloadThreshold cpuGpu_once_;

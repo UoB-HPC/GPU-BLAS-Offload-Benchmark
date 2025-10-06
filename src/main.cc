@@ -3,6 +3,7 @@
 int iters = 10;
 int startDim = 1;
 int upperLimit = 128;
+int step = 1;
 double sparsity = 0.99;
 // GEMV kernels
 bool doSgemv = true;
@@ -72,7 +73,7 @@ int main(int argc, char** argv) {
   if (doSgemv) {
     std::cout << std::endl << "Comparing SGEMV Kernels:" << std::endl;
     doGemv<float> sgemv(std::string(absPath), iters, startDim, upperLimit,
-                        doCpu, doGpu);
+                        step, doCpu, doGpu);
     sgemv.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -81,7 +82,7 @@ int main(int argc, char** argv) {
   if (doDgemv) {
     std::cout << std::endl << "Comparing DGEMV Kernels:" << std::endl;
     doGemv<double> dgemv(std::string(absPath), iters, startDim, upperLimit,
-                         doCpu, doGpu);
+                         step, doCpu, doGpu);
     dgemv.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -91,7 +92,7 @@ int main(int argc, char** argv) {
  if (doSgemm) {
    std::cout << std::endl << "Comparing SGEMM Kernels:" << std::endl;
    doGemm<float> sgemm(std::string(absPath), iters, startDim, upperLimit,
-                       doCpu, doGpu);
+                       step, doCpu, doGpu);
    sgemm.collectData();
    std::cout << "Finished!" << std::endl;
  }
@@ -100,7 +101,7 @@ int main(int argc, char** argv) {
  if (doDgemm) {
    std::cout << std::endl << "Comparing DGEMM Kernels:" << std::endl;
    doGemm<double> dgemm(std::string(absPath), iters, startDim, upperLimit,
-                        doCpu, doGpu);
+                        step, doCpu, doGpu);
    dgemm.collectData();
    std::cout << "Finished!" << std::endl;
  }
@@ -111,7 +112,7 @@ int main(int argc, char** argv) {
   if (doSspgemv) {
     std::cout << std::endl << "Comparing SSPGEMV Kernels:" << std::endl;
     doSpgemv<float> sspgemv(std::string(absPath), iters, startDim, upperLimit,
-                            sparsity, type, doCpu, doGpu);
+                            step, sparsity, type, doCpu, doGpu);
     sspgemv.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -120,7 +121,7 @@ int main(int argc, char** argv) {
   if (doDspgemv) {
     std::cout << std::endl << "Comparing DSPGEMV Kernels:" << std::endl;
     doSpgemv<double> dspgemv(std::string(absPath), iters, startDim, upperLimit,
-                             sparsity, type, doCpu, doGpu);
+                             step, sparsity, type, doCpu, doGpu);
     dspgemv.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -130,7 +131,7 @@ int main(int argc, char** argv) {
   if (doSspgemm) {
     std::cout << std::endl << "Comparing SSpGEMM Kernels:" << std::endl;
     doSpgemm<float> sspgemm(std::string(absPath), iters, startDim, upperLimit,
-                            sparsity, type, doCpu, doGpu);
+                            step, sparsity, type, doCpu, doGpu);
     sspgemm.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -139,7 +140,7 @@ int main(int argc, char** argv) {
   if (doDspgemm) {
     std::cout << std::endl << "Comparing DSpGEMM Kernels:" << std::endl;
     doSpgemm<double> dspgemm(std::string(absPath), iters, startDim, upperLimit,
-                             sparsity, type, doCpu, doGpu);
+                             step, sparsity, type, doCpu, doGpu);
     dspgemm.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -149,7 +150,7 @@ int main(int argc, char** argv) {
   if (doSspmm) {
     std::cout << std::endl << "Comparing SSpMM Kernels:" << std::endl;
     doSpmm<float> sspmm(std::string(absPath), iters, startDim, upperLimit,
-                        sparsity, type, doCpu, doGpu);
+                        step, sparsity, type, doCpu, doGpu);
     sspmm.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -158,7 +159,7 @@ int main(int argc, char** argv) {
   if (doDspmm) {
     std::cout << std::endl << "Comparing DSpMM Kernels:" << std::endl;
     doSpmm<double> dspmm(std::string(absPath), iters, startDim, upperLimit,
-                         sparsity, type, doCpu, doGpu);
+                         step, sparsity, type, doCpu, doGpu);
     dspmm.collectData();
     std::cout << "Finished!" << std::endl;
   }
@@ -244,6 +245,11 @@ void getParameters(int argc, char** argv) {
             << std::endl;
         exit(1);
       }
+    } else if (!strcmp(argv[i], "--step")) {
+      if (++i >= argc || (step = parseInt(argv[i])) < 0) {
+        std::cout << "ERROR - Invalid dimension step size" << std::endl;
+        exit(1);
+      }
     } else if (!strcmp(argv[i], "--no_cpu")) {
       doCpu = false;
     } else if (!strcmp(argv[i], "--no_gpu")) {
@@ -310,6 +316,9 @@ void getParameters(int argc, char** argv) {
                 << std::endl;
       std::cout << "  -s  --start_dimension S      First value of M, N, K is S "
                    "(default: " << startDim << ")" 
+                << std::endl;
+      std::cout << "  --step St                    Step size between values of M, N, K"
+                   "(default: " << step << ")" 
                 << std::endl;
       std::cout << "  -d  --dimension_limit D      Max value of M, N, K is D "
                    "(default: " << upperLimit << ")" 

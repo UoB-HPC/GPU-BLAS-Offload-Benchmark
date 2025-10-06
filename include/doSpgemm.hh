@@ -57,7 +57,6 @@ public:
     }
 
     void collectData() {
-      if (print_) std::cout << "sparsity_ = " << sparsity_ << std::endl;
       // Square Problem Sizes...
       // Re-initialise offload threshold structures
       cpuGpu_always_ = cpuGpu_offloadThreshold();
@@ -68,10 +67,8 @@ public:
       prev_gpuResult_unified = time_checksum_gflop();
       std::ofstream csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                                           "_square_square_M=N=K.csv");
-      if (print_) std::cout << "============ SQUARE x SQUARE ==============" << std::endl;
-      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+      for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
         // M = dim, N = dim, K = dim;
-        if (print_) std::cout << "\t" << dim << "x" << dim << std::endl;
         callKernels(csvFile, dim, dim, dim);
       }
       // Close file
@@ -97,13 +94,11 @@ public:
       int K = startDimention_;
       int M = 16 * K;
       int N = 16 * K;
-      if (print_) std::cout << "============ TALL/THIN x SHORT/WIDE ==============" << std::endl;
       while (M <= upperLimit_) {
-        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
         callKernels(csvFile, M, N, K);
-        M += 16;
-        N += 16;
-        K++;
+        M += 16 * step_;
+        N += 16 * step_;
+        K += step_;
       }
       // Close file
       csvFile.close();
@@ -124,10 +119,8 @@ public:
       prev_gpuResult_unified = time_checksum_gflop();
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_tall-thin_short-wide_M=N_K=32.csv");
-      if (print_) std::cout << "============ TALL/THIN x SHORT/WIDE ==============" << std::endl;
       if (upperLimit_ >= 32) {
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
-        if (print_) std::cout << dim << "x32" << " . " << "32x" << dim << std::endl;
+        for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
           // M = dim, N = dim, K = 32;
           callKernels(csvFile, dim, dim, 32);
         }
@@ -154,13 +147,11 @@ public:
       M = startDimention_;
       N = startDimention_;
       K = 16 * M;
-      if (print_) std::cout << "============ SHORT/WIDE x TALL/THIN ==============" << std::endl;
       while (K <= upperLimit_) {
-        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
         callKernels(csvFile, M, N, K);
-        M++;
-        N++;
-        K += 16;
+        M += step_;
+        N += step_;
+        K += 16 * step_;
       }
       // Close file
       csvFile.close();
@@ -182,10 +173,8 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_short-wide_tall-thin_M=N=32_K.csv");
       if (upperLimit_ >= 32) {
-      if (print_) std::cout << "============ SHORT/WIDE x TALL/THIN ==============" << std::endl;
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
           // M = 32, N = 32, K = dim;
-          if (print_) std::cout << "32x" << dim << " . " << dim << "x32" << std::endl;
           callKernels(csvFile, 32, 32, dim);
         }
       }
@@ -211,13 +200,11 @@ public:
       K = startDimention_;
       N = startDimention_;
       M = 16 * K;
-      if (print_) std::cout << "============ TALL/THIN x SQUARE ==============" << std::endl;
       while (M <= upperLimit_) {
-        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
         callKernels(csvFile, M, N, K);
-        M += 16;
-        N++;
-        K++;
+        M += 16 * step_;
+        N += step_;
+        K += step_;
       }
       // Close file
       csvFile.close();
@@ -239,10 +226,8 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_tall-thin_square_K=N=32_M.csv");
       if (upperLimit_ >= 32) {
-      if (print_) std::cout << "============ TALL/THIN x SQUARE ==============" << std::endl;
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
           // M = dim, N = 32, K = 32;
-        if (print_) std::cout << dim << "x32 . 32x32" << std::endl;
           callKernels(csvFile, dim, 32, 32);
         }
       }
@@ -268,13 +253,11 @@ public:
       M = startDimention_;
       K = startDimention_;
       N = 16 * K;
-      if (print_) std::cout << "============ SQUARE x SHORT/WIDE ==============" << std::endl;
       while (N <= upperLimit_) {
-        if (print_) std::cout << M << "x" << K << " . " << K << "x" << N << std::endl;
         callKernels(csvFile, M, N, K);
-        M++;
-        N += 16;
-        K++;
+        M += step_;
+        N += 16 * step_;
+        K += step_;
       }
       // Close file
       csvFile.close();
@@ -295,10 +278,8 @@ public:
       csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                             "_square_short-wide_M=K=32_N.csv");
       if (upperLimit_ >= 32) {
-      if (print_) std::cout << "============ SQUARE x SHORT/WIDE ==============" << std::endl;
-        for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+        for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
           // M = 32, N = dim, K = 32;
-          if (print_) std::cout << "32x32 . 32x" << dim << std::endl;
           callKernels(csvFile, 32, dim, 32);
         }
       }
@@ -331,7 +312,6 @@ private:
         writeLineToCsv(csvFile, "cpu", kernelName, M, N, K, probSize,
                        sparsity_, iterations_, cpuResult.runtime, cpuResult
                        .gflops);
-        if (print_) std::cout << "CPU DONE" << std::endl;
       }
 #endif
 
@@ -348,14 +328,12 @@ private:
         writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, K,
                        probSize, sparsity_, iterations_, gpuResult_always.runtime,
                        gpuResult_always.gflops);
-        if (print_) std::cout << "GPU-ALWAYS DONE" << std::endl;
 
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
         gpu_.initialise(gpuOffloadType::once, M, N, K, sparsity_, type_);
         gpuResult_once = gpu_.compute();
         gpuResult_once.gflops = calcGflops(flops, iterations_, gpuResult_once.runtime);
-        if (print_) std::cout << "GPU-ONCE DONE" << std::endl;
         writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, K, probSize,
                        sparsity_, iterations_, gpuResult_once.runtime,
                        gpuResult_once.gflops);
@@ -365,7 +343,6 @@ private:
         gpu_.initialise(gpuOffloadType::unified, M, N, K, sparsity_, type_);
         gpuResult_unified = gpu_.compute();
         gpuResult_unified.gflops = calcGflops(flops, iterations_, gpuResult_unified.runtime);
-        if (print_) std::cout << "GPU-UNIFIED DONE" << std::endl;
         writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, K, probSize,
                        sparsity_, iterations_, gpuResult_unified.runtime,
                        gpuResult_unified.gflops);
@@ -609,6 +586,8 @@ private:
     /** The maximum value of the largest problem size dimension. */
     const int upperLimit_;
 
+    const int step_;
+
     /** The sparsity value of the sparse matrix. */
     const double sparsity_;
     
@@ -630,8 +609,6 @@ private:
     /** The GEMM GPU kernel. */
   gpu::spgemm_gpu<T> gpu_;
 #endif
-
-    bool print_ = false;
 
     /** The point at which offloading to GPU (offload once) becomes worthwhile. */
     cpuGpu_offloadThreshold cpuGpu_once_;

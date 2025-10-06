@@ -36,7 +36,6 @@ public:
       y_ = (T*)mkl_malloc(sizeof(T) * m_, 64);
 
       initInputMatrixVector();
-      if (print_) std::cout << "Matrix made" << std::endl;
     }
 
 protected:
@@ -61,85 +60,11 @@ protected:
         A_rowse_[i] = A_rows_[i + 1];
       }
 
-
       mkl_free(A_rows_);
-
-      if (print_) {
-        std::cout << "=============================================" << std::endl;
-        std::cout << "==================== CPU ====================" << std::endl;
-        std::cout << "=============================================" << std::endl;
-        std::cout << "                    INPUT"  << std::endl;
-        std::cout << "_____________________________________________" << std::endl;
-        std::cout << "x:" << std::endl;
-        std::cout << "[";
-        for (int i = 0; i < n_; i++) {
-          std::cout << x_[i];
-          if (i == (n_ - 1)) std::cout << "]" << std::endl;
-          else std::cout << ", ";
-        }
-        std::cout << "A_rowsb_:" << std::endl;
-        std::cout << "[";
-        for (int i = 0; i < (m_ + 1); i++) {
-          std::cout << A_rowsb_[i];
-          if (i == (m_)) std::cout << "]" << std::endl;
-          else std::cout << ", ";
-        }
-        std::cout << "A_rowse_:" << std::endl;
-        std::cout << "[";
-        for (int i = 0; i < (m_ + 1); i++) {
-          std::cout << A_rowse_[i];
-          if (i == (m_)) std::cout << "]" << std::endl;
-          else std::cout << ", ";
-        }
-        std::cout << "A_cols_:" << std::endl;
-        std::cout << "[";
-        for (int i = 0; i < (nnz_); i++) {
-          std::cout << A_cols_[i];
-          if (i == (nnz_ - 1)) std::cout << "]" << std::endl;
-          else std::cout << ", ";
-        }
-        std::cout << "A_vals_:" << std::endl;
-        std::cout << "[";
-        for (int i = 0; i < (nnz_); i++) {
-          std::cout << A_vals_[i];
-          if (i == (nnz_ - 1)) std::cout << "]" << std::endl;
-          else std::cout << ", ";
-        }
-        std::cout << "_____________________________________________" << std::endl;
-      }
     }
 
 private:
-
-    void callSpgemv() override {
-      /**
-       * sparse_status_t mkl_sparse_s_mv (
-       *    const sparse_operation_t operation,
-       *    const float alpha,
-       *    const sparse_matrix_t A,
-       *    const struct matrix_descr descr,
-       *    const float *x,
-       *    const float beta,
-       *    float *y);
-       */
-      if (print_) std::cout << "Calling sparse matrix-vector multiplication" << std::endl;  
-      if constexpr (std::is_same_v<T, float>) {
-        status_ = mkl_sparse_s_mv(operation_, alpha, A_csr_, description_, x_,
-                                  beta, y_);
-      } else if constexpr (std::is_same_v<T, double>) {
-        status_ = mkl_sparse_d_mv(operation_, alpha, A_csr_, description_, x_,
-                                  beta, y_);
-      }
-      if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-      if (print_) std::cout << "SPGEMV complete" << std::endl;
-      callConsume();
-    }
-
     void preLoopRequirements() override {
-      if (print_) std::cout << "Pre-loop stuff" << std::endl;
       if constexpr (std::is_same_v<T, float>) {
         status_ = mkl_sparse_s_create_csr(&A_csr_,
                                           indexing_,
@@ -163,36 +88,39 @@ private:
         std::cout << "ERROR " << status_ << std::endl;
         exit(1);
       }
+    }
 
+    void callSpgemv() override {
+      if constexpr (std::is_same_v<T, float>) {
+        status_ = mkl_sparse_s_mv(operation_, alpha, A_csr_, description_, x_,
+                                  beta, y_);
+      } else if constexpr (std::is_same_v<T, double>) {
+        status_ = mkl_sparse_d_mv(operation_, alpha, A_csr_, description_, x_,
+                                  beta, y_);
+      }
+      if (status_ != SPARSE_STATUS_SUCCESS) {
+        std::cerr << "ERROR " << status_ << std::endl;
+        exit(1);
+      }
+      callConsume();
     }
 
     void postLoopRequirements() override {
-      if (print_) std::cout << "Post-loop stuff" << std::endl;
       status_ = mkl_sparse_destroy(A_csr_);
       if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
+        std::cerr << "ERROR " << status_ << std::endl;
         exit(1);
       }
     }
 
     void postCallKernelCleanup() override {
-      if (print_) std::cout << "Post-call kernel cleanup" << std::endl;
-      if (print_) std::cout << "\tFreeing A_rowsb_" << std::endl;
       mkl_free(A_rowsb_);
-      if (print_) std::cout << "\tFreeing A_rowse_" << std::endl;
       mkl_free(A_rowse_);
-      if (print_) std::cout << "\tFreeing A_cols_" << std::endl;
       mkl_free(A_cols_);
-      if (print_) std::cout << "\tFreeing A_vals_" << std::endl;
       mkl_free(A_vals_);
-      if (print_) std::cout << "\tFreeing x_" << std::endl;
       mkl_free(x_);
-      if (print_) std::cout << "\tFreeing y_" << std::endl;
       mkl_free(y_);
-      if (print_) std::cout << "Post-call kernel cleanup complete" << std::endl;
     }
-
-    bool print_ = false;
 
     sparse_status_t status_;
 

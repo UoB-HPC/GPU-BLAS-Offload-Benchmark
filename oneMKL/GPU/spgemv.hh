@@ -25,21 +25,6 @@ public:
     void initialise(gpuOffloadType offload, int m, int n, double sparsity, 
                     matrixType type)
     override {
-      switch (offload) {
-        case gpuOffloadType::always: {
-          if (print_) std::cout << "===========  ALWAYS  ===========" << std::endl;
-          break;
-        }
-        case gpuOffloadType::once: {
-          if (print_) std::cout << "===========   ONCE   ===========" << std::endl;
-          break;
-        }
-        case gpuOffloadType::unified: {
-          if (print_) std::cout << "===========  UNIFIED ===========" << std::endl;
-          break;
-        }
-      }
-      if (print_) std::cout << "Initialising " << m << "x" << n << std::endl;
       try {
         myGpu_ = sycl::device(sycl::gpu_selector_v);
       } catch (const std::exception& e) {
@@ -51,7 +36,7 @@ public:
           try {
             std::rethrow_exception(e);
           } catch (sycl::exception const &e) {
-            std::cout << "Caught asynchronous SYCL exception during sparse::gemv:\n" << e.what() << std::endl;
+            std::cerr << "Caught asynchronous SYCL exception during sparse::gemv:\n" << e.what() << std::endl;
           }
         }
       };  
@@ -73,7 +58,6 @@ public:
 
       nnz_ = 1 + (uint64_t)((double)m_ * (double)n_ * (1.0 - sparsity_));
 
-      if (print_) std::cout << "Allocating arrays" << std::endl;
       if (offload_ == gpuOffloadType::unified) {
         x_ = sycl::malloc_shared<T>(n_, gpuQueue_);
         y_ = sycl::malloc_shared<T>(m_, gpuQueue_);
@@ -94,7 +78,6 @@ public:
       
       gpuQueue_.wait_and_throw();
 
-      if (print_) std::cout << "Initialising matrices" << std::endl;
       initInputMatrixVector();
       gpuQueue_.wait_and_throw();
     }
@@ -117,58 +100,18 @@ protected:
       }
 
       if (type_ == matrixType::rmat) {
-        if (print_) std::cout << "\tGenerating rMAT matrix" << std::endl;
         rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
       } else if (type_ == matrixType::random) {
-        if (print_) std::cout << "\tGenerating random matrix" << std::endl;
         randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
       } else {
         std::cerr << "Matrix type not supported" << std::endl;
         exit(1);
       }
-
-      if (print_) {
-        std::cout << "=============================================" << std::endl;
-        std::cout << "==================== GPU ====================" << std::endl;
-        std::cout << "=============================================" << std::endl;
-        std::cout << "                    INPUT"  << std::endl;
-        std::cout << "_____________________________________________" << std::endl;
-               
-        std::cout << "x:" << std::endl;
-        std::cout << "[";
-        for (int i = 0; i < n_; i++) {
-          std::cout << x_[i];
-          if (i == (n_ - 1)) std::cout << "]" << std::endl;
-          else std::cout << ", ";
-        }
-        std::cout << "nnz_: " << nnz_ << std::endl;
-        std::cout << "A_rows_: [";
-        for (int i = 0; i < (m_ + 1); i++) {
-          std::cout << A_rows_[i];
-          if (i == (m_)) std::cout << "]" << std::endl;
-          else std::cout << ", ";
-        }
-        std::cout << "A_cols_: [";
-        for (int i = 0; i < (nnz_); i++) {
-          std::cout << A_cols_[i];
-          if (i == (nnz_ - 1)) std::cout << "]" << std::endl;
-          else std::cout << ", ";
-        }
-        std::cout << "A_vals_: [";
-        for (int i = 0; i < (nnz_); i++) {
-          std::cout << A_vals_[i];
-          if (i == (nnz_ - 1)) std::cout << "]" << std::endl;
-          else std::cout << ", ";
-        }
-        std::cout << "_____________________________________________" << std::endl;
-      }
     }
 
 private:
     void preLoopRequirements() override {
-      if (print_) std::cout << "Pre-loop stuff" << std::endl;
       if (offload_ == gpuOffloadType::once) {
-        if (print_) std::cout << "\tMoving data to GPU" << std::endl;
         gpuQueue_.memcpy(A_vals_device_, A_vals_, sizeof(T) * nnz_);
         gpuQueue_.memcpy(A_cols_device_, A_cols_, sizeof(int64_t) * nnz_);
         gpuQueue_.memcpy(A_rows_device_, A_rows_, sizeof(int64_t) * (m_ + 1));
@@ -178,24 +121,16 @@ private:
     }
 
     void callSpgemv() override {
-      if (print_) std::cout << "calling spGEMV" << std::endl;
       switch (offload_) {
         case gpuOffloadType::always: {
-          if (print_) std::cout << "\tMoving data to GPU" << std::endl;
-          if (print_) std::cout << "\t\tMoving A_vals_" << std::endl;
           gpuQueue_.memcpy(A_vals_device_, A_vals_, sizeof(T) * nnz_);
-          if (print_) std::cout << "\t\tMoving A_cols_" << std::endl;
           gpuQueue_.memcpy(A_cols_device_, A_cols_, sizeof(int64_t) * nnz_);
-          if (print_) std::cout << "\t\tMoving A_rows_" << std::endl;
           gpuQueue_.memcpy(A_rows_device_, A_rows_, sizeof(int64_t) * (m_ + 1));
-          if (print_) std::cout << "\t\tMoving x_" << std::endl;
           gpuQueue_.memcpy(x_device_, x_, sizeof(T) * n_);
           gpuQueue_.wait_and_throw();
           // Do computation
           try {
-            if (print_) std::cout << "\tInitialising matrix handle" << std::endl;
             oneapi::mkl::sparse::init_matrix_handle(&handle_);
-            if (print_) std::cout << "\tSetting CSR data" << std::endl;
             auto set = oneapi::mkl::sparse::set_csr_data(gpuQueue_,
                                                          handle_,
                                                          m_,
@@ -205,13 +140,11 @@ private:
                                                          A_cols_device_,
                                                          A_vals_device_);
             
-            if (print_) std::cout << "\tOptimising handle" << std::endl;
             auto optimise = oneapi::mkl::sparse::optimize_gemv(gpuQueue_,
                                                                operation_,
                                                                handle_,
                                                                {set});
 
-            if (print_) std::cout << "\tCalling SPGEMV kernel" << std::endl;
             auto gemv = oneapi::mkl::sparse::gemv(gpuQueue_,
                                                   operation_,
                                                   alpha,
@@ -221,15 +154,14 @@ private:
                                                   y_device_,
                                                   {optimise});
                                                   
-            if (print_) std::cout << "\tReleasing matrix handle" << std::endl;
             auto release = oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_, {gemv});
             release.wait_and_throw();
           } catch (sycl::exception const& e) {
             gpuQueue_.wait();
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_);
-            std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;
+            std::cerr << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;
           } catch (std::exception const &e) {
-            std::cout << "\t\tCaught std exception:\n" << e.what() << std::endl;
+            std::cerr << "\t\tCaught std exception:\n" << e.what() << std::endl;
             gpuQueue_.wait();
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_);
             exit(1);
@@ -239,7 +171,6 @@ private:
         }
         case gpuOffloadType::once: {
           try {
-            if (print_) std::cout << "\tInitialising matrix handle" << std::endl;
             oneapi::mkl::sparse::init_matrix_handle(&handle_);
             if (handle_ == nullptr) {
               std::cerr << "ERROR - Failed to initialise matrix handle" << std::endl;
@@ -256,13 +187,11 @@ private:
                                                          A_vals_device_,
                                                          {});
             
-            if (print_) std::cout << "\tOptimising handle" << std::endl;
             auto optimise = oneapi::mkl::sparse::optimize_gemv(gpuQueue_,
                                                                operation_,
                                                                handle_,
                                                                {set});
 
-            if (print_) std::cout << "\tCalling SPGEMV kernel" << std::endl;
             auto gemv = oneapi::mkl::sparse::gemv(gpuQueue_,
                                                   operation_,
                                                   alpha,
@@ -278,9 +207,9 @@ private:
           } catch (sycl::exception const& e) {
             gpuQueue_.wait();
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_);
-            std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;
+            std::cerr << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;
           } catch (std::exception const &e) {
-            std::cout << "\t\tCaught std exception:\n" << e.what() << std::endl;
+            std::cerr << "\t\tCaught std exception:\n" << e.what() << std::endl;
             gpuQueue_.wait();
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_);
             exit(1);
@@ -298,7 +227,6 @@ private:
             float_ptr_vec.push_back(y_);
 
 
-            if (print_) std::cout << "\tInitialising matrix handle" << std::endl;
             handle_ = nullptr;
             oneapi::mkl::sparse::init_matrix_handle(&handle_);
             if (handle_ == nullptr) {
@@ -317,13 +245,11 @@ private:
                                                          A_vals_,
                                                          {});
             
-            if (print_) std::cout << "\tOptimising handle" << std::endl;
             auto optimise = oneapi::mkl::sparse::optimize_gemv(gpuQueue_,
                                                                operation_,
                                                                handle_,
                                                                {set});
 
-            if (print_) std::cout << "\tCalling SPGEMV kernel" << std::endl;
             auto gemv = oneapi::mkl::sparse::gemv(gpuQueue_,
                                                   operation_,
                                                   alpha,
@@ -340,9 +266,9 @@ private:
           } catch (sycl::exception const& e) {
             gpuQueue_.wait();
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_);
-            std::cout << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;
+            std::cerr << "ERROR - Caught synchronous SYCL exception during SPGEMV (Once):\n" << e.what() << std::endl << "OpenCL status: " << e.code().value() << std::endl;
           } catch (std::exception const &e) {
-            std::cout << "\t\tCaught std exception:\n" << e.what() << std::endl;
+            std::cerr << "\t\tCaught std exception:\n" << e.what() << std::endl;
             gpuQueue_.wait();
             oneapi::mkl::sparse::release_matrix_handle(gpuQueue_, &handle_).wait();
             exit(1);
@@ -353,94 +279,75 @@ private:
     }
 
     void postLoopRequirements() override {
-      if (print_) std::cout << "post-loop stuff" << std::endl;
       if (offload_ == gpuOffloadType::once) {
-        if (print_) std::cout << "\tMoving data back to host" << std::endl;
         gpuQueue_.memcpy(y_, y_device_, sizeof(T) * m_);
         gpuQueue_.wait_and_throw();
       }
     }
 
     void postCallKernelCleanup() override {
-      if (print_) std::cout << "post-call kernel cleanup" << std::endl;
-      if (print_) std::cout << "\tFreeing arrays" << std::endl;
       switch (offload_) {
         case gpuOffloadType::always:
         case gpuOffloadType::once: {
           if (A_vals_ != nullptr) {
-            if (print_) std::cout << "\t\tA_vals_" << std::endl;
             sycl::free(A_vals_, context_);
             A_vals_ = nullptr;
           }
           if (A_cols_ != nullptr) {
-            if (print_) std::cout << "\t\tA_cols_" << std::endl;
             sycl::free(A_cols_, context_);
             A_cols_ = nullptr;
           }
           if (A_rows_ != nullptr) {
-            if (print_) std::cout << "\t\tA_rows_" << std::endl;
             sycl::free(A_rows_, context_);
             A_rows_ = nullptr;
           }
           if (A_vals_device_ != nullptr) {
-            if (print_) std::cout << "\t\tA_vals_device_" << std::endl;
             sycl::free(A_vals_device_, context_);
             A_vals_device_ = nullptr;
           }
           if (A_cols_device_ != nullptr) {
-            if (print_) std::cout << "\t\tA_cols_device_" << std::endl;
             sycl::free(A_cols_device_, context_);
             A_cols_device_ = nullptr;
           }
           if (A_rows_device_ != nullptr) {
-            if (print_) std::cout << "\t\tA_rows_device_" << std::endl;
             sycl::free(A_rows_device_, context_);
             A_rows_device_ = nullptr;
           }
           if (x_ != nullptr) {
-            if (print_) std::cout << "\t\tx_" << std::endl;
             sycl::free(x_, context_);
             x_ = nullptr;
           }
           if (y_ != nullptr) {
-            if (print_) std::cout << "\t\ty_" << std::endl;
             sycl::free(y_, context_);
             y_ = nullptr;
           }
           if (x_device_ != nullptr) {
-            if (print_) std::cout << "\t\tx_device_" << std::endl;
             sycl::free(x_device_, context_);
             x_device_ = nullptr;
           }
           if (y_device_ != nullptr) {
-            if (print_) std::cout << "\t\ty_device_" << std::endl;
             sycl::free(y_device_, context_);
             y_device_ = nullptr;
           }
         }
         case gpuOffloadType::unified: {
           if (A_vals_ != nullptr) {
-            if (print_) std::cout << "\t\tA_vals_" << std::endl;
             sycl::free(A_vals_, context_);
             A_vals_ = nullptr;
           }
           if (A_cols_ != nullptr) {
-            if (print_) std::cout << "\t\tA_cols_" << std::endl;
             sycl::free(A_cols_, context_);
             A_cols_ = nullptr;
           }
           if (A_rows_ != nullptr) {
-            if (print_) std::cout << "\t\tA_rows_" << std::endl;
             sycl::free(A_rows_, context_);
             A_rows_ = nullptr;
           }
           if (x_ != nullptr) {
-            if (print_) std::cout << "\t\tx_" << std::endl;
             sycl::free(x_, context_);
             x_ = nullptr;
           }
           if (y_ != nullptr) {
-            if (print_) std::cout << "\t\ty_" << std::endl;
             sycl::free(y_, context_);
             y_ = nullptr;
           }
@@ -450,8 +357,6 @@ private:
       }
       gpuQueue_.wait_and_throw();
     }
-
-    bool print_ = false;
 
     /** Whether the initialise function has been called before. */
     bool alreadyInitialised_ = false;

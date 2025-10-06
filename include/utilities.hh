@@ -354,12 +354,12 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
   // Initialize row pointer array with zeros.
   // rows[i] will eventually hold the starting index in (vals, cols) of row i.
   // rows[nrows] will equal nnz after prefix-sum (the total number of nonzeros).
-  for (size_t i = 0; i < (nrows + 1); i++) rows[i] = 0;
+  for (size_t i = 0; i < static_cast<size_t>(nrows + 1); i++) rows[i] = 0;
 
   // Linear pass over sorted edges to fill cols/vals and count entries per row.
   // We write the k-th edge's column into cols[k] and its value into vals[k].
   // Simultaneously, we increment a per-row count into rows[r+1].
-  for (size_t i = 0; i < nnz; ++i) {
+  for (size_t i = 0; i < static_cast<size_t>(nnz); ++i) {
     const int_type r = edges[static_cast<size_t>(i)].first;
     const int_type c = edges[static_cast<size_t>(i)].second;
 
@@ -370,7 +370,7 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
     // After this loop, rows[k+1] holds the count of nonzeros in row k.
     rows[static_cast<size_t>(r) + 1]++;
   }
-  for (size_t i = 0; i < nrows; i++) {
+  for (size_t i = 0; i < static_cast<size_t>(nrows); i++) {
       rows[static_cast<size_t>(i) + 1] += rows[static_cast<size_t>(i)];
   }
 

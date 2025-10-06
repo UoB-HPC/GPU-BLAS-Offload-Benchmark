@@ -185,7 +185,7 @@ for i in range(0, len(gemvFilenames)):
     plt.xlabel(x_name, fontsize=20)
     plt.ylabel(y_name, fontsize=20)
     plt.title(title, fontsize=20)
-    plt.savefig(fname="{}/{}.png".format(graphDir, gemvFilenames[i][:-4]), format="png", dpi=100, bbox_inches="tight")
+    plt.savefig(fname="{}/{}.pdf".format(graphDir, gemvFilenames[i][:-4]), format="pdf", dpi=1000, bbox_inches="tight")
     plt.close('all')
     
 
@@ -351,7 +351,7 @@ for i in range(0, len(spgemvFilenames)):
     plt.xlabel(x_name, fontsize=20)
     plt.ylabel(y_name, fontsize=20)
     plt.title(title, fontsize=20)
-    plt.savefig(fname="{}/{}.png".format(graphDir, spgemvFilenames[i][:-4]), format="png", dpi=100, bbox_inches="tight")
+    plt.savefig(fname="{}/{}.pdf".format(graphDir, spgemvFilenames[i][:-4]), format="pdf", dpi=1000, bbox_inches="tight")
     plt.close('all')
     
 
@@ -539,7 +539,7 @@ for i in range(0, len(gemmFilenames)):
     plt.xlabel(x_name, fontsize=20)
     plt.ylabel(y_name, fontsize=20)
     plt.title(title, fontsize=20)
-    plt.savefig(fname="{}/{}.png".format(graphDir, gemmFilenames[i][:-4]), format="png", dpi=100, bbox_inches="tight")
+    plt.savefig(fname="{}/{}.pdf".format(graphDir, gemmFilenames[i][:-4]), format="pdf", dpi=1000, bbox_inches="tight")
     plt.close('all')
     
 
@@ -727,7 +727,7 @@ for i in range(0, len(spgemmFilenames)):
     plt.xlabel(x_name, fontsize=20)
     plt.ylabel(y_name, fontsize=20)
     plt.title(title, fontsize=20)
-    plt.savefig(fname="{}/{}.png".format(graphDir, spgemmFilenames[i][:-4]), format="png", dpi=100, bbox_inches="tight")
+    plt.savefig(fname="{}/{}.pdf".format(graphDir, spgemmFilenames[i][:-4]), format="pdf", dpi=1000, bbox_inches="tight")
     plt.close('all')
     
 
@@ -915,7 +915,7 @@ for i in range(0, len(spmmFilenames)):
     plt.xlabel(x_name, fontsize=20)
     plt.ylabel(y_name, fontsize=20)
     plt.title(title, fontsize=20)
-    plt.savefig(fname="{}/{}.png".format(graphDir, spmmFilenames[i][:-4]), format="png", dpi=100, bbox_inches="tight")
+    plt.savefig(fname="{}/{}.pdf".format(graphDir, spmmFilenames[i][:-4]), format="pdf", dpi=1000, bbox_inches="tight")
     plt.close('all')
     
 

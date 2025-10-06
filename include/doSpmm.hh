@@ -293,7 +293,7 @@ public:
     }
 
 private:
-        /** Ensure all CPU and GPU checksums are within the permitted limit of
+    /** Ensure all CPU and GPU checksums are within the permitted limit of
      * eachother. */
     void checkChecksums(time_checksum_gflop cpuResult,
                         time_checksum_gflop gpuResult_once,

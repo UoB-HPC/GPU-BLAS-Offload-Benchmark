@@ -98,7 +98,7 @@ class doGemm {
     callKernels(csvFile, M, N, K);
     M += 16 * step_;
     N += 16 * step_;
-    K != step_;
+    K += step_;
   }
   // Close file
   csvFile.close();

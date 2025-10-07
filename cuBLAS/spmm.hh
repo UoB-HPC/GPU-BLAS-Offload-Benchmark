@@ -33,7 +33,6 @@ class spmm_gpu : public spmm<T> {
 
   ~spmm_gpu() {
     if (alreadyInitialised_) {
-      alreadyInitialised_ = false;
       cusparseCheckError(cusparseDestroy(handle_));
 
       cudaCheckError(cudaStreamDestroy(s1_));
@@ -42,6 +41,8 @@ class spmm_gpu : public spmm<T> {
       cudaCheckError(cudaStreamDestroy(s4_));
       cudaCheckError(cudaStreamDestroy(s5_));
       cudaCheckError(cudaStreamDestroy(s6_));
+      
+      alreadyInitialised_ = false;
     }
   }
 
@@ -742,8 +743,6 @@ class spmm_gpu : public spmm<T> {
     }
   }
 
-  bool print_ = false;
-
   bool alreadyInitialised_ = false;
 
   /** Handle used when calling cuBLAS. */
@@ -797,7 +796,6 @@ class spmm_gpu : public spmm<T> {
 
   /** The constant value Beta. */
   const T beta = BETA;
-
 
 	// Create descriptors for matrices A->C
 	cusparseSpMatDescr_t A_descr_, B_descr_, C_descr_;

@@ -225,41 +225,37 @@ private:
                      const aoclsparse_int   *indices,
                      const void             *val,
                      int                    shape,
-                     int                    base) {
-    if (print_) std::cout << "CHECKING POINTERS" << std::endl;               
+                     int                    base) {            
     if (idx_ptr == nullptr) {
-      if (print_) std::cout << "INVALID ROWS ARRAY" << std::endl;
+      std::cerr << "INVALID ROWS ARRAY" << std::endl;
       exit(1);
     }
     if (indices == nullptr){
-      if (print_) std::cout << "INVALID COLS ARRAY" << std::endl;
+      std::cerr << "INVALID COLS ARRAY" << std::endl;
       exit(1);
     }
     if (val == nullptr){
-      if (print_) std::cout << "INVALID VALS ARRAY" << std::endl;
+      std::cerr << "INVALID VALS ARRAY" << std::endl;
       exit(1);
     }
-    if (print_) std::cout << "CHECKING POSITIVE SIZES" << std::endl;
 
     if ((min_dim < 0) || (maj_dim < 0) || (nnz < 0)) {
-      if (print_) std::cout << "Wrong min_dim/maj_dim/nnz" << std::endl;
+      std::cerr << "Wrong min_dim/maj_dim/nnz" << std::endl;
       exit(1);
     }
-    if (print_) std::cout << "CHECKING ROW 0 = 0" << std::endl;
 
     if ((idx_ptr[0] - base) != 0) {
-      if (print_) std::cout << "Wrong csr_row_ptr[0] or csc.col_ptr[0]" << std::endl;
+      std::cerr << "Wrong csr_row_ptr[0] or csc.col_ptr[0]" << std::endl;
       exit(1);
     }
-    if (print_) std::cout << "CHECKING LAST ROW = NNZ" << std::endl;
+
     if ((idx_ptr[maj_dim] - base) != nnz) {
-      if (print_) std::cout << "Wrong csr_row_ptr[m]!=nnz or csc.col_ptr[n]!=nnz" << std::endl;
+      std::cerr << "Wrong csr_row_ptr[m]!=nnz or csc.col_ptr[n]!=nnz" << std::endl;
       exit(1);
     }
-    if (print_) std::cout << "CHECKING ROW POINTERS INCREASE" << std::endl;
     for (aoclsparse_int i = 1; i <= maj_dim; i++) {
       if (idx_ptr[i - 1] > idx_ptr[i]) {
-        if (print_) std::cout << "Wrong csr_row_ptr/csc.col_ptr - not nondecreasing" << std::endl;
+        std::cerr << "Wrong csr_row_ptr/csc.col_ptr - not nondecreasing" << std::endl;
         exit (1);
       }
     }
@@ -268,10 +264,8 @@ private:
     int sort = 1;
     bool fulldiag = true;
 
-    if (print_) std::cout << "CHECKING DIAGONALITY" << std::endl;
     aoclsparse_int idxstart, idxend, j, jmin = 0, jmax = min_dim - 1;
     for (aoclsparse_int i = 0; i < maj_dim; i++) {
-      if (print_) std::cout << "i = " << i;
       idxend   = idx_ptr[i + 1] - base;
       idxstart = idx_ptr[i] - base;
       if (shape == 1) {
@@ -286,11 +280,10 @@ private:
       aoclsparse_int prev = -1; // holds previous col index, initially set to -1
 
       for (aoclsparse_int idx = idxstart; idx < idxend; idx++) {
-        if (print_) std::cout << ", idx = " << idx << ", diag = " << ((diagonal) ? "true" : "false") << std::endl;
         j = indices[idx] - base;
         if (j < jmin || j > jmax) {
-          if (print_) std::cout << "Wrong index - out of bounds or triangle, @idx=" << idx << ": j=" << j << ", i=" << i << std::endl;
-          exit(1);          
+          std::cerr << "Wrong index - out of bounds or triangle, @idx=" << idx << ": j=" << j << ", i=" << i << std::endl;
+          exit(1);
         }
         // check for sorting pattern for each element in a row
         if (sort != 3) {
@@ -303,7 +296,7 @@ private:
         if (j > i) upper = true;
         else if(j == i) {
           if (diagonal) {
-            if (print_) std::cout << "Wrong diag - duplicate diag for i=j=" << i << std::endl;
+            std::cerr << "Wrong diag - duplicate diag for i=j=" << i << std::endl;
             exit(1);
           }
           // diagonal element visited
@@ -313,8 +306,6 @@ private:
       if (!diagonal && i < min_dim) fulldiag = false; // missing diagonal
     }
   }
-
-  bool print_ = false;
 
   aoclsparse_status status_;
   aoclsparse_order order_;

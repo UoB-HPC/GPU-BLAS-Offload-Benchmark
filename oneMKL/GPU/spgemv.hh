@@ -75,7 +75,6 @@ public:
           exit(1);
         }
       }
-      
       gpuQueue_.wait_and_throw();
 
       initInputMatrixVector();
@@ -85,7 +84,6 @@ public:
 
 protected:
     void toSparseFormat() override {
-      gpuQueue_.wait_and_throw();
       if (offload_ == gpuOffloadType::unified) {
         A_vals_ = sycl::malloc_shared<T>(nnz_, gpuQueue_);
         A_cols_ = sycl::malloc_shared<int64_t>(nnz_, gpuQueue_);

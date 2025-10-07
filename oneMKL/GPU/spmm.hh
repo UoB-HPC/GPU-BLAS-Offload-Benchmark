@@ -767,51 +767,6 @@ private:
       }
     }
 
-    void printInputMatrices() {
-      std::cout << "---------------------------------------------" << std::endl;
-      std::cout << "Matrix A" << std::endl;
-      std::cout << "NNZ = " << A_nnz_ << std::endl;
-      std::cout << "\tRows: [";
-      for (int64_t i = 0; i < m_ + 1; i++) {
-        std::cout << A_rows_[i];
-        if (i < m_) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "\tCols: [";
-      for (int64_t i = 0; i < A_nnz_; i++) {
-        std::cout << A_cols_[i];
-        if (i < A_nnz_ - 1) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "\tVals: [";
-      for (int64_t i = 0; i < A_nnz_; i++) {
-        std::cout << A_vals_[i];
-        if (i < A_nnz_ - 1) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "Matrix B" << std::endl;
-      std::cout << "NNZ = " << B_nnz_ << std::endl;
-      std::cout << "\tRows: [";
-      for (int64_t i = 0; i < k_ + 1; i++) {
-        std::cout << B_rows_[i];
-        if (i < k_) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "\tCols: [";
-      for (int64_t i = 0; i < B_nnz_; i++) {
-        std::cout << B_cols_[i];
-        if (i < B_nnz_ - 1) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "\tVals: [";
-      for (int64_t i = 0; i < B_nnz_; i++) {
-        std::cout << B_vals_[i];
-        if (i < B_nnz_ - 1) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "---------------------------------------------" << std::endl;
-    }
-
     // First-run check to confirm whether to clean up old arrays or not
     bool firstRun_ = true;
 

@@ -24,31 +24,15 @@ public:
 
       // perform the SPMM calls
       preLoopRequirements();
-      std::chrono::time_point<std::chrono::high_resolution_clock> preLoopTime =
-              std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> preLoopDuration = preLoopTime - startTime;
-      if (print_) std::cout << "\tpre-loop = " << preLoopDuration.count() << std::endl;
-      std::chrono::time_point<std::chrono::high_resolution_clock> kernelTime;
       for (int i = 0; i < iterations_; i++) {
-        std::chrono::time_point<std::chrono::high_resolution_clock> preKernelTime =
-              std::chrono::high_resolution_clock::now();
         callSpmm();
-        kernelTime = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> kernelDuration = kernelTime - preKernelTime;
-        if (print_) std::cout << "\t\tkernel call = " << kernelDuration.count() << std::endl;
       }
-      std::chrono::duration<double> totalKernelDuration = kernelTime - preLoopTime;
-      if (print_) std::cout << "\tall loops = " << totalKernelDuration.count() << std::endl;
       postLoopRequirements();
 
       // Stop the timer
       std::chrono::time_point<std::chrono::high_resolution_clock> endTime =
               std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> time_s = endTime - startTime;
-
-      std::chrono::duration<double> postLoopDuration = endTime - kernelTime;
-      if (print_) std::cout << "\tpost-loop = " << postLoopDuration.count() << std::endl;
-      if (print_) std::cout << "=== TOTAL = " << time_s.count() << " ===" << std::endl;
 
       double checksum = calcChecksum();
 
@@ -129,6 +113,4 @@ protected:
     double sparsity_;
 
     matrixType type_;
-
-    bool print_ = false;
 };

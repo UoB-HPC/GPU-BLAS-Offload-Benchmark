@@ -34,8 +34,7 @@ class gemv_cpu : public gemv<T> {
                   std::max(1, m_), x_, vecIncrement_, beta, y_, vecIncrement_);
     } else {
       // Un-specialised class will not do any work - print error and exit.
-      std::cout << "ERROR - Datatype for ArmPL CPU GEMV kernel not supported."
-                << std::endl;
+      std::cout << "ERROR - Datatype for ArmPL CPU GEMV kernel not supported." << std::endl;
       exit(1);
     }
     // Ensure compiler doesn't optimise away the work being done

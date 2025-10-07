@@ -68,24 +68,17 @@ public:
 
         if (offload_ == gpuOffloadType::unified) {
           B_ = (T*)sycl::malloc_shared(sizeof(T) * k_ * n_, gpuQueue_);
-          checkPointer(B_, "B_");
           C_ = (T*)sycl::malloc_shared(sizeof(T) * m_ * n_, gpuQueue_);
-          checkPointer(C_, "C_");
         } else {
           // Host memory allocation
           B_ = (T*)sycl::malloc_host(sizeof(T) * k_ * n_, gpuQueue_);
-          checkPointer(B_, "B_");
           C_ = (T*)sycl::malloc_host(sizeof(T) * m_ * n_, gpuQueue_);
-          checkPointer(C_, "C_");
 
           // Device memory allocation
           B_device_ = (T*)sycl::malloc_device(sizeof(T) * k_ * n_, gpuQueue_);
-          checkPointer(B_device_, "B_device_");
           C_device_ = (T*)sycl::malloc_device(sizeof(T) * m_ * n_, gpuQueue_);
-          checkPointer(C_device_, "C_device_");
         }
         initInputMatrices();
-
       } catch (const std::exception& e) {
         std::cerr << "ERROR in initialise(): " << e.what() << std::endl;
         exit(1);
@@ -97,25 +90,16 @@ protected:
     void toSparseFormat() override {
       if (offload_ == gpuOffloadType::unified) {
           A_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnz_, gpuQueue_);
-          checkPointer(A_vals_, "A_vals_");
           A_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnz_, gpuQueue_);
-          checkPointer(A_cols_, "A_cols_");
           A_rows_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * (m_ + 1), gpuQueue_);
-          checkPointer(A_rows_, "A_rows_");
       } else {
           A_vals_ = (T*)sycl::malloc_host(sizeof(T) * nnz_, gpuQueue_);
-          checkPointer(A_vals_, "A_vals_");
           A_cols_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * nnz_, gpuQueue_);
-          checkPointer(A_cols_, "A_cols_");
           A_rows_ = (int64_t*)sycl::malloc_host(sizeof(int64_t) * (m_ + 1), gpuQueue_);
-          checkPointer(A_rows_, "A_rows_");
 
           A_vals_device_ = (T*)sycl::malloc_device(sizeof(T) * nnz_, gpuQueue_);
-          checkPointer(A_vals_device_, "A_vals_device_");
           A_cols_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * nnz_, gpuQueue_);
-          checkPointer(A_cols_device_, "A_cols_device_");
           A_rows_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * (m_ + 1), gpuQueue_);
-          checkPointer(A_rows_device_, "A_rows_device_");
       }
       
       if (type_ == matrixType::rmat) {
@@ -300,52 +284,6 @@ private:
         if (A_rows_device_) { sycl::free(A_rows_device_, gpuQueue_); A_rows_device_ = nullptr; }
         if (B_device_) { sycl::free(B_device_, gpuQueue_); B_device_ = nullptr; }
         if (C_device_) { sycl::free(C_device_, gpuQueue_); C_device_ = nullptr; } 
-      }
-    }
-
-    void checkPointer(void* ptr, std::string name) {
-      if (ptr == nullptr) {
-        std::cerr << "Pointer " << name << " is a null pointer" << std::endl;
-        exit(1);
-      }
-    }
-
-    void printInputMatrices() {
-      std::cout << "Matrix A (CSR format):" << std::endl;
-      std::cout << "Rows: [";
-      for (int i = 0; i <= m_; i++) {
-        std::cout << A_rows_[i];
-        if (i < m_) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "Cols: [";
-      for (int i = 0; i < nnz_; i++) {
-        std::cout << A_cols_[i];
-        if (i < nnz_ - 1) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "Vals: [";
-      for (int i = 0; i < nnz_; i++) {
-        std::cout << A_vals_[i];
-        if (i < nnz_ - 1) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "B: [";
-      for (int i = 0; i < k_ * n_; i++) {
-        std::cout << B_[i];
-        if (i == (m_ * n_) - 1) std::cout << "]" << std::endl;
-        else if (i % n_ == n_ - 1) std::cout << std::endl;
-        else if (i < k_ * n_ - 1) std::cout << ", ";
-      }
-    }
-
-    void printOutputMatrix() {
-      std::cout << "Matrix C: [";
-      for (int i = 0; i < m_ * n_; i++) {
-        std::cout << C_[i];
-        if (i == (m_ * n_) - 1) std::cout << "]" << std::endl;
-        else if (i % n_ == n_ - 1) std::cout << std::endl;
-        else if (i < m_ * n_ - 1) std::cout << ", ";
       }
     }
 

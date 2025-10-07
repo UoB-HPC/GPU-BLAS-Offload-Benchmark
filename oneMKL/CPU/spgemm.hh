@@ -140,58 +140,11 @@ private:
       mkl_free(C_);
     }
 
-
-    void printInputMatrices() {
-      std::cout << "Matrix A (CSR format):" << std::endl;
-      std::cout << "RowsB: [";
-      for (int i = 0; i < m_; i++) {
-        std::cout << A_rowsb_[i];
-        if (i < (m_ - 1)) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "RowsE: [";
-      for (int i = 0; i < m_; i++) {
-        std::cout << A_rowse_[i];
-        if (i < (m_ - 1)) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "Cols: [";
-      for (int i = 0; i < nnz_; i++) {
-        std::cout << A_cols_[i];
-        if (i < nnz_ - 1) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "Vals: [";
-      for (int i = 0; i < nnz_; i++) {
-        std::cout << A_vals_[i];
-        if (i < nnz_ - 1) std::cout << ", ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "B: [";
-      for (int i = 0; i < k_ * n_; i++) {
-        std::cout << B_[i];
-        if (i == (m_ * n_) - 1) std::cout << "]" << std::endl;
-        else if (i % n_ == n_ - 1) std::cout << std::endl;
-        else if (i < k_ * n_ - 1) std::cout << ", ";
-      }
-    }
-
-    void printOutputMatrix() {
-      std::cout << "Matrix C: [";
-      for (int i = 0; i < m_ * n_; i++) {
-        std::cout << C_[i];
-        if (i == (m_ * n_) - 1) std::cout << "]" << std::endl;
-        else if (i % n_ == n_ - 1) std::cout << std::endl;
-        else if (i < m_ * n_ - 1) std::cout << ", ";
-      }
-    }
-
-
     sparse_status_t status_;
 
     sparse_index_base_t indexing_ = SPARSE_INDEX_BASE_ZERO;
     sparse_operation_t operation_ = SPARSE_OPERATION_NON_TRANSPOSE;
-    // Todo -- investigate if other options for description_ improve performance
+    
     matrix_descr description_ = {SPARSE_MATRIX_TYPE_GENERAL,
                                  SPARSE_FILL_MODE_LOWER,
                                  SPARSE_DIAG_NON_UNIT};

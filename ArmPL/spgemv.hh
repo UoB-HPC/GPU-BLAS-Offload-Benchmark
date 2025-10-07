@@ -81,11 +81,11 @@ protected:
                                          0);
     } else {
       // Un-specialised class will not do any work - print error and exit.
-      std::cout << "ERROR - Datatype for ArmPL CPU SPGEMM kernel not supported." << std::endl;
+      std::cerr << "ERROR - Datatype for ArmPL CPU SPGEMM kernel not supported." << std::endl;
       exit(1);
     }
     if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
+      std::cerr << "ERROR " << status_ << std::endl;
       exit(1);
     }
   }
@@ -98,7 +98,7 @@ private:/** Perform any required steps before calling the GEMM kernel that shoul
                                ARMPL_SPARSE_HINT_MEMORY,
                                ARMPL_SPARSE_MEMORY_NOALLOCS);
     if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
+      std::cerr << "ERROR " << status_ << std::endl;
       exit(1);
     }                  
 
@@ -106,7 +106,7 @@ private:/** Perform any required steps before calling the GEMM kernel that shoul
                                ARMPL_SPARSE_HINT_STRUCTURE,
                                ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED);
     if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
+      std::cerr << "ERROR " << status_ << std::endl;
       exit(1);
     }
 
@@ -114,7 +114,7 @@ private:/** Perform any required steps before calling the GEMM kernel that shoul
                                ARMPL_SPARSE_HINT_SPMV_INVOCATIONS,
                                ARMPL_SPARSE_INVOCATIONS_FEW);
     if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
+      std::cerr << "ERROR " << status_ << std::endl;
       exit(1);
     }
 
@@ -122,14 +122,14 @@ private:/** Perform any required steps before calling the GEMM kernel that shoul
                                ARMPL_SPARSE_HINT_SPMV_OPERATION,
                                ARMPL_SPARSE_OPERATION_NOTRANS);
     if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
+      std::cerr << "ERROR " << status_ << std::endl;
       exit(1);
     }
 
     // Now optimise the matrix for SpMV based on the hints given
     status_ = armpl_spmv_optimize(A_armpl_);
     if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
+      std::cerr << "ERROR " << status_ << std::endl;
       exit(1);
     }
   }
@@ -152,7 +152,7 @@ private:/** Perform any required steps before calling the GEMM kernel that shoul
                                   y_);
     } else {
       // Un-specialised class will not do any work - print error and exit.
-      std::cout << "ERROR - Datatype for ArmPL CPU GEMV kernel not supported." << std::endl;
+      std::cerr << "ERROR - Datatype for ArmPL CPU GEMV kernel not supported." << std::endl;
       exit(1);
     }
     if (status_ != ARMPL_STATUS_SUCCESS) {
@@ -173,7 +173,7 @@ private:/** Perform any required steps before calling the GEMM kernel that shoul
   void postCallKernelCleanup() override {
     status_ = armpl_spmat_destroy(A_armpl_);
     if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
+      std::cerr << "ERROR " << status_ << std::endl;
       exit(1);
     }
 

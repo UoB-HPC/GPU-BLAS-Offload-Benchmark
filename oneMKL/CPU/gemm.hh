@@ -50,8 +50,7 @@ class gemm_cpu : public gemm<T> {
                   std::max(1, m_));
     } else {
       // Un-specialised class will not do any work - print error and exit.
-      std::cout << "ERROR - Datatype for OneMKL CPU GEMM kernel not supported."
-                << std::endl;
+      std::cerr << "ERROR - Datatype for OneMKL CPU GEMM kernel not supported." << std::endl;
       exit(1);
     }
     // Ensure compiler doesn't optimise away the work being done

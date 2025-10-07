@@ -26,13 +26,10 @@ public:
               std::chrono::high_resolution_clock::now();
 
       // perform the SPMM calls
-      if (print_) std::cout << "\t\tPre-loop requirements" << std::endl;
       preLoopRequirements();
       for (int i = 0; i < iterations_; i++) {
-        if (print_) std::cout << "\t\tcallSpgemm" << std::endl;
         callSpgemm();
       }
-      if (print_) std::cout << "\t\tPost-loop requirements" << std::endl;
       postLoopRequirements();
 
       // Stop the timer
@@ -75,30 +72,19 @@ private:
 protected:
     /** Set up the starting matrices */
     void initInputMatrices() {
-      if (print_) std::cout << "DEBUG: initInputMatrices - Start" << std::endl;
-      if (print_) std::cout << "  m_=" << m_ << ", n_=" << n_ << ", k_=" << k_ << std::endl;
-      if (print_) std::cout << "  nnz_=" << nnz_ << ", sparsity_=" << sparsity_ << std::endl;
-
-
       // Initialize B with random values
-      if (print_) std::cout << "DEBUG: Initializing matrix B" << std::endl;
       srand(SEED);
       for (int i = 0; i < (k_ * n_); i++) {
         B_[i] = (T)((double)(rand() % 100) / 7.0);
       }
 
       // Initialize C to zero
-      if (print_) std::cout << "DEBUG: Initializing matrix C" << std::endl;
       for (int i = 0; i < (m_ * n_); i++) {
         C_[i] = (T)0.0;
       }
 
-      if (print_) std::cout << "DEBUG: Calling toSparseFormat()" << std::endl;
       toSparseFormat();
-      if (print_) std::cout << "DEBUG: initInputMatrices - Complete" << std::endl;
     }
-
-    bool print_ = false;
 
     /** Move matrices into the sparse representation of for the given library */
     virtual void toSparseFormat() = 0;

@@ -109,10 +109,9 @@ class gemv_gpu : public gemv<T> {
               y_device_, vecIncrement_, {})
               .wait_and_throw();
         } catch (sycl::exception const& e) {
-          std::cout << "ERROR - Caught synchronous SYCL exception during GEMV "
-                       "(Always):\n"
-                    << e.what() << std::endl
-                    << "OpenCL status: " << e.code().value() << std::endl;
+          std::cerr << "ERROR - Caught synchronous SYCL exception during GEMV "
+                       "(Always):\n" << e.what() << std::endl;
+          std::cerr << "OpenCL status: " << e.code().value() << std::endl;
         }
         // Offload output data from device to host
         gpuQueue_.memcpy(y_, y_device_, sizeof(T) * m_);
@@ -128,10 +127,9 @@ class gemv_gpu : public gemv<T> {
               y_device_, vecIncrement_, {})
               .wait_and_throw();
         } catch (sycl::exception const& e) {
-          std::cout << "ERROR - Caught synchronous SYCL exception during GEMV "
-                       "(Once):\n"
-                    << e.what() << std::endl
-                    << "OpenCL status: " << e.code().value() << std::endl;
+          std::cerr << "ERROR - Caught synchronous SYCL exception during GEMV "
+                       "(Once):\n" << e.what() << std::endl
+          std::cerr << "OpenCL status: " << e.code().value() << std::endl;
         }
         break;
       }
@@ -144,10 +142,9 @@ class gemv_gpu : public gemv<T> {
               vecIncrement_, {})
               .wait_and_throw();
         } catch (sycl::exception const& e) {
-          std::cout << "ERROR - Caught synchronous SYCL exception during GEMV "
-                       "(Unified):\n"
-                    << e.what() << std::endl
-                    << "OpenCL status: " << e.code().value() << std::endl;
+          std::cerr << "ERROR - Caught synchronous SYCL exception during GEMV "
+                       "(Unified):\n" << e.what() << std::endl;
+          std::cerr << "OpenCL status: " << e.code().value() << std::endl;
         }
         break;
       }
@@ -169,7 +166,6 @@ class gemv_gpu : public gemv<T> {
         break;
       }
       case gpuOffloadType::unified: {
-        // TODO - Ensure all data resides on host once work has completed
         gpuQueue_.wait_and_throw();
         break;
       }

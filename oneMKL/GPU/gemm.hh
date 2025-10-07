@@ -111,10 +111,9 @@ class gemm_gpu : public gemm<T> {
               (int64_t)std::max(1, m_), {})
               .wait_and_throw();
         } catch (sycl::exception const& e) {
-          std::cout << "ERROR - Caught synchronous SYCL exception during GEMM "
-                       "(Always):\n"
-                    << e.what() << std::endl
-                    << "OpenCL status: " << e.code().value() << std::endl;
+          std::cerr << "ERROR - Caught synchronous SYCL exception during GEMM "
+                       "(Always):\n" << e.what() << std::endl;
+          std::cerr << "OpenCL status: " << e.code().value() << std::endl;
         }
         // Offload output data from device to host
         gpuQueue_.memcpy(C_, C_device_, sizeof(T) * m_ * n_);
@@ -131,10 +130,9 @@ class gemm_gpu : public gemm<T> {
               (int64_t)std::max(1, m_), {})
               .wait_and_throw();
         } catch (sycl::exception const& e) {
-          std::cout << "ERROR - Caught synchronous SYCL exception during GEMM "
-                       "(Once):\n"
-                    << e.what() << std::endl
-                    << "OpenCL status: " << e.code().value() << std::endl;
+          std::cerr << "ERROR - Caught synchronous SYCL exception during GEMM "
+                       "(Once): " << e.what() << std::endl;
+          std::cerr << "OpenCL status: " << e.code().value() << std::endl;
         }
         break;
       }
@@ -147,10 +145,9 @@ class gemm_gpu : public gemm<T> {
               (int64_t)std::max(1, k_), beta, C_, (int64_t)std::max(1, m_), {})
               .wait_and_throw();
         } catch (sycl::exception const& e) {
-          std::cout << "ERROR - Caught synchronous SYCL exception during GEMM "
-                       "(Unified):\n"
-                    << e.what() << std::endl
-                    << "OpenCL status: " << e.code().value() << std::endl;
+          std::cerr << "ERROR - Caught synchronous SYCL exception during GEMM "
+                       "(Unified): " << e.what() << std::endl;
+          std::cerr << "OpenCL status: " << e.code().value() << std::endl;
         }
         break;
       }
@@ -172,7 +169,7 @@ class gemm_gpu : public gemm<T> {
         break;
       }
       case gpuOffloadType::unified: {
-        // TODO - Ensure all data resides on host once work has completed
+        // Ensure all data resides on host once work has completed
         gpuQueue_.wait_and_throw();
         break;
       }

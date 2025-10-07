@@ -48,7 +48,6 @@ public:
 private:
     /** Do any necessary cleanup (free pointers, close library handles, etc.)
      * after Kernel has been called. */
-  void postCallKernelCleanup() {
-  }
+  void postCallKernelCleanup() {}
 };
 }  // namespace cpu

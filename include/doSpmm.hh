@@ -398,9 +398,10 @@ private:
       std::string kernelName = getKernelName();
 
 #if CPU_ENABLED
+      time_checksum_gflop cpuResult;
       if (doCPU_) {
         cpu_.initialise(N, M, K, sparsity_, type_);
-        time_checksum_gflop cpuResult = cpu_.compute();
+        cpuResult = cpu_.compute();
         cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
         writeLineToCsv(csvFile, "cpu", kernelName, N, M, K, probSize,
                        sparsity_, iterations_, cpuResult.runtime,
@@ -409,12 +410,24 @@ private:
 #endif
 #if GPU_ENABLED
       // Perform the GPU kernels
-      // - UNIFIED : data passed from host to device (and device to host) as
-      //             needed
+      time_checksum_gflop gpuResult_always;
+      time_checksum_gflop gpuResult_once;
+      time_checksum_gflop gpuResult_unified;
+      /*
+        * We run three different offload types:
+        *  - ALWAYS: Offload to/from GPU every iteration
+        *  - ONCE : Offload to/from GPU once before all iterations and once after
+        *  - UNIFIED : data passed from host to device (and device to host) as needed 
+        * THE ORDER OF THESE IS IMPORTANT -- To reduce time spent generating matrices, we 
+        * generate once during the ALWAYS offload, and then re-use the same matrices for
+        * the ONCE and UNIFIED offload tests.  Deleting them after UNIFIED.  Therefore, 
+        * changing the order here will require this logic within the spmm GPU classes to 
+        * be updated. 
+      */
       if (doGPU_) {
         // - ALWAYS: Offload to/from GPU every iteration
         gpu_.initialise(gpuOffloadType::always, N, M, K, sparsity_, type_);
-        time_checksum_gflop gpuResult_always = gpu_.compute();
+        gpuResult_always = gpu_.compute();
         gpuResult_always.gflops =
               calcGflops(flops, iterations_, gpuResult_always.runtime);
         writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, N, M, K,
@@ -424,20 +437,39 @@ private:
         // - ONCE : Offload to/from GPU once before all iterations and once
         // after
         gpu_.initialise(gpuOffloadType::once, N, M, K, sparsity_, type_);
-        time_checksum_gflop gpuResult_once = gpu_.compute();
+        gpuResult_once = gpu_.compute();
         gpuResult_once.gflops =
               calcGflops(flops, iterations_, gpuResult_once.runtime);
         writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, N, M, K, probSize,
                        sparsity_, iterations_, gpuResult_once.runtime,
                        gpuResult_once.gflops);
         
+        // - UNIFIED : data passed from host to device (and device to host) as
+        //             needed
         gpu_.initialise(gpuOffloadType::unified, N, M, K, sparsity_, type_);
-        time_checksum_gflop gpuResult_unified = gpu_.compute();
+        gpuResult_unified = gpu_.compute();
         gpuResult_unified.gflops =
         calcGflops(flops, iterations_, gpuResult_unified.runtime);
         writeLineToCsv(csvFile, "gpu_unified", kernelName, N, M, K, probSize,
                        sparsity_, iterations_, gpuResult_unified.runtime,
                        gpuResult_unified.gflops);
+      }
+#endif
+#if CPU_ENABLED && GPU_ENABLED
+      if (doCPU_ && doGPU_) {
+        // Check that all checksums are within the permitted limit
+        checkChecksums(cpuResult, gpuResult_once, gpuResult_always,
+                       gpuResult_unified, N, M, K);
+        // Check whether offload structs need to be reset
+        checkOffloadStructReset(cpuResult, gpuResult_once, gpuResult_always,
+                                gpuResult_unified);
+        // Update offload structs if required
+        updateOffloadStructs(cpuResult, gpuResult_once, gpuResult_always,
+                             gpuResult_unified, N, M, K, probSize);
+        // Update previous GPU results
+        prev_gpuResult_once = gpuResult_once;
+        prev_gpuResult_always = gpuResult_always;
+        prev_gpuResult_unified = gpuResult_unified;
       }
 #endif
     }

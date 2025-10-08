@@ -206,9 +206,20 @@ private:
 
 // Perform the GPU kernels
 #if GPU_ENABLED
-    time_checksum_gflop gpuResult_once;
     time_checksum_gflop gpuResult_always;
+    time_checksum_gflop gpuResult_once;
     time_checksum_gflop gpuResult_unified;
+    /*
+        * We run three different offload types:
+        *  - ALWAYS: Offload to/from GPU every iteration
+        *  - ONCE : Offload to/from GPU once before all iterations and once after
+        *  - UNIFIED : data passed from host to device (and device to host) as needed 
+        * THE ORDER OF THESE IS IMPORTANT -- To reduce time spent generating matrices, we 
+        * generate once during the ALWAYS offload, and then re-use the same matrices for
+        * the ONCE and UNIFIED offload tests.  Deleting them after UNIFIED.  Therefore, 
+        * changing the order here will require this logic within the spmm GPU classes to 
+        * be updated. 
+      */
     if (doGPU_) {
       // - ALWAYS: Offload to/from GPU every iteration
       gpu_.initialise(gpuOffloadType::always, M, N, sparsity_, type_);

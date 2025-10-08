@@ -122,7 +122,7 @@ private:
           gpuQueue_.memcpy(A_cols_device_, A_cols_, sizeof(int64_t) * nnz_);
           gpuQueue_.memcpy(A_rows_device_, A_rows_, sizeof(int64_t) * (m_ + 1));
           gpuQueue_.memcpy(B_device_, B_, sizeof(T) * k_ * n_);
-          gpuQueue_.wait();
+          gpuQueue_.wait(); // Is this needed?
           oneapi::mkl::sparse::init_matrix_handle(&A_device_);
           oneapi::mkl::sparse::set_csr_data(gpuQueue_,
                                             A_device_,

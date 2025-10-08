@@ -102,6 +102,29 @@ class spmm_gpu : public spmm<T> {
 
  protected:
   void toSparseFormat() override {
+    if (offload_ == gpuOffloadType::always) {
+      A_vals_store_ = (T*)malloc(sizeof(T) * A_nnz_);
+      A_cols_store_ = (int32_t*)malloc(sizeof(int32_t) * A_nnz_);
+      A_rows_store_ = (int32_t*)malloc(sizeof(int32_t) * (m_ + 1));
+      B_vals_store_ = (T*)malloc(sizeof(T) * B_nnz_);
+      B_cols_store_ = (int32_t*)malloc(sizeof(int32_t) * B_nnz_);
+      B_rows_store_ = (int32_t*)malloc(sizeof(int32_t) * (k_ + 1));
+
+      int seedOffset = 0;
+      do {
+        if (type_ == matrixType::rmat) {
+          rMatCSR<T, int32_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, A_nnz_, SEED + seedOffset++);
+          rMatCSR<T, int32_t>(B_vals_store_, B_cols_store_, B_rows_store_, k_, n_, B_nnz_, SEED + seedOffset++);
+        } else if (type_ == matrixType::random) {
+          randomCSR<T, int32_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, A_nnz_, SEED + seedOffset++);
+          randomCSR<T, int32_t>(B_vals_store_, B_cols_store_, B_rows_store_, k_, n_, B_nnz_, SEED + seedOffset++);
+        } else {
+          std::cerr << "Matrix type not supported" << std::endl;
+          exit(1);
+        }
+      } while (calcCNNZ<int32_t>(m_, A_nnz_, A_rows_store_, A_cols_store_, k_, B_nnz_, B_rows_store_, B_cols_store_) == 0);
+    }
+
     // Allocate CSR arrays
     if (offload_ == gpuOffloadType::unified) {
       cudaCheckError(cudaMallocManaged(&A_vals_, sizeof(T) * A_nnz_));
@@ -135,30 +158,15 @@ class spmm_gpu : public spmm<T> {
       C_cols_dev_ = nullptr;
     }
     cudaCheckError(cudaDeviceSynchronize());
-    int seedOffset = 0;
-    if (type_ == matrixType::rmat) {
-      rMatCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
-      rMatCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
-    } else if (type_ == matrixType::random) {
-      randomCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
-      randomCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
-    } else {
-      std::cerr << "Matrix type not supported" << std::endl;
-      exit(1);
-    }
 
-    while (calcCNNZ<int32_t>(m_, A_nnz_, A_rows_, A_cols_, k_, B_nnz_, B_rows_, B_cols_) == 0) {
-      if (type_ == matrixType::rmat) {
-        rMatCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
-        rMatCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
-      } else if (type_ == matrixType::random) {
-        randomCSR<T, int32_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
-        randomCSR<T, int32_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
-      } else {
-        std::cerr << "Matrix type not supported" << std::endl;
-        exit(1);
-      }
-    }
+    // Move data into the correct arrays
+    memcpy(A_vals_, A_vals_store_, sizeof(T) * A_nnz_);
+    memcpy(A_cols_, A_cols_store_, sizeof(int32_t) * A_nnz_);
+    memcpy(A_rows_, A_rows_store_, sizeof(int32_t) * (m_ + 1));
+    memcpy(B_vals_, B_vals_store_, sizeof(T) * B_nnz_);
+    memcpy(B_cols_, B_cols_store_, sizeof(int32_t) * B_nnz_);
+    memcpy(B_rows_, B_rows_store_, sizeof(int32_t) * (k_ + 1));
+    cudaCheckError(cudaDeviceSynchronize());
   }
 
  private:
@@ -738,6 +746,13 @@ class spmm_gpu : public spmm<T> {
         cudaCheckError(cudaFree(B_cols_));
         cudaCheckError(cudaFree(B_rows_));
         cudaCheckError(cudaFree(C_rows_32_));
+
+        free(A_vals_store_);
+        free(A_cols_store_);
+        free(A_rows_store_);
+        free(B_vals_store_);
+        free(B_cols_store_);
+        free(B_rows_store_);
         break;
       }
     }
@@ -758,6 +773,14 @@ class spmm_gpu : public spmm<T> {
   
   /** The ID of the target GPU Device. */
   int gpuDevice_;
+
+  /** Storage for matrices between offload type calls */
+  T* A_vals_store_;
+  int32_t* A_cols_store_;
+  int32_t* A_rows_store_;
+  T* B_vals_store_;
+  int32_t* B_cols_store_;
+  int32_t* B_rows_store_;
 
 	/** CSR format vectors for matrices A, B and C on the host */
 	T* A_vals_;

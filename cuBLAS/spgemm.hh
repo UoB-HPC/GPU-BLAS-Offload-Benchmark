@@ -110,6 +110,20 @@ public:
 
 protected:
   void toSparseFormat() override {
+    if (offload_ == gpuOffloadType::always) {
+      A_vals_store_ = (T*)malloc(sizeof(T) * nnz_);
+      A_cols_store_ = (int64_t*)malloc(sizeof(int64_t) * nnz_);
+      A_rows_store_ = (int64_t*)malloc(sizeof(int64_t) * (m_ + 1));
+
+      if (type_ == matrixType::rmat) {
+        rMatCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, nnz_);
+      } else if (type_ == matrixType::random) {
+        randomCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, nnz_);
+      } else {
+        exit(1);
+      }
+    }
+
     // Allocate CSR arrays
     if (offload_ == gpuOffloadType::unified) {
       cudaCheckError(cudaMallocManaged(&A_vals_, nnz_ * sizeof(T)));
@@ -125,13 +139,10 @@ protected:
     }
     cudaCheckError(cudaDeviceSynchronize());
 
-    if (type_ == matrixType::rmat) {
-      rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
-    } else if (type_ == matrixType::random) {
-      randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
-    } else {
-      exit(1);
-    }
+    memcpy(A_vals_, A_vals_store_, sizeof(T) * nnz_);
+    memcpy(A_cols_, A_cols_store_, sizeof(int64_t) * nnz_);
+    memcpy(A_rows_, A_rows_store_, sizeof(int64_t) * (m_ + 1));
+    cudaCheckError(cudaDeviceSynchronize());
   }
 
 private:
@@ -463,6 +474,9 @@ private:
       cudaCheckError(cudaFree(A_rows_dev_));
       cudaCheckError(cudaFree(B_dev_));
       cudaCheckError(cudaFree(C_dev_));
+      free(A_vals_store_);
+      free(A_cols_store_);
+      free(A_rows_store_);
     }
   }
 
@@ -529,6 +543,10 @@ private:
   T* B_dev_;
 
   T* C_dev_;
+
+  T* A_vals_store_;
+  int64_t* A_cols_store_;
+  int64_t* A_rows_store_;
 };
 };
 

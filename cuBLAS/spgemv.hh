@@ -43,8 +43,8 @@ class spgemv_gpu : public spgemv<T> {
 
   void initialise(gpuOffloadType offload, int m, int n, 
                   double sparsity, matrixType type) override {
-    if (!alreadyInitialised_) {
-      alreadyInitialised_ = true;
+    if (!initialised_) {
+      initialised_ = true;
       cusparseCheckError(cusparseCreate(&handle_));
       
       cudaCheckError(cudaStreamCreate(&s1_));
@@ -102,6 +102,21 @@ class spgemv_gpu : public spgemv<T> {
 protected:
 
   void toSparseFormat() override {
+    if (offload_ == gpuOffloadType::always) {
+      A_vals_store_ = (T*)malloc(sizeof(T) * nnz_);
+      A_cols_store_ = (int64_t*)malloc(sizeof(int64_t) * nnz_);
+      A_rows_store_ = (int64_t*)malloc(sizeof(int64_t) * (m_ + 1));
+
+      if (type_ == matrixType::random) {
+        randomCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, n_, nnz_);
+      } else if (type_ == matrixType::rmat) {
+        rMatCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, n_, nnz_);
+      } else {
+        std::cerr << "Matrix type not supported" << std::endl;
+        exit(1);
+      }
+    }
+
 
     if (offload_ == gpuOffloadType::unified) {
       cudaCheckError(cudaMallocManaged(&A_vals_, nnz_ * sizeof(T)));
@@ -117,15 +132,10 @@ protected:
     }
     cudaCheckError(cudaDeviceSynchronize());
 
-    if (type_ == matrixType::random) {
-      randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
-    } else if (type_ == matrixType::rmat) {
-      rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
-    } else {
-      std::cerr << "Matrix type not supported" << std::endl;
-      exit(1);
-    }
-    cudaCheckError(cudaDeviceSynchronize());  
+    memcpy(A_vals_, A_vals_store_, sizeof(T) * nnz_);
+    memcpy(A_cols_, A_cols_store_, sizeof(int64_t) * nnz_);
+    memcpy(A_rows_, A_rows_store_, sizeof(int64_t) * (m_ + 1));
+    cudaCheckError(cudaDeviceSynchronize());
   }
 
  private:
@@ -326,6 +336,8 @@ protected:
                                                    &bufferSize));
         cudaCheckError(cudaDeviceSynchronize());
 
+        // TODO -- cusparseSpMV_preprocess()
+
         if (bufferSize > 0) cudaCheckError(cudaMalloc(&dBuffer, bufferSize));
         cudaCheckError(cudaDeviceSynchronize());
 
@@ -368,7 +380,6 @@ protected:
       }
     }
     cudaCheckError(cudaDeviceSynchronize());
-  
   }
 
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
@@ -380,6 +391,9 @@ protected:
       cudaCheckError(cudaFree(A_rows_));
       cudaCheckError(cudaFree(x_));
       cudaCheckError(cudaFree(y_));
+      free(A_vals_store_);
+      free(A_cols_store_);
+      free(A_rows_store_);
     } else {
       free(A_vals_);
       free(A_cols_);
@@ -394,7 +408,7 @@ protected:
     }
   }
 
-  bool alreadyInitialised_ = false;
+  bool initialised_ = false;
 
   /**
    * ################################
@@ -438,6 +452,11 @@ protected:
    *        Matrix A parameters
    * ################################
    */
+  /** CSR format vectors for storage of matrix between offload type runs */
+  T* A_vals_store_;
+  int64_t* A_cols_store_;
+  int64_t* A_rows_store_;
+
 	/** CSR format vectors on the host (also used for USM) */
 	T* A_vals_;
 	int64_t* A_cols_;

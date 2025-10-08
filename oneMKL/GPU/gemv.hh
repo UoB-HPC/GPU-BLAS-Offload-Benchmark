@@ -128,7 +128,7 @@ class gemv_gpu : public gemv<T> {
               .wait_and_throw();
         } catch (sycl::exception const& e) {
           std::cerr << "ERROR - Caught synchronous SYCL exception during GEMV "
-                       "(Once):\n" << e.what() << std::endl
+                       "(Once):\n" << e.what() << std::endl;
           std::cerr << "OpenCL status: " << e.code().value() << std::endl;
         }
         break;

@@ -84,6 +84,20 @@ public:
 
 protected:
     void toSparseFormat() override {
+      if (offload_ == gpuOffloadType::always) {
+        A_vals_store_ = (T*)malloc(nnz_ * sizeof(T));
+        A_cols_store_ = (int64_t*)malloc(nnz_ * sizeof(int64_t));
+        A_rows_store_ = (int64_t*)malloc((m_ + 1) * sizeof(int64_t));
+        if (type_ == matrixType::rmat) {
+          rMatCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, n_, nnz_);
+        } else if (type_ == matrixType::random) {
+          randomCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, n_, nnz_);
+        } else {
+          std::cerr << "Matrix type not supported" << std::endl;
+          exit(1);
+        }
+      }
+
       if (offload_ == gpuOffloadType::unified) {
         A_vals_ = sycl::malloc_shared<T>(nnz_, gpuQueue_);
         A_cols_ = sycl::malloc_shared<int64_t>(nnz_, gpuQueue_);
@@ -97,14 +111,9 @@ protected:
         A_rows_device_ = (int64_t*)sycl::malloc_device((m_ + 1) * sizeof(int64_t), gpuQueue_);
       }
 
-      if (type_ == matrixType::rmat) {
-        rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
-      } else if (type_ == matrixType::random) {
-        randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
-      } else {
-        std::cerr << "Matrix type not supported" << std::endl;
-        exit(1);
-      }
+      memcpy(A_rows_, A_rows_store_, static_cast<size_t>(m_ + 1) * sizeof(int64_t));
+      memcpy(A_cols_, A_cols_store_, static_cast<size_t>(nnz_) * sizeof(int64_t));
+      memcpy(A_vals_, A_vals_store_, static_cast<size_t>(nnz_) * sizeof(T));
     }
 
 private:
@@ -349,9 +358,13 @@ private:
             sycl::free(y_, context_);
             y_ = nullptr;
           }
-          gpuQueue_.wait_and_throw();
           break;
         }
+      }
+      if (offload_ == gpuOffloadType::unified) {
+        free(A_vals_store_);
+        free(A_cols_store_);
+        free(A_rows_store_);
       }
       gpuQueue_.wait_and_throw();
     }
@@ -369,6 +382,10 @@ private:
 
     oneapi::mkl::index_base index_;
     oneapi::mkl::transpose operation_;
+
+    T* A_vals_store_ = nullptr;
+    int64_t* A_cols_store_ = nullptr;
+    int64_t* A_rows_store_ = nullptr;
 
     T* A_vals_ = nullptr;
     int64_t* A_cols_ = nullptr;

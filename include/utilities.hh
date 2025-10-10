@@ -380,12 +380,12 @@ void rMatCSR(T* vals, int_type* cols, int_type* rows,
 template <typename T, typename int_type>
 void randomCSR(T* vals, int_type* cols, int_type* rows,
                int nrows, int ncols, int nnz, unsigned int seed = SEED) {
-  if (nnz >= nrows * ncols) {
+  if ((int64_t)nnz >= (int64_t)nrows * (int64_t)ncols) {
     std::cerr << "ERROR: nnz exceeds maximum possible non-zeros." << std::endl;
-    return;
+    exit(1);
   } else if (nnz <= 0) {
     std::cerr << "ERROR: nnz must be positive." << std::endl;
-    return;
+    exit(1);
   }
 
   srand(seed);

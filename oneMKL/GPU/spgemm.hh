@@ -88,6 +88,21 @@ public:
 
 protected:
     void toSparseFormat() override {
+      if (offload_ == gpuOffloadType::always) {
+        A_vals_store_ = (T*)malloc(nnz_ * sizeof(T));
+        A_cols_store_ = (int64_t*)malloc(nnz_ * sizeof(int64_t));
+        A_rows_store_ = (int64_t*)malloc((m_ + 1) * sizeof(int64_t));
+        if (type_ == matrixType::rmat) {
+          rMatCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, nnz_);
+        } else if (type_ == matrixType::random) {
+          randomCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, nnz_);
+        } else {
+          std::cerr << "ERROR - Unknown matrix type" << std::endl;
+          exit(1);
+        }
+      }
+
+
       if (offload_ == gpuOffloadType::unified) {
           A_vals_ = (T*)sycl::malloc_shared(sizeof(T) * nnz_, gpuQueue_);
           A_cols_ = (int64_t*)sycl::malloc_shared(sizeof(int64_t) * nnz_, gpuQueue_);
@@ -102,14 +117,9 @@ protected:
           A_rows_device_ = (int64_t*)sycl::malloc_device(sizeof(int64_t) * (m_ + 1), gpuQueue_);
       }
       
-      if (type_ == matrixType::rmat) {
-        rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
-      } else if (type_ == matrixType::random) {
-        randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, nnz_);
-      } else {
-        std::cerr << "ERROR - Unknown matrix type" << std::endl;
-        exit(1);
-      }
+      memcpy(A_rows_, A_rows_store_, sizeof(int64_t) * (m_ + 1));
+      memcpy(A_cols_, A_cols_store_, sizeof(int64_t) * nnz_);
+      memcpy(A_vals_, A_vals_store_, sizeof(T) * nnz_);
     }
 
 private:
@@ -272,6 +282,10 @@ private:
         if (A_vals_) { sycl::free(A_vals_, gpuQueue_); A_vals_ = nullptr; }
         if (A_cols_) { sycl::free(A_cols_, gpuQueue_); A_cols_ = nullptr; }
         if (A_rows_) { sycl::free(A_rows_, gpuQueue_); A_rows_ = nullptr; }
+
+        free(A_vals_store_);
+        free(A_cols_store_);
+        free(A_rows_store_);
       } else {
         if (B_) { sycl::free(B_, gpuQueue_); B_ = nullptr; }
         if (C_) { sycl::free(C_, gpuQueue_); C_ = nullptr; }
@@ -299,6 +313,10 @@ private:
     oneapi::mkl::transpose operationA_;
     oneapi::mkl::transpose operationB_;
     oneapi::mkl::index_base index_;
+
+    T* A_vals_store_;
+    int64_t* A_cols_store_;
+    int64_t* A_rows_store_;
 
     T* A_vals_;
     int64_t* A_cols_;

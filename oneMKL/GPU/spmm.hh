@@ -53,6 +53,13 @@ public:
 
       switch (offload_) {
         case gpuOffloadType::always: {
+          A_rows_store_ = (int64_t*)malloc(static_cast<size_t>(m_ + 1) * sizeof(int64_t));
+          A_cols_store_ = (int64_t*)malloc(static_cast<size_t>(A_nnz_) * sizeof(int64_t));
+          A_vals_store_ = (T*)malloc(static_cast<size_t>(A_nnz_) * sizeof(T));
+          B_rows_store_ = (int64_t*)malloc(static_cast<size_t>(k_ + 1) * sizeof(int64_t));
+          B_cols_store_ = (int64_t*)malloc(static_cast<size_t>(B_nnz_) * sizeof(int64_t));
+          B_vals_store_ = (T*)malloc(static_cast<size_t>(B_nnz_) * sizeof(T));
+
           A_rows_ = sycl::malloc_host<int64_t>(static_cast<size_t>(m_ + 1), queue_);
           A_cols_ = sycl::malloc_host<int64_t>(static_cast<size_t>(A_nnz_), queue_);
           A_vals_ = sycl::malloc_host<T>(static_cast<size_t>(A_nnz_), queue_);
@@ -119,21 +126,30 @@ public:
 
 protected:
     void toSparseFormat() override {
-      int seedOffset = 0;
-      if (type_ == matrixType::rmat) {
-        do {
-          rMatCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
-          rMatCSR<T, int64_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
-        } while (calcCNNZ<int64_t>(m_, A_nnz_, A_rows_, A_cols_, k_, B_nnz_, B_rows_, B_cols_) == 0);
-      } else if (type_ == matrixType::random) {
-        do {
-          randomCSR<T, int64_t>(A_vals_, A_cols_, A_rows_, m_, k_, A_nnz_, SEED + seedOffset++);
-          randomCSR<T, int64_t>(B_vals_, B_cols_, B_rows_, k_, n_, B_nnz_, SEED + seedOffset++);
-        } while (calcCNNZ<int64_t>(m_, A_nnz_, A_rows_, A_cols_, k_, B_nnz_, B_rows_, B_cols_) == 0);
-      } else {
-        std::cerr << "Unknown matrix type" << std::endl;
-        exit(1);
+      if (offload_ == gpuOffloadType::always) {
+        int seedOffset = 0;
+        if (type_ == matrixType::rmat) {
+          do {
+            rMatCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, A_nnz_, SEED + seedOffset++);
+            rMatCSR<T, int64_t>(B_vals_store_, B_cols_store_, B_rows_store_, k_, n_, B_nnz_, SEED + seedOffset++);
+          } while (calcCNNZ<int64_t>(m_, A_nnz_, A_rows_store_, A_cols_store_, k_, B_nnz_, B_rows_store_, B_cols_store_) == 0);
+        } else if (type_ == matrixType::random) {
+          do {
+            randomCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, A_nnz_, SEED + seedOffset++);
+            randomCSR<T, int64_t>(B_vals_store_, B_cols_store_, B_rows_store_, k_, n_, B_nnz_, SEED + seedOffset++);
+          } while (calcCNNZ<int64_t>(m_, A_nnz_, A_rows_store_, A_cols_store_, k_, B_nnz_, B_rows_store_, B_cols_store_) == 0);
+        } else {
+          std::cerr << "Unknown matrix type" << std::endl;
+          exit(1);
+        }
       }
+
+      memcpy(A_rows_, A_rows_store_, static_cast<size_t>(m_ + 1) * sizeof(int64_t));
+      memcpy(A_cols_, A_cols_store_, static_cast<size_t>(A_nnz_) * sizeof(int64_t));
+      memcpy(A_vals_, A_vals_store_, static_cast<size_t>(A_nnz_) * sizeof(T));
+      memcpy(B_rows_, B_rows_store_, static_cast<size_t>(k_ + 1) * sizeof(int64_t));
+      memcpy(B_cols_, B_cols_store_, static_cast<size_t>(B_nnz_) * sizeof(int64_t));
+      memcpy(B_vals_, B_vals_store_, static_cast<size_t>(B_nnz_) * sizeof(T));
     }
 
 private:
@@ -762,6 +778,13 @@ private:
           sycl::free(C_rows_, queue_);
           sycl::free(C_cols_, queue_);
           sycl::free(C_vals_, queue_);
+
+          free(A_rows_store_);
+          free(A_cols_store_);
+          free(A_vals_store_);
+          free(B_rows_store_);
+          free(B_cols_store_);
+          free(B_vals_store_);
           break;
         }
       }
@@ -799,6 +822,9 @@ private:
     size_t alloc_sz = 0;
 
     // A CSR arrays
+    int64_t* A_rows_store_ = nullptr;
+    int64_t* A_cols_store_ = nullptr;
+    T* A_vals_store_ = nullptr;
     //    LOCAL
     int64_t* A_rows_ = nullptr;
     int64_t* A_cols_ = nullptr;
@@ -809,6 +835,9 @@ private:
     T* A_vals_device_ = nullptr;
 
     // B CSR arrays
+    int64_t* B_rows_store_ = nullptr;
+    int64_t* B_cols_store_ = nullptr;
+    T* B_vals_store_ = nullptr;
     //    LOCAL
     int64_t* B_rows_ = nullptr;
     int64_t* B_cols_ = nullptr;

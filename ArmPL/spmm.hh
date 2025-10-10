@@ -7,6 +7,8 @@
 
 #include <algorithm>
 #include <iostream>
+#include <vector>
+#include <utility>
 
 #include "../include/kernels/CPU/spmm.hh"
 #include "../include/utilities.hh"
@@ -271,6 +273,29 @@ private:
       exit(1);
     }
     C_nnz_ = nnzC_armpl_ = C_rows_[m_armpl_];
+
+    // ARMPL does not seem to enforce ordered column indices in its 
+    // output matrices.  Therefore, to allow the checksum to take place
+    // We have to order the output matrix here.  
+    for (int i = 0; i < m_; i++) {
+      int start = C_rows_[i];
+      int end = C_rows_[i + 1];
+      int len = end - start;
+      if (len > 1) {
+        std::vector<std::pair<armpl_int_t, T>> row_entries(len);
+        for (int j = 0; j < len; j++) {
+          row_entries[j] = {C_cols_[start + j], C_vals_[start + j]};
+        }
+
+        std::sort(row_entries.begin(), row_entries.end(),
+                  [](const auto &a, const auto &b) { return a.first < b.first; });
+
+        for (int j = 0; j < len; j++) {
+          C_cols_[start + j] = row_entries[j].first;
+          C_vals_[start + j] = row_entries[j].second;
+        }
+      }
+    }
   }
 
   void postCallKernelCleanup() override {

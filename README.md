@@ -14,7 +14,10 @@ Only when an error occurs will any checksum be displayed to the user.
 
 GFLOP/s are calculated using the following Total FLOPs formulas. The compute time excludes any initialisation, but does include any data movement / prefetching to/from the GPU device:
  - **GEMM** : `FLOPs = (2 * M * N * K) + (b * M * N)` where `b` is `1` if BETA=0 and `3` if BETA=/=0
+ - **SPMDNM** : `FLOPs = (2 * N * NNZ)` where NNZ is the number of non-zero values in matrix A
+ - **SPMSPM** : `FLOPs = (NNZA * NNZB) / K` where NNZA is the number of non-zero values in matrix A and NNZ is the number of non-zero values in matrix B.  This is an expectation of the number of flops based on a uniform distribution of non-zero values in the columns of matrix A and the rows of matrix B
  - **GEMV** : `FLOPs = (2 * M * N) + (b * M)` where `b` is `1` if BETA=0 and `3` if BETA=/=0
+ - **SPMDNV** : `FLOPs = (2 * NNZ)` where NNZ is the number of non-zero values in matrix A
 
 ## Citing
 Please cite GPU-BLOB via this reference:
@@ -131,18 +134,22 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes
 
- <!-- - SpMM
+ - SpMDnM
    - FP32, FP64
-   - ... -->
+   - Square, short-&-wide, tall-&-thin input sizes
+
+ - SpMSpM
+   - FP32, FP64
+   - Square, short-&-wide, tall-&-thin input sizes
 
 ### <u>Level 2 BLAS</u>
  - GEMV
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes 
 
- <!-- - SpMV
+ - SpMDnV
    - FP32, FP64
-   - ... -->
+   - Square, short-&-wide, tall-&-thin input sizes 
 
 # Auxiliary Files
 Additional to the main benchmark, there are two auxiliary python scripts which perform the following:
@@ -151,7 +158,6 @@ Additional to the main benchmark, there are two auxiliary python scripts which p
 
 
 # Future Work
- - [ ] Add support for Sparce Kernels
  - [ ] Add FP16/BF16 support for kernels
  - [ ] Add batched GEMM functions 
  - [ ] Add support for Apple Accelerate

@@ -50,6 +50,8 @@ protected:
         rMatCSR<T, MKL_INT>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
       } else if (type_ == matrixType::random) {
         randomCSR<T, MKL_INT>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
+      } else if (type_ == matrixType::finiteElements) {
+        finiteElementCSR<T, MKL_INT>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
       } else {
         std::cerr << "Unknown matrix type" << std::endl;
         exit(1);

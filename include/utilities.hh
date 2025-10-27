@@ -64,6 +64,7 @@ enum class gpuOffloadType : uint8_t {
 enum class matrixType : uint8_t {
   rmat = 0,
   random,
+  finiteElements,
 };
 
 // Define struct which contains a runtime, checksum value, and gflop/s value
@@ -464,4 +465,70 @@ int64_t calcCNNZ(int_type A_n_rows, int_type A_nnz, int_type* A_rows, int_type* 
   }
 
   return C_nnz;
+}
+
+/**
+ * @brief Generates a sparse matrix proxy for a finite element mesh.
+ *
+ * This function simulates a "dense-banded" matrix. It randomly places 'nnz'
+ * non-zeros, but all are guaranteed to be within a fixed 'bandwidth'
+ * of the main diagonal. This models the high data locality found in
+ * matrices from 2D/3D FEM or FDM problems.
+ *
+ * @param vals (out) Array to store non-zero values.
+ * @param cols (out) Array to store column indices of non-zeros.
+ * @param rows (out) Array to store row pointers.
+ * @param nrows Number of rows in the matrix.
+ * @param ncols Number of columns in the matrix.
+ * @param nnz   The target number of non-zeros to generate.
+ * @param seed  The random seed.
+ */
+template <typename T, typename int_type>
+void finiteElementCSR(T* vals, int_type* cols, int_type* rows,
+                      int nrows, int ncols, int nnz, unsigned int seed = SEED) {
+  // --- Define the bandwidth ---
+  // We're having a bandwidth to allow double the number of nnzs that we are going to place.  
+  // so the sparsity within the band is going to be 50%
+  const int_type bandwidth = nrows * ncols / nnz;
+
+  std::mt19937 gen(seed);
+  std::uniform_real_distribution<T> val_dist(-1.5, 1.5);
+  std::vector<std::set<int_type>> temp_rows(nrows);
+
+  // Distribution to pick a random row
+  std::uniform_int_distribution<int_type> row_dist(0, nrows - 1);
+
+  int_type nnz_placed = 0;
+  while (nnz_placed < nnz) {
+    // 1. Pick a random row
+    int_type r = row_dist(gen);
+
+    // 2. Define the column range for this row based on bandwidth
+    int_type c_min = std::max((int_type)0, r - bandwidth);
+    int_type c_max = std::min(ncols - 1, r + bandwidth);
+
+    // If the band is invalid (e.g., r=0, bw=-5), skip
+    if (c_min > c_max) continue;
+
+    // 3. Pick a random column *within the band*
+    std::uniform_int_distribution<int_type> col_dist(c_min, c_max);
+    int_type c = col_dist(gen);
+
+    // 4. Insert the new non-zero
+    if (temp_rows[r].insert(c).second) {
+      nnz_placed++;
+    }
+  }
+
+  // --- Flatten the std::set structure into CSR arrays ---
+  int_type nnz_idx = 0;
+  rows[0] = 0;
+  for (int r = 0; r < nrows; ++r) {
+    for (int_type c : temp_rows[r]) {
+      vals[nnz_idx] = val_dist(gen);
+      cols[nnz_idx] = c;
+      nnz_idx++;
+    }
+    rows[r + 1] = nnz_idx;
+  }
 }

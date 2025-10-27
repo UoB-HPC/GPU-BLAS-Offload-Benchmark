@@ -92,6 +92,8 @@ protected:
           rMatCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, n_, nnz_);
         } else if (type_ == matrixType::random) {
           randomCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, n_, nnz_);
+        } else if (type_ == matrixType::finiteElements) {
+          finiteElementCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, n_, nnz_);
         } else {
           std::cerr << "Matrix type not supported" << std::endl;
           exit(1);

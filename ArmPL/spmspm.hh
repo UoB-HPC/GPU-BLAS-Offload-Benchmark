@@ -68,6 +68,9 @@ protected:
       } else if (type_ == matrixType::random) {
         randomCSR<T, armpl_int_t>(A_vals_, A_cols_, A_rows_, m_armpl_, k_armpl_, nnzA_armpl_, SEED + seedOffset++);
         randomCSR<T, armpl_int_t>(B_vals_, B_cols_, B_rows_, k_armpl_, n_armpl_, nnzB_armpl_, SEED + seedOffset++);
+      } else if (type_ == matrixType::finiteElements) {
+        finiteElementCSR<T, armpl_int_t>(A_vals_, A_cols_, A_rows_, m_armpl_, k_armpl_, nnzA_armpl_, SEED + seedOffset++);
+        finiteElementCSR<T, armpl_int_t>(B_vals_, B_cols_, B_rows_, k_armpl_, n_armpl_, nnzB_armpl_, SEED + seedOffset++);
       } else {
         std::cerr << "Matrix type not supported" << std::endl;
         exit(1);

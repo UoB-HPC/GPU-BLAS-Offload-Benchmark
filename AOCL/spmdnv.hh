@@ -60,6 +60,8 @@ protected:
         rMatCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
       } else if (type_ == matrixType::random) {
         randomCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
+      } else if (type_ == matrixType::finiteElements) {
+        finiteElementCSR<T, aoclsparse_int>(A_vals_, A_cols_, A_rows_, m_, n_, nnz_);
       } else {
         std::cerr << "Matrix type not supported" << std::endl;
         exit(1);

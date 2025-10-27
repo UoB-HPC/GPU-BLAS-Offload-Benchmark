@@ -24,7 +24,7 @@ bool doDspmspm = true;
 bool doCpu = CPU_ENABLED;
 bool doGpu = GPU_ENABLED;
 
-matrixType type = matrixType::rmat;
+matrixType type = matrixType::random;
 
 std::string CSV_DIR = "CSV_Results";
 
@@ -183,7 +183,21 @@ void printBenchmarkConfig(const int iters, const int upperLimit) {
                                                                        "Set";
   const char* ompPlaces =
       (getenv("OMP_PLACES") != nullptr) ? getenv("OMP_PLACES") : "Not Set";
-  const char* matrixType = (type == matrixType::rmat) ? "rMAT" : "random";
+  const char* matrixType;
+  switch (type) {
+  case matrixType::rmat:
+    matrixType = "rMAT";
+    break;
+  case matrixType::random:
+    matrixType = "random";
+    break;
+  case matrixType::finiteElements:
+    matrixType = "finiteElements";
+    break;
+  default:
+    matrixType = "Unknown";
+    break;  
+  }
   std::cout << "GPU BLAS Offload Benchmark:" << std::endl;
   std::cout << "\tIterations per Kernel: " << iters << std::endl;
   std::cout << "\tStarting Problem Dimension: " << startDim << std::endl;
@@ -288,6 +302,8 @@ void getParameters(int argc, char** argv) {
         type = matrixType::rmat;
       } else if (!strcmp(argv[i], "random")) {
         type = matrixType::random;
+      } else if (!strcmp(argv[i], "finiteElements")) {
+        type = matrixType::finiteElements;
       } else {
         std::cout << "ERROR - Unrecognized matrix type '" << argv[i]
                   << "'" << std::endl;
@@ -336,7 +352,7 @@ void getParameters(int argc, char** argv) {
                 << std::endl;
       std::cout << "  -t  --matrix_type M          Type of sparse matrix to use."
                    ".  Only applies to sparse kernels.  Options are rmat, random"
-                   " (default -t rmat)" 
+                   ", finiteElements (default -t random)" 
                 << std::endl;
       exit(0);
     } else {

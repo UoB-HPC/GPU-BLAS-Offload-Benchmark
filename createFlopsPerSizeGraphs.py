@@ -14,7 +14,7 @@ outputDir = "Graphs_" + directory.replace('/', '_')
 # Check if CSV directory exists
 path = os.path.join(os.getcwd(), directory)
 if(not os.path.isdir(path)):
-    print("ERROR - {} directory does not exist. Cannot generate any graphs.".format)
+    print("ERROR - {} directory does not exist. Cannot generate any graphs.".format(directory))
     exit(1)
 
 # Get all filenames
@@ -43,6 +43,7 @@ for i in range(0, len(gemvFilenames)):
     gpuO_Gflops = []
     gpuA_Gflops = []
     gpuU_Gflops = []
+    prob_size = []
 
     # Open file and get all lines
     fName = os.path.join(os.getcwd(), directory, gemvFilenames[i])
@@ -65,8 +66,10 @@ for i in range(0, len(gemvFilenames)):
             mn.append([line[2], line[3]])
         # Get Gflops
         gflops = float(line[-1].rstrip())
+        size = float(line[5].rstrip())
         if line[0] == "cpu":
             cpu_Gflops.append(gflops)
+            prob_size.append(size)
         elif line[0] == "gpu_offloadOnce":
             gpuO_Gflops.append(gflops)
         elif line[0] == "gpu_offloadAlways":
@@ -139,6 +142,15 @@ for i in range(0, len(gemvFilenames)):
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
         gpuEnabled = True
+    if len(prob_size) > 0:
+        ax2 = ax1.twinx()
+        ax2.plot(xVals, prob_size, color="red", linestyle="--", marker="s", label="Problem Size (KiB)")
+        ax2.set_ylabel("Problem Size (KiB)", color="red", fontsize=14)
+        ax2.tick_params(axis='y', labelcolor="red")
+        ax2.set_ylim(min(prob_size) * 0.9, max(prob_size) * 1.1)
+        lines_1, labels_1 = ax1.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
     if(gpuEnabled):
         yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)
@@ -210,6 +222,7 @@ for i in range(0, len(spmdnvFilenames)):
     gpuO_Gflops = []
     gpuA_Gflops = []
     gpuU_Gflops = []
+    prob_size = []
 
     # Open file and get all lines
     fName = os.path.join(os.getcwd(), directory, spmdnvFilenames[i])
@@ -232,8 +245,10 @@ for i in range(0, len(spmdnvFilenames)):
             mn.append([line[2], line[3]]) # line[2] = M, line[3] = N
         # Get Gflops
         gflops = float(line[-1].rstrip())
+        size = float(line[5].rstrip())
         if line[0] == "cpu":
             cpu_Gflops.append(gflops)
+            prob_size.append(size)
         elif line[0] == "gpu_offloadOnce":
             gpuO_Gflops.append(gflops)
         elif line[0] == "gpu_offloadAlways":
@@ -306,6 +321,15 @@ for i in range(0, len(spmdnvFilenames)):
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
         gpuEnabled = True
+    if len(prob_size) > 0:
+        ax2 = ax1.twinx()
+        ax2.plot(xVals, prob_size, color="red", linestyle="--", marker="s", label="Problem Size (KiB)")
+        ax2.set_ylabel("Problem Size (KiB)", color="red", fontsize=14)
+        ax2.tick_params(axis='y', labelcolor="red")
+        ax2.set_ylim(min(prob_size) * 0.9, max(prob_size) * 1.1)
+        lines_1, labels_1 = ax1.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
     if(gpuEnabled):
         yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)
@@ -377,6 +401,7 @@ for i in range(0, len(gemmFilenames)):
     gpuO_Gflops = []
     gpuA_Gflops = []
     gpuU_Gflops = []
+    prob_size = []
 
     # Open file and get all lines
     fName = os.path.join(os.getcwd(), directory, gemmFilenames[i])
@@ -400,8 +425,10 @@ for i in range(0, len(gemmFilenames)):
             mnk.append([line[2], line[3], line[4]])
         # Get Gflops
         gflops = float(line[-1].rstrip())
+        size = float(line[5].rstrip())
         if line[0] == "cpu":
             cpu_Gflops.append(gflops)
+            prob_size.append(size)
         elif line[0] == "gpu_offloadOnce":
             gpuO_Gflops.append(gflops)
         elif line[0] == "gpu_offloadAlways":
@@ -495,6 +522,15 @@ for i in range(0, len(gemmFilenames)):
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
         gpuEnabled = True
+    if len(prob_size) > 0:
+        ax2 = ax1.twinx()
+        ax2.plot(xVals, prob_size, color="red", linestyle="--", marker="s", label="Problem Size (KiB)")
+        ax2.set_ylabel("Problem Size (KiB)", color="red", fontsize=14)
+        ax2.tick_params(axis='y', labelcolor="red")
+        ax2.set_ylim(min(prob_size) * 0.9, max(prob_size) * 1.1)
+        lines_1, labels_1 = ax1.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
     if(gpuEnabled):
         yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)
@@ -566,6 +602,7 @@ for i in range(0, len(spmdnmFilenames)):
     gpuO_Gflops = []
     gpuA_Gflops = []
     gpuU_Gflops = []
+    prob_size = []
 
     # Open file and get all lines
     fName = os.path.join(os.getcwd(), directory, spmdnmFilenames[i])
@@ -589,8 +626,10 @@ for i in range(0, len(spmdnmFilenames)):
             mnk.append([line[2], line[3], line[4]])
         # Get Gflops
         gflops = float(line[-1].rstrip())
+        size = float(line[5].rstrip())
         if line[0] == "cpu":
             cpu_Gflops.append(gflops)
+            prob_size.append(size)
         elif line[0] == "gpu_offloadOnce":
             gpuO_Gflops.append(gflops)
         elif line[0] == "gpu_offloadAlways":
@@ -684,6 +723,15 @@ for i in range(0, len(spmdnmFilenames)):
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
         gpuEnabled = True
+    if len(prob_size) > 0:
+        ax2 = ax1.twinx()
+        ax2.plot(xVals, prob_size, color="red", linestyle="--", marker="s", label="Problem Size (KiB)")
+        ax2.set_ylabel("Problem Size (KiB)", color="red", fontsize=14)
+        ax2.tick_params(axis='y', labelcolor="red")
+        ax2.set_ylim(min(prob_size) * 0.9, max(prob_size) * 1.1)
+        lines_1, labels_1 = ax1.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
     if(gpuEnabled):
         yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)
@@ -755,6 +803,7 @@ for i in range(0, len(spmspmFilenames)):
     gpuO_Gflops = []
     gpuA_Gflops = []
     gpuU_Gflops = []
+    prob_size = []
 
     # Open file and get all lines
     fName = os.path.join(os.getcwd(), directory, spmspmFilenames[i])
@@ -778,8 +827,10 @@ for i in range(0, len(spmspmFilenames)):
             mnk.append([line[2], line[3], line[4]])
         # Get Gflops
         gflops = float(line[-1].rstrip())
+        size = float(line[5].rstrip())
         if line[0] == "cpu":
             cpu_Gflops.append(gflops)
+            prob_size.append(size)
         elif line[0] == "gpu_offloadOnce":
             gpuO_Gflops.append(gflops)
         elif line[0] == "gpu_offloadAlways":
@@ -873,6 +924,15 @@ for i in range(0, len(spmspmFilenames)):
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
         gpuEnabled = True
+    if len(prob_size) > 0:
+        ax2 = ax1.twinx()
+        ax2.plot(xVals, prob_size, color="red", linestyle="--", marker="s", label="Problem Size (KiB)")
+        ax2.set_ylabel("Problem Size (KiB)", color="red", fontsize=14)
+        ax2.tick_params(axis='y', labelcolor="red")
+        ax2.set_ylim(min(prob_size) * 0.9, max(prob_size) * 1.1)
+        lines_1, labels_1 = ax1.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
     if(gpuEnabled):
         yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)

@@ -62,7 +62,6 @@ public:
       cudaCheckError(cudaGetDevice(&gpuDevice_));
 
     }
-
     offload_ = offload;
     sparsity_ = sparsity;
     type_ = type;
@@ -98,7 +97,7 @@ public:
       cudaCheckError(cudaMallocManaged(&C_, sizeof(T) * m_ * n_));
     } else {
       B_ = (T*)malloc(sizeof(T) * k_ * n_);
-      C_ = (T*) malloc(sizeof(T) * m_ * n_);
+      C_ = (T*)malloc(sizeof(T) * m_ * n_);
 
       cudaCheckError(cudaMalloc((void**)&B_dev_, sizeof(T) * k_ * n_));
       cudaCheckError(cudaMalloc((void**)&C_dev_, sizeof(T) * m_ * n_));
@@ -119,6 +118,8 @@ protected:
         rMatCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, nnz_);
       } else if (type_ == matrixType::random) {
         randomCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, nnz_);
+      } else if (type_ == matrixType::finiteElements) {
+        finiteElementCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, nnz_);
       } else {
         exit(1);
       }
@@ -226,7 +227,7 @@ private:
                                                    &bufferSize));
 
         // Allocate the temporary buffer
-        if (bufferSize > 0) cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
+        cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
 
         cusparseCheckError(cusparseSpMM_preprocess(handle_, 
                                                    opA_, 
@@ -259,7 +260,7 @@ private:
         cusparseCheckError(cusparseDestroyDnMat(C_descr_));
 
         // Free up the temporary buffer
-        if (bufferSize > 0) cudaCheckError(cudaFree(dBuffer));
+        cudaCheckError(cudaFree(dBuffer));
 
         // Move result back to CPU
         cudaCheckError(cudaMemcpyAsync(C_, C_dev_, (sizeof(T) * m_ * n_),
@@ -295,10 +296,7 @@ private:
                                                dataType_,
                                                C_order_));
 
-        // Set up temporary buffers
-        void* dBuffer = nullptr;
         size_t bufferSize = 0;
-
         // Begin matrix-matrix multiplication
         cusparseCheckError(cusparseSpMM_bufferSize(handle_, 
                                                    opA_, 
@@ -313,8 +311,8 @@ private:
                                                    &bufferSize));
 
         // Allocate the temporary buffer
-        if (bufferSize > 0) cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
-
+        void* dBuffer = nullptr;
+        cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
         cusparseCheckError(cusparseSpMM_preprocess(handle_, 
                                                    opA_, 
                                                    opB_, 
@@ -345,7 +343,7 @@ private:
         cusparseCheckError(cusparseDestroyDnMat(C_descr_));
 
         // Free up the temporary buffer
-        if (bufferSize > 0) cudaCheckError(cudaFree(dBuffer));
+        cudaCheckError(cudaFree(dBuffer));
       }
       case gpuOffloadType::unified: {
         // Create descriptors for the matrices
@@ -393,7 +391,7 @@ private:
                                                    &bufferSize));
 
         // Allocate the temporary buffer
-        if (bufferSize > 0) cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
+        cudaCheckError(cudaMalloc((void**)&dBuffer, bufferSize));
 
         cusparseCheckError(cusparseSpMM_preprocess(handle_, 
                                                    opA_, 
@@ -428,7 +426,7 @@ private:
         cudaCheckError(cudaDeviceSynchronize());
 
         // Free up the temporary buffer
-        if (bufferSize > 0)cudaCheckError(cudaFree(dBuffer));
+        cudaCheckError(cudaFree(dBuffer));
         break;
       }
     }
@@ -463,6 +461,9 @@ private:
       cudaCheckError(cudaFree(A_rows_));
       cudaCheckError(cudaFree(B_));
       cudaCheckError(cudaFree(C_));
+      free(A_vals_store_);
+      free(A_cols_store_);
+      free(A_rows_store_);
     } else {
       free(A_vals_);
       free(A_cols_);
@@ -474,9 +475,6 @@ private:
       cudaCheckError(cudaFree(A_rows_dev_));
       cudaCheckError(cudaFree(B_dev_));
       cudaCheckError(cudaFree(C_dev_));
-      free(A_vals_store_);
-      free(A_cols_store_);
-      free(A_rows_store_);
     }
   }
 

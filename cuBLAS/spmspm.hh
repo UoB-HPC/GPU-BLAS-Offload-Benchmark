@@ -118,6 +118,9 @@ class spmspm_gpu : public spmspm<T> {
         } else if (type_ == matrixType::random) {
           randomCSR<T, int32_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, A_nnz_, SEED + seedOffset++);
           randomCSR<T, int32_t>(B_vals_store_, B_cols_store_, B_rows_store_, k_, n_, B_nnz_, SEED + seedOffset++);
+        } else if (type_ == matrixType::finiteElements) {
+          finiteElementCSR<T, int32_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, A_nnz_, SEED + seedOffset++);
+          finiteElementCSR<T, int32_t>(B_vals_store_, B_cols_store_, B_rows_store_, k_, n_, B_nnz_, SEED + seedOffset++);
         } else {
           std::cerr << "Matrix type not supported" << std::endl;
           exit(1);

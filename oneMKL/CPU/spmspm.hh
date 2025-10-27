@@ -60,28 +60,21 @@ protected:
       B_rowse_ = (MKL_INT*)mkl_malloc(sizeof(MKL_INT) * k_, 64);
 
       int seedOffset = 0;
-      if (type_ == matrixType::rmat) {
-        rMatCSR<T, MKL_INT>(A_vals_, A_cols_, A_rows, m_, k_, A_nnz_, SEED + seedOffset++);
-        rMatCSR<T, MKL_INT>(B_vals_, B_cols_, B_rows, k_, n_, B_nnz_, SEED + seedOffset++);
-      } else if (type_ == matrixType::random) {
-        randomCSR<T, MKL_INT>(A_vals_, A_cols_, A_rows, m_, k_, A_nnz_, SEED + seedOffset++);
-        randomCSR<T, MKL_INT>(B_vals_, B_cols_, B_rows, k_, n_, B_nnz_, SEED + seedOffset++);
-      } else {
-        std::cerr << "Unknown matrix type" << std::endl;
-        exit(1);
-      }
-      while (calcCNNZ<MKL_INT>(m_, A_nnz_, A_rows, A_cols_, k_, B_nnz_, B_rows, B_cols_) == 0) {
+      do {
         if (type_ == matrixType::rmat) {
           rMatCSR<T, MKL_INT>(A_vals_, A_cols_, A_rows, m_, k_, A_nnz_, SEED + seedOffset++);
           rMatCSR<T, MKL_INT>(B_vals_, B_cols_, B_rows, k_, n_, B_nnz_, SEED + seedOffset++);
         } else if (type_ == matrixType::random) {
           randomCSR<T, MKL_INT>(A_vals_, A_cols_, A_rows, m_, k_, A_nnz_, SEED + seedOffset++);
           randomCSR<T, MKL_INT>(B_vals_, B_cols_, B_rows, k_, n_, B_nnz_, SEED + seedOffset++);
+        } else if (type_ == matrixType::finiteElements) {
+          finiteElementCSR<T, MKL_INT>(A_vals_, A_cols_, A_rows, m_, k_, A_nnz_, SEED + seedOffset++);
+          finiteElementCSR<T, MKL_INT>(B_vals_, B_cols_, B_rows, k_, n_, B_nnz_, SEED + seedOffset++);
         } else {
-          std::cerr << "Matrix type not supported" << std::endl;
+          std::cerr << "Unknown matrix type" << std::endl;
           exit(1);
         }
-      }
+      } while (calcCNNZ<MKL_INT>(m_, A_nnz_, A_rows, A_cols_, k_, B_nnz_, B_rows, B_cols_) == 0);
 
       for (uint64_t i = 0; i < m_; i++) {
         A_rowsb_[i] = A_rows[i];

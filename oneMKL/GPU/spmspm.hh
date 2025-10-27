@@ -128,20 +128,21 @@ protected:
     void toSparseFormat() override {
       if (offload_ == gpuOffloadType::always) {
         int seedOffset = 0;
-        if (type_ == matrixType::rmat) {
-          do {
+        do {
+          if (type_ == matrixType::rmat) {
             rMatCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, A_nnz_, SEED + seedOffset++);
             rMatCSR<T, int64_t>(B_vals_store_, B_cols_store_, B_rows_store_, k_, n_, B_nnz_, SEED + seedOffset++);
-          } while (calcCNNZ<int64_t>(m_, A_nnz_, A_rows_store_, A_cols_store_, k_, B_nnz_, B_rows_store_, B_cols_store_) == 0);
-        } else if (type_ == matrixType::random) {
-          do {
+          } else if (type_ == matrixType::random) {
             randomCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, A_nnz_, SEED + seedOffset++);
             randomCSR<T, int64_t>(B_vals_store_, B_cols_store_, B_rows_store_, k_, n_, B_nnz_, SEED + seedOffset++);
-          } while (calcCNNZ<int64_t>(m_, A_nnz_, A_rows_store_, A_cols_store_, k_, B_nnz_, B_rows_store_, B_cols_store_) == 0);
-        } else {
-          std::cerr << "Unknown matrix type" << std::endl;
-          exit(1);
-        }
+          } else if (type_ == matrixType::finiteElements) {
+            finiteElementCSR<T, int64_t>(A_vals_store_, A_cols_store_, A_rows_store_, m_, k_, A_nnz_, SEED + seedOffset++);
+            finiteElementCSR<T, int64_t>(B_vals_store_, B_cols_store_, B_rows_store_, k_, n_, B_nnz_, SEED + seedOffset++);
+          } else {
+            std::cerr << "Unknown matrix type" << std::endl;
+            exit(1);
+          }
+        } while (calcCNNZ<int64_t>(m_, A_nnz_, A_rows_store_, A_cols_store_, k_, B_nnz_, B_rows_store_, B_cols_store_) == 0);
       }
 
       memcpy(A_rows_, A_rows_store_, static_cast<size_t>(m_ + 1) * sizeof(int64_t));

@@ -393,7 +393,7 @@ private:
     std::string getKernelName() const {
       switch (sizeof(T)) {
         case 4:
-          return "sspmvnv";
+          return "sspmdnv";
         case 8:
           return "dspmdnv";
         default:

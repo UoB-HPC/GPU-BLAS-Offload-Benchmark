@@ -7,6 +7,8 @@
 #include <vector>
 #include <queue>
 #include <iostream>
+#include <set>
+#include <numeric>
 
 // Define CPU related macros
 #if defined CPU_ARMPL
@@ -468,67 +470,88 @@ int64_t calcCNNZ(int_type A_n_rows, int_type A_nnz, int_type* A_rows, int_type* 
 }
 
 /**
- * @brief Generates a sparse matrix proxy for a finite element mesh.
+ * @brief Generates a densely-filled banded matrix.
  *
- * This function simulates a "dense-banded" matrix. It randomly places 'nnz'
- * non-zeros, but all are guaranteed to be within a fixed 'bandwidth'
- * of the main diagonal. This models the high data locality found in
- * matrices from 2D/3D FEM or FDM problems.
- *
- * @param vals (out) Array to store non-zero values.
- * @param cols (out) Array to store column indices of non-zeros.
- * @param rows (out) Array to store row pointers.
- * @param nrows Number of rows in the matrix.
- * @param ncols Number of columns in the matrix.
- * @param nnz   The target number of non-zeros to generate.
- * @param seed  The random seed.
+ * It first calculates the minimum bandwidth 'k' required to store at least
+ * 'nnz' elements. It then fills the band (diagonals -k to +k) row by row,
+ * respecting matrix boundaries, until exactly 'nnz' elements are written.
  */
 template <typename T, typename int_type>
 void finiteElementCSR(T* vals, int_type* cols, int_type* rows,
-                      int nrows, int ncols, int nnz, unsigned int seed = SEED) {
-  // --- Define the bandwidth ---
-  // We're having a bandwidth to allow double the number of nnzs that we are going to place.  
-  // so the sparsity within the band is going to be 50%
-  const int_type bandwidth = nrows * ncols / nnz;
-
-  std::mt19937 gen(seed);
-  std::uniform_real_distribution<T> val_dist(-1.5, 1.5);
-  std::vector<std::set<int_type>> temp_rows(nrows);
-
-  // Distribution to pick a random row
-  std::uniform_int_distribution<int_type> row_dist(0, nrows - 1);
-
-  int_type nnz_placed = 0;
-  while (nnz_placed < nnz) {
-    // 1. Pick a random row
-    int_type r = row_dist(gen);
-
-    // 2. Define the column range for this row based on bandwidth
-    int_type c_min = std::max((int_type)0, r - bandwidth);
-    int_type c_max = std::min(ncols - 1, r + bandwidth);
-
-    // If the band is invalid (e.g., r=0, bw=-5), skip
-    if (c_min > c_max) continue;
-
-    // 3. Pick a random column *within the band*
-    std::uniform_int_distribution<int_type> col_dist(c_min, c_max);
-    int_type c = col_dist(gen);
-
-    // 4. Insert the new non-zero
-    if (temp_rows[r].insert(c).second) {
-      nnz_placed++;
+                      int nrows, int ncols, int_type nnz,
+                      unsigned int seed = SEED) 
+{
+    long long max_nnz = (long long)nrows * ncols;
+    if (nnz > max_nnz) {
+        std::cerr << "Warning: Clamping NNZ." << std::endl;
+        nnz = max_nnz;
     }
-  }
 
-  // --- Flatten the std::set structure into CSR arrays ---
-  int_type nnz_idx = 0;
-  rows[0] = 0;
-  for (int r = 0; r < nrows; ++r) {
-    for (int_type c : temp_rows[r]) {
-      vals[nnz_idx] = val_dist(gen);
-      cols[nnz_idx] = c;
-      nnz_idx++;
+    if (nnz == 0) {
+        for (int r = 0; r <= nrows; r++) rows[r] = 0;
+        return;
     }
-    rows[r + 1] = nnz_idx;
-  }
+
+    std::mt19937 gen(seed);
+    std::uniform_real_distribution<T> val_dist(-1.5, 1.5);
+
+    // --- 1. Find the bandwidth 'k' needed to fit 'nnz' ---
+    int_type k = 0; // k is the "radius" of the band
+    long long nnz_in_band = 0;
+    while (nnz_in_band < nnz) {
+        nnz_in_band = 0;
+        for (int r = 0; r < nrows; r++) {
+            int_type c_midpoint = r * ncols / nrows;
+            int_type c_min = std::max<int_type>(0, c_midpoint - k);
+            int_type c_max = std::min<int_type>(ncols - 1, c_midpoint + k);
+            nnz_in_band += (c_max - c_min + 1);
+        }
+
+        if (nnz_in_band >= nnz) break; // Found a big enough band
+        
+        k++;
+        
+        // Safety break if k grows larger than the matrix
+        if (k > std::max(nrows, ncols)) {
+             std::cerr << "Warning: Bandwidth loop failed. Clamping NNZ." << std::endl;
+             nnz = nnz_in_band; // nnz is now the max possible
+             break;
+        }
+    }
+
+    // --- 2. Fill the CSR arrays using the discovered bandwidth 'k' ---
+    rows[0] = 0;
+    int_type current_nnz = 0;
+
+    for (int r = 0; r < nrows; r++) {
+        // Find the correct column bounds for this row
+            int_type c_midpoint = r * ncols / nrows;
+            int_type c_min = std::max<int_type>(0, c_midpoint - k);
+            int_type c_max = std::min<int_type>(ncols - 1, c_midpoint + k);
+
+        // Fill the band for this row
+        for (int_type c = c_min; c <= c_max; c++) {
+            // Stop *exactly* at nnz
+            if (current_nnz >= nnz) {
+                break;
+            }
+
+            vals[current_nnz] = val_dist(gen);
+            cols[current_nnz] = c;
+            current_nnz++;
+        }
+
+        rows[r + 1] = current_nnz;
+
+        if (current_nnz >= nnz) {
+            // We're done. Fill the rest of the row pointers.
+            for (int rest_r = r + 1; rest_r < nrows; rest_r++) {
+                rows[rest_r + 1] = nnz;
+            }
+            break; // Exit the main row loop
+        }
+    }
+    
+    // Ensure the final pointer is correct
+    rows[nrows] = current_nnz;
 }

@@ -9,17 +9,17 @@ double sparsity = 0.99;
 bool doSgemv = true;
 bool doDgemv = true;
 // Sparse GEMV kernels
-bool doSspmdnv = true;
-bool doDspmdnv = true;
+bool doSspgemv = true;
+bool doDspgemv = true;
 // GEMM kernels
 bool doSgemm = true;
 bool doDgemm = true;
+// Sparse MM kernels
+bool doSspmm = true;
+bool doDspmm = true;
 // Sparse GEMM kernels
-bool doSspmdnm = true;
-bool doDspmdnm = true;
-// Sparse-sparse matrix multiplication kernels
-bool doSspmspm = true;
-bool doDspmspm = true;
+bool doSspgemm = true;
+bool doDspgemm = true;
 
 bool doCpu = CPU_ENABLED;
 bool doGpu = GPU_ENABLED;
@@ -33,23 +33,23 @@ int main(int argc, char** argv) {
   printBenchmarkConfig(iters, upperLimit);
 
 #ifdef CPU_ARMPL
-  if (doSspmdnm || doDspmdnm) {
+  if (doSspmm || doDspmm) {
     std::cout << "WARNING - ArmPL does not currently provide a Sparse Matrix-Dense Matrix kernel. Disabling Sparse Matrix-Dense Matrix tests." << std::endl;
-    doSspmdnm = false;
-    doDspmdnm = false;
+    doSspmm = false;
+    doDspmm = false;
   }
 #endif
 
 #ifdef CPU_NVPL
-  if (doSspmdnm || doDspmdnm) {
+  if (doSspmm || doDspmm) {
     std::cout << "WARNING - NVPL does not currently provide a Sparse Matrix-Dense Matrix kernel. Disabling Sparse Matrix-Dense Matrix tests." << std::endl;
-    doSspmdnm = false;
-    doDspmdnm = false;
+    doSspmm = false;
+    doDspmm = false;
   }
-  if (doSspmspm || doDspmspm) {
+  if (doSspgemm || doDspgemm) {
     std::cout << "WARNING - NVPL does not currently provide a Sparse Matrix-Sparse Matrix kernel. Disabling Sparse Matrix-Sparse Matrix tests." << std::endl;
-    doSspmspm = false;
-    doDspmspm = false;
+    doSspgemm = false;
+    doDspgemm = false;
   }
 #endif
 
@@ -107,60 +107,60 @@ int main(int argc, char** argv) {
  }
 
 
-  // -------- SPMDNV --------
+  // -------- SGEMV --------
   // Single-Precision Sparse Matrix-Dense Vector
-  if (doSspmdnv) {
-    std::cout << std::endl << "Comparing SSPMDNV Kernels:" << std::endl;
-    doSpmdnv<float> sspmdnv(std::string(absPath), iters, startDim, upperLimit,
+  if (doSspgemv) {
+    std::cout << std::endl << "Comparing SSpGEMV Kernels:" << std::endl;
+    doSpgemv<float> sspgemv(std::string(absPath), iters, startDim, upperLimit,
                             step, sparsity, type, doCpu, doGpu);
-    sspmdnv.collectData();
+    sspgemv.collectData();
     std::cout << "Finished!" << std::endl;
   }
 
   // Double-Precision Sparse Matrix-Dense Vector
-  if (doDspmdnv) {
-    std::cout << std::endl << "Comparing DSPMDNV Kernels:" << std::endl;
-    doSpmdnv<double> dspmdnv(std::string(absPath), iters, startDim, upperLimit,
+  if (doDspgemv) {
+    std::cout << std::endl << "Comparing DSpGEMV Kernels:" << std::endl;
+    doSpgemv<double> dspgemv(std::string(absPath), iters, startDim, upperLimit,
                              step, sparsity, type, doCpu, doGpu);
-    dspmdnv.collectData();
+    dspgemv.collectData();
     std::cout << "Finished!" << std::endl;
   }
 
-  // // -------- SPMDNM --------
+  // // -------- SpMM --------
   // // Single-Precision Sparse Matrix-Dense Matrix
-  if (doSspmdnm) {
-    std::cout << std::endl << "Comparing SSpMDnM Kernels:" << std::endl;
-    doSpmdnm<float> sspmdnm(std::string(absPath), iters, startDim, upperLimit,
-                            step, sparsity, type, doCpu, doGpu);
-    sspmdnm.collectData();
+  if (doSspmm) {
+    std::cout << std::endl << "Comparing SSpMM Kernels:" << std::endl;
+    doSpmm<float> sspmm(std::string(absPath), iters, startDim, upperLimit,
+                        step, sparsity, type, doCpu, doGpu);
+    sspmm.collectData();
     std::cout << "Finished!" << std::endl;
   }
 
   // Double-Precision Sparse Matrix-Dense Matrix
-  if (doDspmdnm) {
-    std::cout << std::endl << "Comparing DSpMDnM Kernels:" << std::endl;
-    doSpmdnm<double> dspmdnm(std::string(absPath), iters, startDim, upperLimit,
-                             step, sparsity, type, doCpu, doGpu);
-    dspmdnm.collectData();
+  if (doDspmm) {
+    std::cout << std::endl << "Comparing DSpMM Kernels:" << std::endl;
+    doSpmm<double> dspmm(std::string(absPath), iters, startDim, upperLimit,
+                         step, sparsity, type, doCpu, doGpu);
+    dspmm.collectData();
     std::cout << "Finished!" << std::endl;
   }
 
-  // -------- SPMSPM --------
+  // -------- SpGEMM --------
   // Single-Precision Sparse Matrix-Sparse Matrix
-  if (doSspmspm) {
-    std::cout << std::endl << "Comparing SSpMSpM Kernels:" << std::endl;
-    doSpmspm<float> sspmspm(std::string(absPath), iters, startDim, upperLimit,
+  if (doSspgemm) {
+    std::cout << std::endl << "Comparing SSpGEMM Kernels:" << std::endl;
+    doSpgemm<float> sspgemm(std::string(absPath), iters, startDim, upperLimit,
                             step, sparsity, type, doCpu, doGpu);
-    sspmspm.collectData();
+    sspgemm.collectData();
     std::cout << "Finished!" << std::endl;
   }
 
   // Double-Precision Sparse Matrix-Sparse Matrix
-  if (doDspmspm) {
-    std::cout << std::endl << "Comparing DSpMSpM Kernels:" << std::endl;
-    doSpmspm<double> dspmspm(std::string(absPath), iters, startDim, upperLimit,
+  if (doDspgemm) {
+    std::cout << std::endl << "Comparing DSpGEMM Kernels:" << std::endl;
+    doSpgemm<double> dspgemm(std::string(absPath), iters, startDim, upperLimit,
                              step, sparsity, type, doCpu, doGpu);
-    dspmspm.collectData();
+    dspgemm.collectData();
     std::cout << "Finished!" << std::endl;
   }
   free(absPath);
@@ -272,17 +272,17 @@ void getParameters(int argc, char** argv) {
       std::string kernelList = argv[++i];
       doSgemm = (kernelList.find("sgemm") != std::string::npos);
       doDgemm = (kernelList.find("dgemm") != std::string::npos);
-      doSspmdnm = (kernelList.find("sspmdnm") != std::string::npos);
-      doDspmdnm = (kernelList.find("dspmdnm") != std::string::npos);
-      doSspmspm = (kernelList.find("sspmspm") != std::string::npos);
-      doDspmspm = (kernelList.find("dspmspm") != std::string::npos);
+      doSspmm = (kernelList.find("sspmm") != std::string::npos);
+      doDspmm = (kernelList.find("dspmm") != std::string::npos);
+      doSspgemm = (kernelList.find("sspgemm") != std::string::npos);
+      doDspgemm = (kernelList.find("dspgemm") != std::string::npos);
       doSgemv = (kernelList.find("sgemv") != std::string::npos);
       doDgemv = (kernelList.find("dgemv") != std::string::npos);
-      doSspmdnv = (kernelList.find("sspmdnv") != std::string::npos);
-      doDspmdnv = (kernelList.find("dspmdnv") != std::string::npos);
+      doSspgemv = (kernelList.find("sspgemv") != std::string::npos);
+      doDspgemv = (kernelList.find("dspgemv") != std::string::npos);
 
-      if (!doSgemv && !doSspmdnv && !doSgemm && !doSspmdnm && !doSspmspm &&
-          !doDgemv && !doDspmdnv && !doDgemm && !doDspmdnm && !doDspmspm) {
+      if (!doSgemv && !doSspgemv && !doSgemm && !doSspmm && !doSspgemm &&
+          !doDgemv && !doDspgemv && !doDgemm && !doDspmm && !doDspgemm) {
         std::cout << "ERROR - no implemented kernels in list" << std::endl;
         exit(1);
       } else {
@@ -340,10 +340,10 @@ void getParameters(int argc, char** argv) {
                    "(default: " << upperLimit << ")" 
                 << std::endl;
       std::cout << "  -k  --kernels <kernels>      Comma-separated list of "
-                   "kernels to be run.  Options are sgemm, dgemm, sspmdnm, "
-                   "dspmdnm, sspmspm, dspmspm, sgemv, dgemv, sspmdnv, dspmdnv "
-                   "(default: `-k sgemm,dgemm,sspmdnm,dspmdnm,sspmspm,dspmspm,"
-                   "sgemv,dgemv,sspmdnv,dspmdnv`)" 
+                   "kernels to be run.  Options are sgemm, dgemm, sspmm, "
+                   "dspmm, sspgemm, dspgemm, sgemv, dgemv, sspgemv, dspgemv "
+                   "(default: `-k sgemm,dgemm,sspmm,dspmm,sspgemm,dspgemm,"
+                   "sgemv,dgemv,sspgemv,dspgemv`)" 
                 << std::endl;
       std::cout << "  --sparsity Sp                Sparsity value, between 0 "
                    "and 1 (double), to be used by the sparse BLAS kernels.  "

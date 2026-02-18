@@ -14,10 +14,10 @@ Only when an error occurs will any checksum be displayed to the user.
 
 GFLOP/s are calculated using the following Total FLOPs formulas. The compute time excludes any initialisation, but does include any data movement / prefetching to/from the GPU device:
  - **GEMM** : `FLOPs = (2 * M * N * K) + (b * M * N)` where `b` is `1` if BETA=0 and `3` if BETA=/=0
- - **SPMDNM** : `FLOPs = (2 * N * NNZ)` where NNZ is the number of non-zero values in matrix A
- - **SPMSPM** : `FLOPs = (NNZA * NNZB) / K` where NNZA is the number of non-zero values in matrix A and NNZ is the number of non-zero values in matrix B.  This is an expectation of the number of flops based on a uniform distribution of non-zero values in the columns of matrix A and the rows of matrix B
+ - **SPMM** : `FLOPs = (2 * N * NNZ)` where NNZ is the number of non-zero values in matrix A
+ - **SPGEMM** : `FLOPs = (NNZA * NNZB) / K` where NNZA is the number of non-zero values in matrix A and NNZ is the number of non-zero values in matrix B.  This is an expectation of the number of flops based on a uniform distribution of non-zero values in the columns of matrix A and the rows of matrix B
  - **GEMV** : `FLOPs = (2 * M * N) + (b * M)` where `b` is `1` if BETA=0 and `3` if BETA=/=0
- - **SPMDNV** : `FLOPs = (2 * NNZ)` where NNZ is the number of non-zero values in matrix A
+ - **SPGEMV** : `FLOPs = (2 * NNZ)` where NNZ is the number of non-zero values in matrix A
 
 # Build Options
 Select the compiler you wish to use. Regardless of choice, `gcc` is required in order to build the `Consume.so` external library.
@@ -129,11 +129,11 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes
 
- - SpMDnM
+ - SpMM
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes
 
- - SpMSpM
+ - SpGEMM
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes
 
@@ -142,7 +142,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes 
 
- - SpMDnV
+ - SpGEMV
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes 
 

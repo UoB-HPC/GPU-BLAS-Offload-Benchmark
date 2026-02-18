@@ -5,6 +5,8 @@
 #include <cusparse.h>
 #include <cuda_runtime.h>
 #include <cstdio>
+#include "nvtx3/nvToolsExt.h"
+#include <sstream>
 
 /** Macro function to check if error occurred when calling cuBLAS. */
 /** Macro function to check if error occurred when calling CUDA. */

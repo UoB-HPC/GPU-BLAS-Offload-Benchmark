@@ -17,7 +17,7 @@ GFLOP/s are calculated using the following Total FLOPs formulas. The compute tim
  - **SPMM** : `FLOPs = (2 * N * NNZ)` where NNZ is the number of non-zero values in matrix A
  - **SPGEMM** : `FLOPs = (NNZA * NNZB) / K` where NNZA is the number of non-zero values in matrix A and NNZ is the number of non-zero values in matrix B.  This is an expectation of the number of flops based on a uniform distribution of non-zero values in the columns of matrix A and the rows of matrix B
  - **GEMV** : `FLOPs = (2 * M * N) + (b * M)` where `b` is `1` if BETA=0 and `3` if BETA=/=0
- - **SPGEMV** : `FLOPs = (2 * NNZ)` where NNZ is the number of non-zero values in matrix A
+ - **SPMV** : `FLOPs = (2 * NNZ)` where NNZ is the number of non-zero values in matrix A
 
 ## Citing
 Please cite GPU-BLOB via this reference:
@@ -147,7 +147,7 @@ The kernels listed below are computed by the benchmark for a wide range of probl
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes 
 
- - SpGEMV
+ - SpMV
    - FP32, FP64
    - Square, short-&-wide, tall-&-thin input sizes 
 

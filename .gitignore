@@ -68,3 +68,5 @@ Graphs*
 
 # Bash scripts to run on different systems
 *.sh
+./slurm_scripts
+./slurm_scripts/*

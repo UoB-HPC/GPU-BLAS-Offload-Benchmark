@@ -66,7 +66,7 @@ enum class gpuOffloadType : uint8_t {
 enum class matrixType : uint8_t {
   rmat = 0,
   random,
-  finiteElements,
+  bandedDiagonal,
 };
 
 // Define struct which contains a runtime, checksum value, and gflop/s value
@@ -477,7 +477,7 @@ int64_t calcCNNZ(int_type A_n_rows, int_type A_nnz, int_type* A_rows, int_type* 
  * respecting matrix boundaries, until exactly 'nnz' elements are written.
  */
 template <typename T, typename int_type>
-void finiteElementCSR(T* vals, int_type* cols, int_type* rows,
+void bandedDiagonalCSR(T* vals, int_type* cols, int_type* rows,
                       int nrows, int ncols, int_type nnz,
                       unsigned int seed = SEED) 
 {

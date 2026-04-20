@@ -51,7 +51,7 @@ CXX = $(CXX_$(COMPILER))
 
 CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_GNU     = -std=c++17 -Wall -Wno-deprecated-declarations -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_GNU     = -std=c++17 -Wall -Wno-deprecated-declarations -Ofast -$(ARCHFLAG)=native -ldl
 CXXFLAGS_INTEL   = -std=c++17 -Wall -O3 -ffast-math -$(ARCHFLAG)=native -Wno-tautological-constant-compare
 CXXFLAGS_NVIDIA  = -std=c++17 -Wall -O3 -fast -$(ARCHFLAG)=native
 CXXFLAGS_HIP     = -std=c++17 -Wall -O3 -ffast-math -$(ARCHFLAG)=native
@@ -118,9 +118,13 @@ endif
 HEADER_FILES+= $(wildcard oneMKL/CPU/*.hh)
 
 else ifeq ($(CPU_LIB), AOCL)
-override CXXFLAGS += -laoclutils -lblis -lflame -laoclsparse
+override CXXFLAGS += -laoclutils -lblis -lflame -laoclsparse -ldl
 ifeq ($(COMPILER), INTEL)
 override CXXFLAGS += -qopenmp
+# else ifeq ($(COMPILER), HIP)
+# ifeq ($(GPU_LIB), ROCBLAS)
+# override CXXFLAGS += -fopenmp=libgomp -fno-openmp-offload
+# endif
 else
 override CXXFLAGS += -fopenmp
 endif

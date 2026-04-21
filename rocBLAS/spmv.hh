@@ -81,7 +81,7 @@ class spmv_gpu : public spmv<T> {
     } else if constexpr (std::is_same_v<T, double>) {
       dataType_ = rocsparse_datatype_f64_r;
     } else {
-      std::cerr << "INVALID DATA TYPE PASSED TO cuSPARSE" << std::endl;
+      std::cerr << "INVALID DATA TYPE PASSED TO rocSPARSE" << std::endl;
       exit(1);
     }
 

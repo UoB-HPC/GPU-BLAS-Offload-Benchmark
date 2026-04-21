@@ -66,47 +66,31 @@ protected:
     }
 
     // Make the NVPL descriptors
-    status_ = nvpl_sparse_create_const_csr(&A_descr_,
-                                           m_,
-                                           n_,
-                                           nnz_,
-                                           A_rows_,
-                                           A_cols_,
-                                           A_vals_,
-                                           indexType_,
-                                           indexType_,
-                                           base_,
-                                           dataType_);
-    if (status_ != NVPL_SPARSE_STATUS_SUCCESS) {
-      std::cerr << "nvpl_sparse_create_csr failed with error: " << status_ << std::endl;
-      exit(1);
-    }
+    nvpl_sparse_create_const_csr(&A_descr_,
+                                 m_,
+                                 n_,
+                                 nnz_,
+                                 A_rows_,
+                                 A_cols_,
+                                 A_vals_,
+                                 indexType_,
+                                 indexType_,
+                                 base_,
+                                 dataType_);
 
-    status_ = nvpl_sparse_create_const_dn_vec(X_descr_,
-                                              n_,
-                                              x_,
-                                              dataType_);
-    if (status_ != NVPL_SPARSE_STATUS_SUCCESS) {
-      std::cerr << "nvpl_sparse_create_const_dn_vec failed with error: " << status_ << std::endl;
-      exit(1);
-    }
+    nvpl_sparse_create_const_dn_vec(X_descr_,
+                                    n_,
+                                    x_,
+                                    dataType_);
 
-    status_ = nvpl_sparse_create_dn_vec(Y_descr_,
-                                        m_,
-                                        y_,
-                                        dataType_);
-    if (status_ != NVPL_SPARSE_STATUS_SUCCESS) {
-      std::cerr << "nvpl_sparse_create_dn_vec failed with error: " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = nvpl_sparse_create_dn_vec(Z_descr_,
-                                        m_,
-                                        z_,
-                                        dataType_);
-    if (status_ != NVPL_SPARSE_STATUS_SUCCESS) {
-      std::cerr << "nvpl_sparse_create_dn_vec failed with error: " << status_ << std::endl;
-      exit(1);
-    }
+    nvpl_sparse_create_dn_vec(Y_descr_,
+                              m_,
+                              y_,
+                              dataType_);
+    nvpl_sparse_create_dn_vec(Z_descr_,
+                              m_,
+                              z_,
+                              dataType_);
   }
 
 private:
@@ -114,56 +98,44 @@ private:
 
   void callSpmv() override {
     size_t bufferSize;
-    status_ = nvpl_sparse_spmv_buffer_size(handle_,
-                                           operation_,
-                                           &alpha,
-                                           A_descr_,
-                                           X_descr_,
-                                           &beta,
-                                           Z_descr_,
-                                           Y_descr_,
-                                           dataType_,
-                                           algorithm_,
-                                           description_,
-                                           &bufferSize);
-    if (status_ != NVPL_SPARSE_STATUS_SUCCESS) {
-      std::cer << "nvpl_sparse_spmv_buffer_size failed with error: " << status_ << std::endl;
-      exit(1);
-    }
+    nvpl_sparse_spmv_buffer_size(handle_,
+                                 operation_,
+                                 &alpha,
+                                 A_descr_,
+                                 X_descr_,
+                                 &beta,
+                                 Z_descr_,
+                                 Y_descr_,
+                                 dataType_,
+                                 algorithm_,
+                                 description_,
+                                 &bufferSize);
 
     void* externalBuffer = malloc(bufferSize);
-    status_ = nvpl_sparse_spmv_analysis(handle_,
-                                        operation_,
-                                        &alpha,
-                                        A_descr_,
-                                        X_descr_,
-                                        &beta,
-                                        Z_descr_,
-                                        Y_descr_,
-                                        dataType_,
-                                        algorithm_,
-                                        description_,
-                                        externalBuffer);
-    if (status_ != NVPL_SPARSE_STATUS_SUCCESS) {
-      std::cerr << "nvpl_sparse_spmv_analysis failed with error: " << status_ << std::endl;
-      exit(1);
-    }
+    nvpl_sparse_spmv_analysis(handle_,
+                              operation_,
+                              &alpha,
+                              A_descr_,
+                              X_descr_,
+                              &beta,
+                              Z_descr_,
+                              Y_descr_,
+                              dataType_,
+                              algorithm_,
+                              description_,
+                              externalBuffer);
 
-    status_ = nvpl_sparse_spmv(handle_,
-                               operation_,
-                               &alpha_,
-                               A_descr_,
-                               X_descr_,
-                               &beta,
-                               Z_descr_,
-                               Y_descr_,
-                               dataType_,
-                               algorithm_,
-                               description_);
-    if (status_ != NVPL_SPARSE_STATUS_SUCCESS) {
-      std::cerr << "nvpl_sparse_spmv failed with error: " << status_ << std::endl;
-      exit(1);
-    }
+    nvpl_sparse_spmv(handle_,
+                     operation_,
+                     &alpha_,
+                     A_descr_,
+                     X_descr_,
+                     &beta,
+                     Z_descr_,
+                     Y_descr_,
+                     dataType_,
+                     algorithm_,
+                     description_); 
 
     free(externalBuffer);
   }
@@ -205,7 +177,6 @@ private:
   T* A_vals_;
   T* z_;
   
-
   const T alpha = ALPHA;
   const T beta = BETA;
 };

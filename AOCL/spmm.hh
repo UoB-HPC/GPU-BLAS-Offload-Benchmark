@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "./common.hh"
 #include "../include/kernels/CPU/spmm.hh"
 #include "../include/utilities.hh"
 
@@ -31,19 +32,9 @@ public:
     base_ = aoclsparse_index_base_zero;
     order_ = aoclsparse_order_row;
 
-    status_ = aoclsparse_create_mat_descr(&A_description_);
-    if (status_ != aoclsparse_status_success) {
-      std::cerr << "aoclsparse_create_mat_descr is failing with problem size of " << m_ << "x" << k_ << " . " << k_ << "x" << n_ << std::endl;
-      printAOCLError(status_);
-    }
-
-    status_ = aoclsparse_set_mat_index_base(A_description_, base_);
-    if (status_ != aoclsparse_status_success) {
-      std::cerr << "aoclsparse_set_mat_index_base is failing with problem size of " << m_ << "x" << k_ << " . " << k_ << "x" << n_ << std::endl;
-      printAOCLError(status_);
-    }
+    aoclCheckError(aoclsparse_create_mat_descr(&A_description_));
+    aoclCheckError(aoclsparse_set_mat_index_base(A_description_, base_));
     
-
     m_aocl_ = m_ = m;
     n_aocl_ = n_ = n;
     k_aocl_ = k_ = k;
@@ -80,27 +71,23 @@ protected:
     
     // Move into the AOCL CSR matrix handle
     if constexpr (std::is_same_v<T, float>) {
-      status_ = aoclsparse_create_scsr(&A_aocl_, 
-                                       base_, 
-                                       m_aocl_, 
-                                       k_aocl_, 
-                                       nnz_aocl_, 
-                                       A_rows_, 
-                                       A_cols_, 
-                                       A_vals_);
+      aoclCheckError(aoclsparse_create_scsr(&A_aocl_, 
+                                            base_, 
+                                            m_aocl_, 
+                                            k_aocl_, 
+                                            nnz_aocl_, 
+                                            A_rows_, 
+                                            A_cols_, 
+                                            A_vals_));
     } else if constexpr (std::is_same_v<T, double>) {
-      status_ = aoclsparse_create_dcsr(&A_aocl_, 
-                                       base_, 
-                                       m_aocl_, 
-                                       k_aocl_, 
-                                       nnz_aocl_, 
-                                       A_rows_, 
-                                       A_cols_, 
-                                       A_vals_);
-    }
-    if (status_ != aoclsparse_status_success) {
-      std::cerr << "aoclsparse_create_?csr is failing with problem size of " << m_ << "x" << k_ << " . " << k_ << "x" << n_ << std::endl;
-      printAOCLError(status_);
+      aoclCheckError(aoclsparse_create_dcsr(&A_aocl_, 
+                                            base_, 
+                                            m_aocl_, 
+                                            k_aocl_, 
+                                            nnz_aocl_, 
+                                            A_rows_, 
+                                            A_cols_, 
+                                            A_vals_));
     }
   }
 
@@ -110,114 +97,43 @@ private:
   void callSpmm() override {
     operation_ = aoclsparse_operation_none; // Just saying no transposition happening first
     if constexpr (std::is_same_v<T, float>) {
-      status_ = aoclsparse_scsrmm(operation_, 
-                                  alpha, 
-                                  A_aocl_, 
-                                  A_description_, 
-                                  order_, 
-                                  B_, 
-                                  n_aocl_, 
-                                  n_aocl_, 
-                                  beta, 
-                                  C_, 
-                                  n_aocl_);
+      aoclCheckError(aoclsparse_scsrmm(operation_, 
+                                       alpha, 
+                                       A_aocl_, 
+                                       A_description_, 
+                                       order_, 
+                                       B_, 
+                                       n_aocl_, 
+                                       n_aocl_, 
+                                       beta, 
+                                       C_, 
+                                       n_aocl_));
     } else if constexpr(std::is_same_v<T, double>) {
-      status_ = aoclsparse_dcsrmm(operation_, 
-                                  alpha, 
-                                  A_aocl_, 
-                                  A_description_, 
-                                  order_, 
-                                  B_, 
-                                  n_aocl_, 
-                                  n_aocl_, 
-                                  beta, 
-                                  C_, 
-                                  n_aocl_);
-    }
-    if (status_ != aoclsparse_status_success) {
-      std::cerr << "aoclsparse_?csrmm is failing with problem size of " << m_ << "x" << k_ << " . " << k_ << "x" << n_ << std::endl;
-      std::cerr << "\tm_aocl_=" << m_aocl_ << std::endl;
-      std::cerr << "\tn_aocl_=" << n_aocl_ << std::endl;
-      std::cerr << "\tk_aocl_=" << k_aocl_ << std::endl;
-      std::cerr << "\tnnz_aocl_=" << nnz_aocl_ << std::endl;
-      printAOCLError(status_);
+      aoclCheckError(aoclsparse_dcsrmm(operation_, 
+                                       alpha, 
+                                       A_aocl_, 
+                                       A_description_, 
+                                       order_, 
+                                       B_, 
+                                       n_aocl_, 
+                                       n_aocl_, 
+                                       beta, 
+                                       C_, 
+                                       n_aocl_));
     }
   }
 
-  void postLoopRequirements() override {
-  }
+  void postLoopRequirements() override {}
 
   void postCallKernelCleanup() override {
-    status_ = aoclsparse_destroy_mat_descr(A_description_);
-    if (status_ != aoclsparse_status_success) {
-      std::cerr << "aoclsparse_destroy_mat_descr is failing with problem size of " << m_ << "x" << k_ << " . " << k_ << "x" << n_ << std::endl;
-      printAOCLError(status_);
-    }
-    status_ = aoclsparse_destroy(&A_aocl_);
-    if (status_ != aoclsparse_status_success) {
-      std::cerr << "aoclsparse_destroy is failing with problem size of " << m_ << "x" << k_ << " . " << k_ << "x" << n_ << std::endl;
-      printAOCLError(status_);
-    }
+    aoclCheckError(aoclsparse_destroy_mat_descr(A_description_));
+    aoclCheckError(aoclsparse_destroy(&A_aocl_));
+    
     delete[] A_vals_;
     delete[] A_cols_;
     delete[] A_rows_;
     delete[] B_;
     delete[] C_;
-  }
-
-  void printAOCLError(aoclsparse_status stat) {
-    switch (stat) {
-      case aoclsparse_status_success:
-        std::cerr << "SUCCESS - The operation completed successfully";
-        break;
-      case aoclsparse_status_not_implemented:
-        std::cerr << "NOT_IMPLEMENTED - The requested functionality is not yet implemented in this version";
-        break;
-      case aoclsparse_status_invalid_pointer:
-        std::cerr << "INVALID_POINTER - One or more pointer parameters are NULL or otherwise invalid";
-        break;
-      case aoclsparse_status_invalid_size:
-        std::cerr << "INVALID_SIZE - One or more size parameters (m, n, nnz, etc.) contain an invalid value (e.g., negative or zero where positive required)";
-        break;
-      case aoclsparse_status_internal_error:
-        std::cerr << "INTERNAL_ERROR - Internal library failure";
-        break;
-      case aoclsparse_status_invalid_value:
-        std::cerr << "INVALID_VALUE - Input parameters contain an invalid value (e.g., invalid enum value, base index neither 0 nor 1)";
-        break;
-      case aoclsparse_status_invalid_index_value:
-        std::cerr << "INVALID_INDEX_VALUE - At least one index value is invalid (e.g., negative or out of bounds)";
-        break;
-      case aoclsparse_status_maxit:
-        std::cerr << "MAXIT - function stopped after reaching number of iteration limit";
-        break;
-      case aoclsparse_status_user_stop:
-        std::cerr << "USER_STOP - user requested termination";
-        break;
-      case aoclsparse_status_wrong_type:
-        std::cerr << "WRONG_TYPE - Data type mismatch (e.g., matrix datatypes don't match between operations)";
-        break;
-      case aoclsparse_status_memory_error:
-        std::cerr << "MEMORY_ERROR - memory allocation failure";
-        break;
-      case aoclsparse_status_numerical_error:
-        std::cerr << "NUMERICAL_ERROR - numerical error, e.g., matrix is not positive definite, devide-by-zero error";
-        break;
-      case aoclsparse_status_invalid_operation:
-        std::cerr << "INVALID_OPERATION - cannot proceed with the request at this point";
-        break;
-      case aoclsparse_status_unsorted_input:
-        std::cerr << "UNSORTED_INPUT - the input matrices are not sorted";
-        break;
-      case aoclsparse_status::aoclsparse_status_invalid_kid:
-        std::cerr << "INVALID_KID - user requested kernel id was not available";
-        break;
-      default:
-        std::cerr << "UNKNOWN_STATUS - Unrecognized status code (" + std::to_string(stat) + ")";
-        break;
-    }
-    std::cerr << std::endl;
-    exit(1);
   }
 
   aoclsparse_status status_;

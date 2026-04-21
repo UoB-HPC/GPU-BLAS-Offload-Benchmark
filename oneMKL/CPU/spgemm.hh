@@ -94,120 +94,78 @@ private:
 
     void preLoopRequirements() override {
       if constexpr (std::is_same_v<T, float>) {
-        status_ = mkl_sparse_s_create_csr(&A_csr_,
-                                          indexing_,
-                                          m_,
-                                          k_,
-                                          A_rowsb_,
-                                          A_rowse_,
-                                          A_cols_,
-                                          A_vals_);
-        if (status_ != SPARSE_STATUS_SUCCESS) {
-          std::cerr << "ERROR " << status_ << std::endl;
-          exit(1);
-        }
+        mkl_sparse_s_create_csr(&A_csr_,
+                                indexing_,
+                                m_,
+                                k_,
+                                A_rowsb_,
+                                A_rowse_,
+                                A_cols_,
+                                A_vals_);
 
-        status_ = mkl_sparse_s_create_csr(&B_csr_,
-                                          indexing_,
-                                          k_,
-                                          n_,
-                                          B_rowsb_,
-                                          B_rowse_,
-                                          B_cols_,
-                                          B_vals_);
-        if (status_ != SPARSE_STATUS_SUCCESS) {
-          std::cerr << "ERROR " << status_ << std::endl;
-          exit(1);
-        }
+        mkl_sparse_s_create_csr(&B_csr_,
+                                indexing_,
+                                k_,
+                                n_,
+                                B_rowsb_,
+                                B_rowse_,
+                                B_cols_,
+                                B_vals_);
       } else if constexpr (std::is_same_v<T, double>) {
-        status_ = mkl_sparse_d_create_csr(&A_csr_,
-                                          indexing_,
-                                          m_,
-                                          k_,
-                                          A_rowsb_,
-                                          A_rowse_,
-                                          A_cols_,
-                                          A_vals_);
-        if (status_ != SPARSE_STATUS_SUCCESS) {
-          std::cerr << "ERROR " << status_ << std::endl;
-          exit(1);
-        }
+        mkl_sparse_d_create_csr(&A_csr_,
+                                indexing_,
+                                m_,
+                                k_,
+                                A_rowsb_,
+                                A_rowse_,
+                                A_cols_,
+                                A_vals_);
 
-
-        status_ = mkl_sparse_d_create_csr(&B_csr_,
-                                          indexing_,
-                                          k_,
-                                          n_,
-                                          B_rowsb_,
-                                          B_rowse_,
-                                          B_cols_,
-                                          B_vals_);
-        if (status_ != SPARSE_STATUS_SUCCESS) {
-          std::cerr << "ERROR " << status_ << std::endl;
-          exit(1);
-        }
+        mkl_sparse_d_create_csr(&B_csr_,
+                                indexing_,
+                                k_,
+                                n_,
+                                B_rowsb_,
+                                B_rowse_,
+                                B_cols_,
+                                B_vals_);
       }
     }
 
     void callSpgemm() override {
-      status_ = mkl_sparse_spmm(operation_, A_csr_, B_csr_, &C_csr_);
-      if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cerr << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-
-      status_ = mkl_sparse_order(C_csr_);
-      if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cerr << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
+      mkl_sparse_spmm(operation_, A_csr_, B_csr_, &C_csr_);
+      mkl_sparse_order(C_csr_);
       callConsume();
     }
 
     void postLoopRequirements() override {
       if constexpr(std::is_same_v<T, float>) {
-        status_ = mkl_sparse_s_export_csr(C_csr_,
-                                          &indexing_,
-                                          &m_mkl_,
-                                          &n_mkl_,
-                                          &C_rowsb_,
-                                          &C_rowse_,
-                                          &C_cols_,
-                                          &C_vals_);
+        mkl_sparse_s_export_csr(C_csr_,
+                                &indexing_,
+                                &m_mkl_,
+                                &n_mkl_,
+                                &C_rowsb_,
+                                &C_rowse_,
+                                &C_cols_,
+                                &C_vals_);
       } else if constexpr (std::is_same_v<T, double>) {
-        status_ = mkl_sparse_d_export_csr(C_csr_,
-                                          &indexing_,
-                                          &m_mkl_,
-                                          &n_mkl_,
-                                          &C_rowsb_,
-                                          &C_rowse_,
-                                          &C_cols_,
-                                          &C_vals_);
-      }
-      if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cerr << "ERROR " << status_ << std::endl;
-        exit(1);
+        mkl_sparse_d_export_csr(C_csr_,
+                                &indexing_,
+                                &m_mkl_,
+                                &n_mkl_,
+                                &C_rowsb_,
+                                &C_rowse_,
+                                &C_cols_,
+                                &C_vals_);
       }
 
       C_nnz_ = C_rowse_[m_ - 1];
     }
 
     void postCallKernelCleanup() override {
-      status_ = mkl_sparse_destroy(A_csr_);
-      if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cerr << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-      status_ = mkl_sparse_destroy(B_csr_);
-      if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cerr << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
-      status_ = mkl_sparse_destroy(C_csr_);
-      if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cerr << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
+      mkl_sparse_destroy(A_csr_);
+      mkl_sparse_destroy(B_csr_);
+      mkl_sparse_destroy(C_csr_);
 
       mkl_free(A_vals_);
       mkl_free(A_cols_);
@@ -219,8 +177,6 @@ private:
       mkl_free(B_rowsb_);
       mkl_free(B_rowse_);
     }
-
-    sparse_status_t status_;
 
     sparse_index_base_t indexing_ = SPARSE_INDEX_BASE_ZERO;
     sparse_operation_t operation_ = SPARSE_OPERATION_NON_TRANSPOSE;

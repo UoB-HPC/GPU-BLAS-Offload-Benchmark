@@ -10,6 +10,7 @@
 #include <vector>
 #include <utility>
 
+#include "./common.hh"
 #include "../include/kernels/CPU/spgemm.hh"
 #include "../include/utilities.hh"
 
@@ -40,7 +41,6 @@ public:
     n_armpl_ = n_ = n;
     k_armpl_ = k_ = k;
 
-  
     uint64_t total_elements_A = (uint64_t)m_ * (uint64_t)k_;
     uint64_t total_elements_B = (uint64_t)k_ * (uint64_t)n_;
     nnzA_armpl_ = A_nnz_ = 1 + (uint64_t)((double)total_elements_A * (1.0 - sparsity));
@@ -78,51 +78,35 @@ protected:
 
     // Now make the sparse matrix objects
     if constexpr (std::is_same_v<T, float>) {
-      status_ = armpl_spmat_create_csr_s(&A_armpl_, 
-                                         m_armpl_, 
-                                         k_armpl_, 
-                                         A_rows_, 
-                                         A_cols_,
-                                         A_vals_,
-                                         0);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1); 
-      }
-      status_ = armpl_spmat_create_csr_s(&B_armpl_, 
-                                         k_armpl_, 
-                                         n_armpl_, 
-                                         B_rows_, 
-                                         B_cols_,
-                                         B_vals_,
-                                         0);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1); 
-      }
+      armplCheckError(armpl_spmat_create_csr_s(&A_armpl_, 
+                                               m_armpl_, 
+                                               k_armpl_, 
+                                               A_rows_, 
+                                               A_cols_,
+                                               A_vals_,
+                                               0));
+      armplCheckError(armpl_spmat_create_csr_s(&B_armpl_, 
+                                               k_armpl_, 
+                                               n_armpl_, 
+                                               B_rows_, 
+                                               B_cols_,
+                                               B_vals_,
+                                               0));
     } else if constexpr (std::is_same_v<T, double>) {
-      status_ = armpl_spmat_create_csr_d(&A_armpl_, 
-                                         m_armpl_, 
-                                         k_armpl_, 
-                                         A_rows_, 
-                                         A_cols_,
-                                         A_vals_,
-                                         0);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1); 
-      }
-      status_ = armpl_spmat_create_csr_d(&B_armpl_, 
-                                         k_armpl_, 
-                                         n_armpl_, 
-                                         B_rows_, 
-                                         B_cols_,
-                                         B_vals_,
-                                         0);
-      if (status_ != ARMPL_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1); 
-      }
+      armplCheckError(armpl_spmat_create_csr_d(&A_armpl_, 
+                                               m_armpl_, 
+                                               k_armpl_, 
+                                               A_rows_, 
+                                               A_cols_,
+                                               A_vals_,
+                                               0));
+      armplCheckError(armpl_spmat_create_csr_d(&B_armpl_, 
+                                               k_armpl_, 
+                                               n_armpl_, 
+                                               B_rows_, 
+                                               B_cols_,
+                                               B_vals_,
+                                               0));
     }
     C_armpl_ = armpl_spmat_create_null(m_armpl_, n_armpl_);
   }
@@ -130,153 +114,101 @@ protected:
 private:
   void preLoopRequirements() override {
     // Populate A and B with hints
-    status_ = armpl_spmat_hint(A_armpl_,
-                               ARMPL_SPARSE_HINT_MEMORY,
-                               ARMPL_SPARSE_MEMORY_NOALLOCS);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }                  
-    status_ = armpl_spmat_hint(A_armpl_,
-                               ARMPL_SPARSE_HINT_STRUCTURE,
-                               ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }                  
-    status_ = armpl_spmat_hint(A_armpl_,
-                               ARMPL_SPARSE_HINT_SPMM_INVOCATIONS,
-                               ARMPL_SPARSE_INVOCATIONS_FEW);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_hint(A_armpl_,
-                               ARMPL_SPARSE_HINT_SPMM_OPERATION,
-                               ARMPL_SPARSE_OPERATION_NOTRANS);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_hint(A_armpl_,
-                               ARMPL_SPARSE_HINT_SPMM_STRATEGY,
-                               ARMPL_SPARSE_SPMM_STRAT_OPT_FULL_STRUCT);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
+    armplCheckError(armpl_spmat_hint(A_armpl_,
+                                     ARMPL_SPARSE_HINT_MEMORY,
+                                     ARMPL_SPARSE_MEMORY_NOALLOCS));
+    armplCheckError(armpl_spmat_hint(A_armpl_,
+                                     ARMPL_SPARSE_HINT_STRUCTURE,
+                                     ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED));
+    armplCheckError(armpl_spmat_hint(A_armpl_,
+                                     ARMPL_SPARSE_HINT_SPMM_INVOCATIONS,
+                                     ARMPL_SPARSE_INVOCATIONS_FEW));
+    armplCheckError(armpl_spmat_hint(A_armpl_,
+                                     ARMPL_SPARSE_HINT_SPMM_OPERATION,
+                                     ARMPL_SPARSE_OPERATION_NOTRANS));
+    armplCheckError(armpl_spmat_hint(A_armpl_,
+                                     ARMPL_SPARSE_HINT_SPMM_STRATEGY,
+                                     ARMPL_SPARSE_SPMM_STRAT_OPT_FULL_STRUCT));
 
-    status_ = armpl_spmat_hint(B_armpl_,
-                               ARMPL_SPARSE_HINT_MEMORY,
-                               ARMPL_SPARSE_MEMORY_NOALLOCS);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }                  
-    status_ = armpl_spmat_hint(B_armpl_,
-                               ARMPL_SPARSE_HINT_STRUCTURE,
-                               ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_hint(B_armpl_,
-                               ARMPL_SPARSE_HINT_SPMM_INVOCATIONS,
-                               ARMPL_SPARSE_INVOCATIONS_FEW);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_hint(B_armpl_,
-                               ARMPL_SPARSE_HINT_SPMM_OPERATION,
-                               ARMPL_SPARSE_OPERATION_NOTRANS);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_hint(B_armpl_,
-                               ARMPL_SPARSE_HINT_SPMM_STRATEGY,
-                               ARMPL_SPARSE_SPMM_STRAT_OPT_FULL_STRUCT);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_hint(B_armpl_,
-                               ARMPL_SPARSE_HINT_SPMM_STRATEGY,
-                               ARMPL_SPARSE_SPMM_STRAT_OPT_FULL_STRUCT);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
+    armplCheckError(armpl_spmat_hint(B_armpl_,
+                                     ARMPL_SPARSE_HINT_MEMORY,
+                                     ARMPL_SPARSE_MEMORY_NOALLOCS));
+    armplCheckError(armpl_spmat_hint(B_armpl_,
+                                     ARMPL_SPARSE_HINT_STRUCTURE,
+                                     ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED));
+    armplCheckError(armpl_spmat_hint(B_armpl_,
+                                     ARMPL_SPARSE_HINT_SPMM_INVOCATIONS,
+                                     ARMPL_SPARSE_INVOCATIONS_FEW));
+    armplCheckError(armpl_spmat_hint(B_armpl_,
+                                     ARMPL_SPARSE_HINT_SPMM_OPERATION,
+                                     ARMPL_SPARSE_OPERATION_NOTRANS));
+    armplCheckError(armpl_spmat_hint(B_armpl_,
+                                     ARMPL_SPARSE_HINT_SPMM_STRATEGY,
+                                     ARMPL_SPARSE_SPMM_STRAT_OPT_FULL_STRUCT));
+    armplCheckError(armpl_spmat_hint(B_armpl_,
+                                     ARMPL_SPARSE_HINT_SPMM_STRATEGY,
+                                     ARMPL_SPARSE_SPMM_STRAT_OPT_FULL_STRUCT));
 
     // Call the optimise function to apply hints
-    status_ = armpl_spmm_optimize(ARMPL_SPARSE_OPERATION_NOTRANS,
-                                  ARMPL_SPARSE_OPERATION_NOTRANS,
-                                  ARMPL_SPARSE_SCALAR_ONE,
-                                  A_armpl_,
-                                  B_armpl_,
-                                  ARMPL_SPARSE_SCALAR_ZERO,
-                                  C_armpl_);
+    armplCheckError(armpl_spmm_optimize(ARMPL_SPARSE_OPERATION_NOTRANS,
+                                        ARMPL_SPARSE_OPERATION_NOTRANS,
+                                        ARMPL_SPARSE_SCALAR_ONE,
+                                        A_armpl_,
+                                        B_armpl_,
+                                        ARMPL_SPARSE_SCALAR_ZERO,
+                                        C_armpl_));
   }
 
   void callSpgemm() override{
     if constexpr (std::is_same_v<T, float>) {
-      status_ = armpl_spmm_exec_s(ARMPL_SPARSE_OPERATION_NOTRANS,
-                                   ARMPL_SPARSE_OPERATION_NOTRANS,
-                                   alpha,
-                                   A_armpl_,
-                                   B_armpl_,
-                                   beta,
-                                   C_armpl_);
+      armplCheckError(armpl_spmm_exec_s(ARMPL_SPARSE_OPERATION_NOTRANS,
+                                        ARMPL_SPARSE_OPERATION_NOTRANS,
+                                        alpha,
+                                        A_armpl_,
+                                        B_armpl_,
+                                        beta,
+                                        C_armpl_));
     } else if constexpr (std::is_same_v<T, double>) {
-      status_ = armpl_spmm_exec_d(ARMPL_SPARSE_OPERATION_NOTRANS,
-                                   ARMPL_SPARSE_OPERATION_NOTRANS,
-                                   alpha,
-                                   A_armpl_,
-                                   B_armpl_,
-                                   beta,
-                                   C_armpl_);
+      armplCheckError(armpl_spmm_exec_d(ARMPL_SPARSE_OPERATION_NOTRANS,
+                                        ARMPL_SPARSE_OPERATION_NOTRANS,
+                                        alpha,
+                                        A_armpl_,
+                                        B_armpl_,
+                                        beta,
+                                        C_armpl_));
     } else {
       // Un-specialised class will not do any work - print error and exit.
       std::cout << "ERROR - Datatype for ArmPL CPU SpGEMM kernel not supported." << std::endl;
       exit(1);
-    }
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cerr << "ERROR: " << status_ << std::endl;
-      exit(1); 
     }
   }
 
   void postLoopRequirements() override {
     // Export the C arrays from the structure
     if constexpr (std::is_same_v<T, float>) {
-      status_ = armpl_spmat_export_csr_s(C_armpl_,
-                                         0,
-                                         &m_armpl_,
-                                         &n_armpl_,
-                                         &C_rows_,
-                                         &C_cols_,
-                                         &C_vals_);
+      armplCheckError(armpl_spmat_export_csr_s(C_armpl_,
+                                               0,
+                                               &m_armpl_,
+                                               &n_armpl_,
+                                               &C_rows_,
+                                               &C_cols_,
+                                               &C_vals_));
     } else if constexpr (std::is_same_v<T, double>) {
-      status_ = armpl_spmat_export_csr_d(C_armpl_,
-                                         0,
-                                         &m_armpl_,
-                                         &n_armpl_,
-                                         &C_rows_,
-                                         &C_cols_,
-                                         &C_vals_);
+      armplCheckError(armpl_spmat_export_csr_d(C_armpl_,
+                                               0,
+                                               &m_armpl_,
+                                               &n_armpl_,
+                                               &C_rows_,
+                                               &C_cols_,
+                                               &C_vals_));
     } else {
       // Un-specialised class will not do any work - print error and exit.
       std::cout << "ERROR - Datatype for ArmPL CPU SpGEMM kernel not supported." << std::endl;
       exit(1);
     }
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cerr << "ERROR: " << status_ << std::endl;
-      exit(1);
-    }
     C_nnz_ = nnzC_armpl_ = C_rows_[m_armpl_];
 
-    // ARMPL does not seem to enforce ordered column indices in its 
+    // ARMPL does not enforce ordered column indices in its 
     // output matrices.  Therefore, to allow the checksum to take place
     // We have to order the output matrix here.  
     for (int i = 0; i < m_; i++) {
@@ -301,21 +233,9 @@ private:
   }
 
   void postCallKernelCleanup() override {
-    status_ = armpl_spmat_destroy(A_armpl_);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_destroy(B_armpl_);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-    status_ = armpl_spmat_destroy(C_armpl_);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cout << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
+    armplCheckError(armpl_spmat_destroy(A_armpl_));
+    armplCheckError(armpl_spmat_destroy(B_armpl_));
+    armplCheckError(armpl_spmat_destroy(C_armpl_));
 
     free(A_rows_);
     free(A_cols_);
@@ -330,7 +250,6 @@ private:
 
   const T alpha = ALPHA;
   const T beta = BETA;
-
 
   armpl_status_t status_;
 
@@ -357,7 +276,6 @@ private:
   armpl_spmat_t A_armpl_;
   armpl_spmat_t B_armpl_;
   armpl_spmat_t C_armpl_;
-
 };
 }  // namespace cpu
 #endif

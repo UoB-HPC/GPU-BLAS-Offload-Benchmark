@@ -2,6 +2,7 @@
 
 #ifdef CPU_ARMPL
 
+#include "./common.hh"
 #include "../include/kernels/CPU/spmm.hh"
 #include "../include/utilities.hh"
 

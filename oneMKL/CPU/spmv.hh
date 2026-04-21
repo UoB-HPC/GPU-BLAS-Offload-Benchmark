@@ -68,51 +68,39 @@ protected:
 private:
     void preLoopRequirements() override {
       if constexpr (std::is_same_v<T, float>) {
-        status_ = mkl_sparse_s_create_csr(&A_csr_,
-                                          indexing_,
-                                          m_,
-                                          n_,
-                                          A_rowsb_,
-                                          A_rowse_,
-                                          A_cols_,
-                                          A_vals_);
+        mkl_sparse_s_create_csr(&A_csr_,
+                                indexing_,
+                                m_,
+                                n_,
+                                A_rowsb_,
+                                A_rowse_,
+                                A_cols_,
+                                A_vals_);
       } else if constexpr (std::is_same_v<T, double>) {
-        status_ = mkl_sparse_d_create_csr(&A_csr_,
-                                          indexing_,
-                                          m_,
-                                          n_,
-                                          A_rowsb_,
-                                          A_rowse_,
-                                          A_cols_,
-                                          A_vals_);
-      }
-      if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cout << "ERROR " << status_ << std::endl;
-        exit(1);
+        mkl_sparse_d_create_csr(&A_csr_,
+                                indexing_,
+                                m_,
+                                n_,
+                                A_rowsb_,
+                                A_rowse_,
+                                A_cols_,
+                                A_vals_);
       }
     }
 
     void callSpmv() override {
       if constexpr (std::is_same_v<T, float>) {
-        status_ = mkl_sparse_s_mv(operation_, alpha, A_csr_, description_, x_,
-                                  beta, y_);
+        mkl_sparse_s_mv(operation_, alpha, A_csr_, description_, x_,
+                        beta, y_);
       } else if constexpr (std::is_same_v<T, double>) {
-        status_ = mkl_sparse_d_mv(operation_, alpha, A_csr_, description_, x_,
-                                  beta, y_);
-      }
-      if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cerr << "ERROR " << status_ << std::endl;
-        exit(1);
+        mkl_sparse_d_mv(operation_, alpha, A_csr_, description_, x_,
+                        beta, y_);
       }
       callConsume();
     }
 
     void postLoopRequirements() override {
-      status_ = mkl_sparse_destroy(A_csr_);
-      if (status_ != SPARSE_STATUS_SUCCESS) {
-        std::cerr << "ERROR " << status_ << std::endl;
-        exit(1);
-      }
+      mkl_sparse_destroy(A_csr_);
     }
 
     void postCallKernelCleanup() override {
@@ -123,8 +111,6 @@ private:
       mkl_free(x_);
       mkl_free(y_);
     }
-
-    sparse_status_t status_;
 
     sparse_index_base_t indexing_ = SPARSE_INDEX_BASE_ZERO;
     sparse_operation_t operation_ = SPARSE_OPERATION_NON_TRANSPOSE;

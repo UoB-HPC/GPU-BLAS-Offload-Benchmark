@@ -8,6 +8,7 @@
 
 #include <algorithm>
 
+#include "./common.hh"
 #include "../include/kernels/CPU/spmv.hh"
 #include "../include/utilities.hh"
 
@@ -66,28 +67,24 @@ protected:
 
     // Create the armpl object for this sparse matrix
     if constexpr (std::is_same_v<T, float>) {
-      status_ = armpl_spmat_create_csr_s(&A_armpl_, 
-                                         m_armpl_, 
-                                         n_armpl_, 
-                                         A_rows_, 
-                                         A_cols_,
-                                         A_vals_,
-                                         0);
+      armplCheckError(armpl_spmat_create_csr_s(&A_armpl_, 
+                                               m_armpl_, 
+                                               n_armpl_, 
+                                               A_rows_, 
+                                               A_cols_,
+                                               A_vals_,
+                                               0));
     } else if constexpr (std::is_same_v<T, double>) {
-      status_ = armpl_spmat_create_csr_d(&A_armpl_, 
-                                         m_armpl_, 
-                                         n_armpl_, 
-                                         A_rows_, 
-                                         A_cols_,
-                                         A_vals_,
-                                         0);
+      armplCheckError(armpl_spmat_create_csr_d(&A_armpl_, 
+                                               m_armpl_, 
+                                               n_armpl_, 
+                                               A_rows_, 
+                                               A_cols_,
+                                               A_vals_,
+                                               0));
     } else {
       // Un-specialised class will not do any work - print error and exit.
       std::cerr << "ERROR - Datatype for ArmPL CPU spmv kernel not supported." << std::endl;
-      exit(1);
-    }
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cerr << "ERROR " << status_ << std::endl;
       exit(1);
     }
   }
@@ -96,88 +93,55 @@ private:/** Perform any required steps before calling the spmv kernel that shoul
    * be timed. */
   void preLoopRequirements() override {
     // Give the library some hints so it can optimise the performance of the kernel
-    status_ = armpl_spmat_hint(A_armpl_,
-                               ARMPL_SPARSE_HINT_MEMORY,
-                               ARMPL_SPARSE_MEMORY_NOALLOCS);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cerr << "ERROR " << status_ << std::endl;
-      exit(1);
-    }                  
-
-    status_ = armpl_spmat_hint(A_armpl_,
-                               ARMPL_SPARSE_HINT_STRUCTURE,
-                               ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cerr << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-
-    status_ = armpl_spmat_hint(A_armpl_,
-                               ARMPL_SPARSE_HINT_SPMV_INVOCATIONS,
-                               ARMPL_SPARSE_INVOCATIONS_FEW);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cerr << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
-
-    status_ = armpl_spmat_hint(A_armpl_,
-                               ARMPL_SPARSE_HINT_SPMV_OPERATION,
-                               ARMPL_SPARSE_OPERATION_NOTRANS);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cerr << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
+    armplCheckError(armpl_spmat_hint(A_armpl_,
+                                     ARMPL_SPARSE_HINT_MEMORY,
+                                     ARMPL_SPARSE_MEMORY_NOALLOCS));           
+    armplCheckError(armpl_spmat_hint(A_armpl_,
+                                     ARMPL_SPARSE_HINT_STRUCTURE,
+                                     ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED));
+    armplCheckError(armpl_spmat_hint(A_armpl_,
+                                     ARMPL_SPARSE_HINT_SPMV_INVOCATIONS,
+                                     ARMPL_SPARSE_INVOCATIONS_FEW));
+    armplCheckError(armpl_spmat_hint(A_armpl_,
+                                     ARMPL_SPARSE_HINT_SPMV_OPERATION,
+                                     ARMPL_SPARSE_OPERATION_NOTRANS));
 
     // Now optimise the matrix for SpMV based on the hints given
-    status_ = armpl_spmv_optimize(A_armpl_);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cerr << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
+    armplCheckError(armpl_spmv_optimize(A_armpl_));
   }
 
   /** Make call to the spmv kernel. */
   void callSpmv() override {
     if constexpr (std::is_same_v<T, float>) {
-      status_ = armpl_spmv_exec_s(ARMPL_SPARSE_OPERATION_NOTRANS,
-                                  alpha,
-                                  A_armpl_,
-                                  x_,
-                                  beta,
-                                  y_);
+      armplCheckError(armpl_spmv_exec_s(ARMPL_SPARSE_OPERATION_NOTRANS,
+                                        alpha,
+                                        A_armpl_,
+                                        x_,
+                                        beta,
+                                        y_));
     } else if constexpr (std::is_same_v<T, double>) {
-      status_ = armpl_spmv_exec_d(ARMPL_SPARSE_OPERATION_NOTRANS,
-                                  alpha,
-                                  A_armpl_,
-                                  x_,
-                                  beta,
-                                  y_);
+      armplCheckError(armpl_spmv_exec_d(ARMPL_SPARSE_OPERATION_NOTRANS,
+                                        alpha,
+                                        A_armpl_,
+                                        x_,
+                                        beta,
+                                        y_));
     } else {
       // Un-specialised class will not do any work - print error and exit.
       std::cerr << "ERROR - Datatype for ArmPL CPU GEMV kernel not supported." << std::endl;
       exit(1);
-    }
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cerr << "ERROR: " << status_ << std::endl;
-      exit(1); 
     }
 
     // Ensure compiler doesn't optimise away the work being done
     callConsume();
   }
 
-  
-
   /** Perform any required steps after calling the spmv kernel that should
    * be timed. */
   void postLoopRequirements() override {}
 
   void postCallKernelCleanup() override {
-    status_ = armpl_spmat_destroy(A_armpl_);
-    if (status_ != ARMPL_STATUS_SUCCESS) {
-      std::cerr << "ERROR " << status_ << std::endl;
-      exit(1);
-    }
+    armplCheckError(armpl_spmat_destroy(A_armpl_));
 
     free(A_rows_);
     free(A_cols_);

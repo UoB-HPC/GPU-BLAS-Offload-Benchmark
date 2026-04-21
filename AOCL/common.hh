@@ -2,11 +2,13 @@
 
 #if defined CPU_AOCL
 
+#include <string>
+
 #define aoclCheckError(f)                                                                                                                                                                                         \
   do {                                                                                                                                                                                                            \
     aoclsparse_status _status = (f);                                                                                                                                                                              \
     if (_status != aoclsparse_status_success) {                                                                                                                                                                   \
-      const char* _err_str;                                                                                                                                                                                       \
+      std::string _err_str;                                                                                                                                                                                       \
       switch (_status) {                                                                                                                                                                                          \
         case aoclsparse_status_not_implemented:       _err_str = "NOT_IMPLEMENTED - The requested functionality is not yet implemented in this version"; break;                                                   \
         case aoclsparse_status_invalid_pointer:       _err_str = "INVALID_POINTER - One or more pointer parameters are NULL or otherwise invalid"; break;                                                         \
@@ -22,7 +24,7 @@
         case aoclsparse_status_invalid_operation:     _err_str = "INVALID_OPERATION - cannot proceed with the request at this point"; break;                                                                      \
         case aoclsparse_status_unsorted_input:        _err_str = "UNSORTED_INPUT - the input matrices are not sorted"; break;                                                                                     \
         case aoclsparse_status_invalid_kid:           _err_str = "INVALID_KID - user requested kernel id was not available"; break;                                                                               \
-        default:                                      _err_str = "UNKNOWN_STATUS - Unrecognized status code (" + std::to_string(stat) + ")"; break;                                                               \
+        default:                                      _err_str = "UNKNOWN_STATUS - Unrecognized status code (" + std::to_string(_status) + ")"; break;                                                            \
       }                                                                                                                                                                                                           \
       std::cerr << std::endl << "=== ARMPL ERROR ===" << std::endl                                                                                                                                                \
                 << "File:         " << __FILE__ << std::endl                                                                                                                                                      \

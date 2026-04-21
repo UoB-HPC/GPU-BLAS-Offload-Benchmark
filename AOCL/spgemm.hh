@@ -115,7 +115,7 @@ protected:
       }
 
       // Now sort the matrix -- needed for this AOCL function
-      aoclCheckError(aoclsparse_order_mat(A_aocl_);
+      aoclCheckError(aoclsparse_order_mat(A_aocl_));
       
       // Move into the AOCL CSR matrix handle
       if constexpr (std::is_same_v<T, float>) {

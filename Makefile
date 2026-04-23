@@ -121,10 +121,10 @@ else ifeq ($(CPU_LIB), AOCL)
 override CXXFLAGS += -laoclutils -lblis -lflame -laoclsparse -ldl
 ifeq ($(COMPILER), INTEL)
 override CXXFLAGS += -qopenmp
-# else ifeq ($(COMPILER), HIP)
-# ifeq ($(GPU_LIB), ROCBLAS)
-# override CXXFLAGS += -fopenmp=libgomp -fno-openmp-offload
-# endif
+else ifeq ($(COMPILER), HIP)
+ifeq ($(GPU_LIB), ROCBLAS)
+override CXXFLAGS += -fopenmp=libgomp -fno-openmp-offload
+endif
 else
 override CXXFLAGS += -fopenmp
 endif
@@ -204,7 +204,7 @@ $(error Selected compiler $(COMPILER) is not currently compatible with oneMKL GP
 endif
 
 else ifeq ($(GPU_LIB), ROCBLAS)
-# ifeq ($(COMPILER), HIP)
+ifeq ($(COMPILER), HIP)
 # Do rocBLAS stuff
 override CXXFLAGS += -lrocblas -lrocsparse -lm -lpthread -D__HIP_PLATFORM_AMD__
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
@@ -212,9 +212,9 @@ $(info $(TAB)$(TAB)Add `CXXFLAGS=-L<ROCM_PATH>/lib -L<ROCBLAS_PATH>/lib` to make
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<ROCM_PATH>/include -I<ROCBLAS_PATH>/include` to make command)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-Wl,-rpath,<ROCM_PATH>/lib -Wl,-rpath,<ROCBLAS_PATH>/lib` to make command)
 HEADER_FILES += $(wildcard rocBLAS/*.hh)
-# else
-# $(error Selected compiler $(COMPILER) is not currently compatible with rocBLAS GPU Library)
-# endif
+else
+$(error Selected compiler $(COMPILER) is not currently compatible with rocBLAS GPU Library)
+endif
 
 
 else
@@ -249,12 +249,6 @@ print:
 	@echo "LDFLAGS = $(LDFLAGS)"
 	@echo "Full command would be:"
 	@echo "$(CXX) $(SRC_FILES) $(CXXFLAGS) -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS) -o gpu-blob"
-	@echo "░░      ░░░       ░░░  ░░░░  ░░░░░░░░       ░░░  ░░░░░░░░░      ░░░       ░░"
-	@echo "▒  ▒▒▒▒▒▒▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒▒▒▒▒▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒▒▒▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒"
-	@echo "▓  ▓▓▓   ▓▓       ▓▓▓  ▓▓▓▓  ▓▓    ▓▓       ▓▓▓  ▓▓▓▓▓▓▓▓  ▓▓▓▓  ▓▓       ▓▓"
-	@echo "█  ████  ██  ████████  ████  ████████  ████  ██  ████████  ████  ██  ████  █"
-	@echo "██      ███  █████████      █████████       ███        ███      ███       ██"
-
 
 $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
 	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/libconsume.so

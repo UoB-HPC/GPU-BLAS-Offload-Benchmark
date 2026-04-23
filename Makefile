@@ -51,10 +51,10 @@ CXX = $(CXX_$(COMPILER))
 
 CXXFLAGS_ARM     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
 CXXFLAGS_CLANG   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_GNU     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
-CXXFLAGS_INTEL   = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native -Wno-tautological-constant-compare
+CXXFLAGS_GNU     = -std=c++17 -Wall -Wno-deprecated-declarations -Ofast -$(ARCHFLAG)=native -ldl
+CXXFLAGS_INTEL   = -std=c++17 -Wall -O3 -ffast-math -$(ARCHFLAG)=native -Wno-tautological-constant-compare
 CXXFLAGS_NVIDIA  = -std=c++17 -Wall -O3 -fast -$(ARCHFLAG)=native
-CXXFLAGS_HIP     = -std=c++17 -Wall -Ofast -$(ARCHFLAG)=native
+CXXFLAGS_HIP     = -std=c++17 -Wall -O3 -ffast-math -$(ARCHFLAG)=native
 
 ifndef CXXFLAGS
 CXXFLAGS = $(CXXFLAGS_$(COMPILER))
@@ -98,16 +98,16 @@ $(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Libra
 endif
 # Add INTEL compiler options
 ifeq ($(COMPILER), INTEL)
-override CXXFLAGS += -L$(MKLROOT)/lib -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qmkl=parallel -DMKL_INT=int
+override CXXFLAGS += -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -qmkl=parallel -DMKL_INT=int
 # Add GNU compiler options
 else ifeq ($(COMPILER), GNU)
-override CXXFLAGS += -m64 -L$(MKLROOT)/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -I"${MKLROOT}/include" -DMKL_INT=int
+override CXXFLAGS += -m64 -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -I"${MKLROOT}/include" -DMKL_INT=int
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
 $(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
 $(info )
 # Add CLANG compiler options
 else ifeq ($(COMPILER), CLANG)
-override CXXFLAGS += -L$(MKLROOT)/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -m64 -I"${MKLROOT}/include" -DMKL_INT=int
+override CXXFLAGS += -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -m64 -I"${MKLROOT}/include" -DMKL_INT=int
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
 $(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
 $(info )
@@ -118,10 +118,15 @@ endif
 HEADER_FILES+= $(wildcard oneMKL/CPU/*.hh)
 
 else ifeq ($(CPU_LIB), AOCL)
+override CXXFLAGS += -laoclutils -lblis -lflame -laoclsparse -ldl
 ifeq ($(COMPILER), INTEL)
-override CXXFLAGS += -lblis-mt -qopenmp
+override CXXFLAGS += -qopenmp
+else ifeq ($(COMPILER), HIP)
+ifeq ($(GPU_LIB), ROCBLAS)
+override CXXFLAGS += -fopenmp=libgomp -fno-openmp-offload
+endif
 else
-override CXXFLAGS += -lblis-mt -fopenmp
+override CXXFLAGS += -fopenmp
 endif
 $(warning Users may be required to do the following to use $(COMPILER) with $(CPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS="-L<AOCL_DIR>/lib -I<AOCL_DIR>/include/blis -Wl,-rpath,<AOCL_DIR>/lib"` to make command)
@@ -170,14 +175,14 @@ $(warning GPU_LIB not set (use CUBLAS, ONEMKL, ROCBLAS). No GPU kernels will be 
 else ifeq ($(GPU_LIB), CUBLAS)
 # Do cuBLAS stuff
 ifeq ($(COMPILER), NVIDIA)
-override CXXFLAGS += -cudalib=cublas
+override CXXFLAGS += -cudalib=cublas -lcusparse_static
 else
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-L<NVHPC_DIR>/.../math_libs/lib64 -L<NVHPC_DIR>/.../cuda/lib64` to make command)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<NVHPC_DIR>/.../math_libs/include -I<NVHPC_DIR>/.../cuda/include` to make command)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-Wl,-rpath,<NVHPC_DIR>/.../math_libs/lib64 -Wl,-rpath,<NVHPC_DIR>/.../cuda/lib64` to make command)
 $(info )
-override CXXFLAGS += -lcublas -lcudart
+override CXXFLAGS += -lcublas -lcudart -lcusparse
 endif
 HEADER_FILES += $(wildcard cuBLAS/*.hh)
 
@@ -188,7 +193,7 @@ ifndef MKLROOT
 $(error Must add `MKLROOT=/path/to/mkl/` to make command to use OneMKL CPU Library)
 endif
 # Add compiler and link options
-override CXXFLAGS += -fsycl -L$(MKLROOT)/lib -lmkl_sycl_blas -lmkl_intel_ilp64 -lmkl_tbb_thread -lmkl_core -lsycl -lpthread -lm -ldl  -fsycl -DMKL_ILP64  -I"$(MKLROOT)/include"
+override CXXFLAGS += -fsycl -L$(MKLROOT)/lib/intel64 -lmkl_sycl_blas -lmkl_sycl_sparse -lmkl_intel_lp64 -lmkl_tbb_thread -ltbb -lmkl_core -lsycl -lpthread -lm -ldl  -fsycl -DMKL_LP64  -I"$(MKLROOT)/include"
 # `lmkl_tbb_thread` can replace `lmkl_sequential`
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
 $(info $(TAB)$(TAB)Add `<MKLROOT>/lib` to `$$LD_LIBRARY_PATH`)
@@ -201,7 +206,7 @@ endif
 else ifeq ($(GPU_LIB), ROCBLAS)
 ifeq ($(COMPILER), HIP)
 # Do rocBLAS stuff
-override CXXFLAGS += -lrocblas -lm -lpthread -D__HIP_PLATFORM_AMD__
+override CXXFLAGS += -lrocblas -lrocsparse -lm -lpthread -D__HIP_PLATFORM_AMD__
 $(warning Users may be required to do the following to use $(COMPILER) with $(GPU_LIB):)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-L<ROCM_PATH>/lib -L<ROCBLAS_PATH>/lib` to make command)
 $(info $(TAB)$(TAB)Add `CXXFLAGS=-I<ROCM_PATH>/include -I<ROCBLAS_PATH>/include` to make command)
@@ -225,7 +230,7 @@ ifdef GPU_LIB
 override CXXFLAGS += -DGPU_$(GPU_LIB)
 endif
 
-LDFLAGS = -lm 
+LDFLAGS = -lm
 
 # -------
 
@@ -233,11 +238,22 @@ EXE = gpu-blob
 
 .PHONY: all $(EXE) clean
 
-all: $(EXE)
+all: print $(EXE)
+
+print:
+	@echo "COMPILER = $(COMPILER)"
+	@echo "CXX = $(CXX)"
+	@echo "CPU_LIB = $(CPU_LIB)"
+	@echo "GPU_LIB = $(GPU_LIB)"
+	@echo "CXXFLAGS = $(CXXFLAGS)"
+	@echo "LDFLAGS = $(LDFLAGS)"
+	@echo "Full command would be:"
+	@echo "$(CXX) $(SRC_FILES) $(CXXFLAGS) -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS) -o gpu-blob"
 
 $(EXE): src/Consume/consume.c $(SRC_FILES) $(HEADER_FILES)
 	gcc src/Consume/consume.c -fpic -O0 -shared -o src/Consume/libconsume.so
-	$(CXX) $(SRC_FILES) $(CXXFLAGS) -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS) -o $@
+	@echo "Building main executable with $(CXX)"
+	$(CXX) $(SRC_FILES) -o $@ $(CXXFLAGS) -Lsrc/Consume -Wl,-rpath,src/Consume -lconsume $(LDFLAGS)
 
 clean:
 	rm -f $(EXE) src/Consume/libconsume.so

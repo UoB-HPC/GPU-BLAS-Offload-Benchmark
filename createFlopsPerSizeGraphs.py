@@ -14,7 +14,7 @@ outputDir = "Graphs_" + directory.replace('/', '_')
 # Check if CSV directory exists
 path = os.path.join(os.getcwd(), directory)
 if(not os.path.isdir(path)):
-    print("ERROR - {} directory does not exist. Cannot generate any graphs.".format)
+    print("ERROR - {} directory does not exist. Cannot generate any graphs.".format(directory))
     exit(1)
 
 # Get all filenames
@@ -43,6 +43,7 @@ for i in range(0, len(gemvFilenames)):
     gpuO_Gflops = []
     gpuA_Gflops = []
     gpuU_Gflops = []
+    prob_size = []
 
     # Open file and get all lines
     fName = os.path.join(os.getcwd(), directory, gemvFilenames[i])
@@ -65,8 +66,10 @@ for i in range(0, len(gemvFilenames)):
             mn.append([line[2], line[3]])
         # Get Gflops
         gflops = float(line[-1].rstrip())
+        size = float(line[5].rstrip())
         if line[0] == "cpu":
             cpu_Gflops.append(gflops)
+            prob_size.append(size)
         elif line[0] == "gpu_offloadOnce":
             gpuO_Gflops.append(gflops)
         elif line[0] == "gpu_offloadAlways":
@@ -139,6 +142,15 @@ for i in range(0, len(gemvFilenames)):
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
         gpuEnabled = True
+    if len(prob_size) > 0:
+        ax2 = ax1.twinx()
+        ax2.plot(xVals, prob_size, color="red", linestyle="--", marker="s", label="Problem Size (KiB)")
+        ax2.set_ylabel("Problem Size (KiB)", color="red", fontsize=14)
+        ax2.tick_params(axis='y', labelcolor="red")
+        ax2.set_ylim(min(prob_size) * 0.9, max(prob_size) * 1.1)
+        lines_1, labels_1 = ax1.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
     if(gpuEnabled):
         yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)
@@ -193,16 +205,16 @@ for i in range(0, len(gemvFilenames)):
 print("Finished!")
 # ---------------------------------------------------------------------------------------
 
-# ------------------------------ spgemv Graphs --------------------------------------------
-print("Creating SpGEMV graphs...")
+# ------------------------------ SpMDnV Graphs --------------------------------------------
+print("Creating SpMDnV graphs...")
 # Create GEMV graphs
-spgemvFilenames = []
+spmdnvFilenames = []
 for i in range(0, len(filenames)):
-    if "spgemv_" in filenames[i]:
-        spgemvFilenames.append(filenames[i])
+    if "spmdnv_" in filenames[i]:
+        spmdnvFilenames.append(filenames[i])
 
 ### CSV header format ==== Device,Kernel,M,N,K,Total Problem Size (KiB),Iterations,Total Seconds,GFLOP/s
-for i in range(0, len(spgemvFilenames)):
+for i in range(0, len(spmdnvFilenames)):
     mn = []
     iters = 0
     kernel = ""
@@ -210,9 +222,10 @@ for i in range(0, len(spgemvFilenames)):
     gpuO_Gflops = []
     gpuA_Gflops = []
     gpuU_Gflops = []
+    prob_size = []
 
     # Open file and get all lines
-    fName = os.path.join(os.getcwd(), directory, spgemvFilenames[i])
+    fName = os.path.join(os.getcwd(), directory, spmdnvFilenames[i])
     openFile = open(fName, 'r')
     lines = openFile.readlines()
     lines.pop(0) # Remove headers
@@ -232,8 +245,10 @@ for i in range(0, len(spgemvFilenames)):
             mn.append([line[2], line[3]]) # line[2] = M, line[3] = N
         # Get Gflops
         gflops = float(line[-1].rstrip())
+        size = float(line[5].rstrip())
         if line[0] == "cpu":
             cpu_Gflops.append(gflops)
+            prob_size.append(size)
         elif line[0] == "gpu_offloadOnce":
             gpuO_Gflops.append(gflops)
         elif line[0] == "gpu_offloadAlways":
@@ -246,27 +261,27 @@ for i in range(0, len(spgemvFilenames)):
     inputTypeStr = ""
     x_name = ""
     xVals = []
-    if "_square_vector_M=N" in spgemvFilenames[i]:
+    if "_square_vector_M=N" in spmdnvFilenames[i]:
         x_name = "Value of M, N"
         inputTypeStr = "Square x Vector (M=N)"
         for j in range(0, len(mn)):
             xVals.append(mn[j][0])
-    elif "_tall-thin_vector_M=16N" in spgemvFilenames[i]:
+    elif "_tall-thin_vector_M=16N" in spmdnvFilenames[i]:
         x_name = "Value of N where M=16N"
         inputTypeStr = "Tall-Thin x Vector (M=16N)"
         for j in range(0, len(mn)):
             xVals.append(mn[j][1])
-    elif "_tall-thin_vector_M_N=32" in spgemvFilenames[i]:
+    elif "_tall-thin_vector_M_N=32" in spmdnvFilenames[i]:
         x_name = "Value of M, where N=32"
         inputTypeStr = "Tall-Thin x Vector (M, N=32)"
         for j in range(0, len(mn)):
             xVals.append(mn[j][0])
-    elif "_short-wide_vector_N=16M" in spgemvFilenames[i]:
+    elif "_short-wide_vector_N=16M" in spmdnvFilenames[i]:
         x_name = "Value of M, where N=16M"
         inputTypeStr = "Short-Wide x Vector (N=16M)"
         for j in range(0, len(mn)):
             xVals.append(mn[j][0])
-    elif "_short-wide_vector_M=32_N" in spgemvFilenames[i]:
+    elif "_short-wide_vector_M=32_N" in spmdnvFilenames[i]:
         x_name = "Value of N, where M=32"
         inputTypeStr = "Short-Wide x Vector (M=32, N)"
         for j in range(0, len(mn)):
@@ -279,12 +294,12 @@ for i in range(0, len(spgemvFilenames)):
     y_name = ""
     title = ""
     fp = ""
-    if kernel == "sspgemv" :
+    if kernel == "sspmdnv" :
         fp = "FP32"
-    elif kernel == "dspgemv":
+    elif kernel == "dspmdnv":
         fp = "FP64"
     y_name = "{} GFLOP/s".format(fp)        
-    title = "{}Spgemv Performance for {} Problems - {} iterations per problem size".format(kernel[0].upper(), inputTypeStr, iters)
+    title = "{}SpMDnV Performance for {} Problems - {} iterations per problem size".format(kernel[0].upper(), inputTypeStr, iters)
 
     # Make Graph
     fig1 = plt.figure(figsize=(28,16))
@@ -306,6 +321,15 @@ for i in range(0, len(spgemvFilenames)):
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
         gpuEnabled = True
+    if len(prob_size) > 0:
+        ax2 = ax1.twinx()
+        ax2.plot(xVals, prob_size, color="red", linestyle="--", marker="s", label="Problem Size (KiB)")
+        ax2.set_ylabel("Problem Size (KiB)", color="red", fontsize=14)
+        ax2.tick_params(axis='y', labelcolor="red")
+        ax2.set_ylim(min(prob_size) * 0.9, max(prob_size) * 1.1)
+        lines_1, labels_1 = ax1.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
     if(gpuEnabled):
         yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)
@@ -352,7 +376,7 @@ for i in range(0, len(spgemvFilenames)):
     plt.xlabel(x_name, fontsize=20)
     plt.ylabel(y_name, fontsize=20)
     plt.title(title, fontsize=20)
-    plt.savefig(fname="{}/{}.pdf".format(graphDir, spgemvFilenames[i][:-4]), format="pdf", dpi=1000, bbox_inches="tight")
+    plt.savefig(fname="{}/{}.pdf".format(graphDir, spmdnvFilenames[i][:-4]), format="pdf", dpi=1000, bbox_inches="tight")
     plt.close('all')
     print("\tPDF made")
     
@@ -377,6 +401,7 @@ for i in range(0, len(gemmFilenames)):
     gpuO_Gflops = []
     gpuA_Gflops = []
     gpuU_Gflops = []
+    prob_size = []
 
     # Open file and get all lines
     fName = os.path.join(os.getcwd(), directory, gemmFilenames[i])
@@ -400,8 +425,10 @@ for i in range(0, len(gemmFilenames)):
             mnk.append([line[2], line[3], line[4]])
         # Get Gflops
         gflops = float(line[-1].rstrip())
+        size = float(line[5].rstrip())
         if line[0] == "cpu":
             cpu_Gflops.append(gflops)
+            prob_size.append(size)
         elif line[0] == "gpu_offloadOnce":
             gpuO_Gflops.append(gflops)
         elif line[0] == "gpu_offloadAlways":
@@ -495,6 +522,15 @@ for i in range(0, len(gemmFilenames)):
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
         gpuEnabled = True
+    if len(prob_size) > 0:
+        ax2 = ax1.twinx()
+        ax2.plot(xVals, prob_size, color="red", linestyle="--", marker="s", label="Problem Size (KiB)")
+        ax2.set_ylabel("Problem Size (KiB)", color="red", fontsize=14)
+        ax2.tick_params(axis='y', labelcolor="red")
+        ax2.set_ylim(min(prob_size) * 0.9, max(prob_size) * 1.1)
+        lines_1, labels_1 = ax1.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
     if(gpuEnabled):
         yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)
@@ -550,15 +586,15 @@ print("Finished!")
 # ---------------------------------------------------------------------------------------
 
 # ------------------------------ SpGEMM Graphs --------------------------------------------
-print("Creating SpGEMM graphs...")
-# Create spgemm graphs
-spgemmFilenames = []
+print("Creating SpMDnM graphs...")
+# Create SpMDnM graphs
+spmdnmFilenames = []
 for i in range(0, len(filenames)):
-    if "spgemm_" in filenames[i]:
-        spgemmFilenames.append(filenames[i])
+    if "spmdnm_" in filenames[i]:
+        spmdnmFilenames.append(filenames[i])
 
 ### CSV header format ==== Device,Kernel,M,N,K,Total Problem Size (KiB),Iterations,Total Seconds,GFLOP/s
-for i in range(0, len(spgemmFilenames)):
+for i in range(0, len(spmdnmFilenames)):
     mnk = []
     iters = 0
     kernel = ""
@@ -566,9 +602,10 @@ for i in range(0, len(spgemmFilenames)):
     gpuO_Gflops = []
     gpuA_Gflops = []
     gpuU_Gflops = []
+    prob_size = []
 
     # Open file and get all lines
-    fName = os.path.join(os.getcwd(), directory, spgemmFilenames[i])
+    fName = os.path.join(os.getcwd(), directory, spmdnmFilenames[i])
     openFile = open(fName, 'r')
     lines = openFile.readlines()
     lines.pop(0) # Remove headers
@@ -589,8 +626,10 @@ for i in range(0, len(spgemmFilenames)):
             mnk.append([line[2], line[3], line[4]])
         # Get Gflops
         gflops = float(line[-1].rstrip())
+        size = float(line[5].rstrip())
         if line[0] == "cpu":
             cpu_Gflops.append(gflops)
+            prob_size.append(size)
         elif line[0] == "gpu_offloadOnce":
             gpuO_Gflops.append(gflops)
         elif line[0] == "gpu_offloadAlways":
@@ -602,47 +641,47 @@ for i in range(0, len(spgemmFilenames)):
     inputTypeStr = ""
     x_name = ""
     xVals = []
-    if "_square_square_M=N=K" in spgemmFilenames[i]:
+    if "_square_square_M=N=K" in spmdnmFilenames[i]:
         x_name = "Value of M, N, K"
         inputTypeStr = "Square x Square (M=N=K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_tall-thin_short-wide_M=N_M=16K" in spgemmFilenames[i]:
+    elif "_tall-thin_short-wide_M=N_M=16K" in spmdnmFilenames[i]:
         x_name = "Value of K where M=16K and N=16K"
         inputTypeStr = "Tall-Thin x Short-Wide (M=N=16K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][2])
-    elif "_tall-thin_short-wide_M=N_K=32" in spgemmFilenames[i]:
+    elif "_tall-thin_short-wide_M=N_K=32" in spmdnmFilenames[i]:
         x_name = "Value of M and N, where K=32"
         inputTypeStr = "Tall-Thin x Short-Wide (M=N, K=32)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_short-wide_tall-thin_M=N_K=16M" in spgemmFilenames[i]:
+    elif "_short-wide_tall-thin_M=N_K=16M" in spmdnmFilenames[i]:
         x_name = "Value of M and N, where K=16M"
         inputTypeStr = "Short-Wide x Tall-Thin (M=N, K=16M)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_short-wide_tall-thin_M=N=32_K" in spgemmFilenames[i]:
+    elif "_short-wide_tall-thin_M=N=32_K" in spmdnmFilenames[i]:
         x_name = "Value of K, where M=32 and N=32"
         inputTypeStr = "Short-Wide x Tall-Thin (M=N=32, K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][2])
-    elif "_tall-thin_square_K=N_M=16K" in spgemmFilenames[i]:
+    elif "_tall-thin_square_K=N_M=16K" in spmdnmFilenames[i]:
         x_name = "Value of N and K, where M=16K"
         inputTypeStr = "Tall-Thin x Square (N=K, M=16K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][2])
-    elif "_tall-thin_square_K=N=32_M" in spgemmFilenames[i]:
+    elif "_tall-thin_square_K=N=32_M" in spmdnmFilenames[i]:
         x_name = "Value of M, where N=32 and K=32"
         inputTypeStr = "Tall-Thin x Square (M, N=K=32)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_square_short-wide_M=K_N=16K" in spgemmFilenames[i]:
+    elif "_square_short-wide_M=K_N=16K" in spmdnmFilenames[i]:
         x_name = "Value of M and K, where N=16K"
         inputTypeStr = "Square x Short-Wide (M=K, N=16K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_square_short-wide_M=K=32_N" in spgemmFilenames[i]:
+    elif "_square_short-wide_M=K=32_N" in spmdnmFilenames[i]:
         x_name = "Value of N, where M=32 and K=32"
         inputTypeStr = "Square x Short-Wide (M=K=32, N)"
         for j in range(0, len(mnk)):
@@ -655,12 +694,12 @@ for i in range(0, len(spgemmFilenames)):
     y_name = ""
     title = ""
     fp = ""
-    if kernel == "sspgemm" :
+    if kernel == "sspmdnm" :
         fp = "FP32"
-    elif kernel == "dspgemm":
+    elif kernel == "dspmdnm":
         fp = "FP64"
     y_name = "{} GFLOP/s".format(fp)        
-    title = ("{}spgemm Performance for {} Problems (sparsity = {})- {} "
+    title = ("{}SpMDnM Performance for {} Problems (sparsity = {})- {} "
              "iterations per problemize").format(kernel[0].upper(),
                                                  inputTypeStr, sparsity, iters)
 
@@ -684,6 +723,15 @@ for i in range(0, len(spgemmFilenames)):
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
         gpuEnabled = True
+    if len(prob_size) > 0:
+        ax2 = ax1.twinx()
+        ax2.plot(xVals, prob_size, color="red", linestyle="--", marker="s", label="Problem Size (KiB)")
+        ax2.set_ylabel("Problem Size (KiB)", color="red", fontsize=14)
+        ax2.tick_params(axis='y', labelcolor="red")
+        ax2.set_ylim(min(prob_size) * 0.9, max(prob_size) * 1.1)
+        lines_1, labels_1 = ax1.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
     if(gpuEnabled):
         yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)
@@ -730,7 +778,7 @@ for i in range(0, len(spgemmFilenames)):
     plt.xlabel(x_name, fontsize=20)
     plt.ylabel(y_name, fontsize=20)
     plt.title(title, fontsize=20)
-    plt.savefig(fname="{}/{}.pdf".format(graphDir, spgemmFilenames[i][:-4]), format="pdf", dpi=1000, bbox_inches="tight")
+    plt.savefig(fname="{}/{}.pdf".format(graphDir, spmdnmFilenames[i][:-4]), format="pdf", dpi=1000, bbox_inches="tight")
     plt.close('all')
     print("\tPDF made")
     
@@ -738,16 +786,16 @@ for i in range(0, len(spgemmFilenames)):
 print("Finished!")
 # ---------------------------------------------------------------------------------------
 
-# ------------------------------ spmm Graphs --------------------------------------------
-print("Creating spmm graphs...")
-# Create spmm graphs
-spmmFilenames = []
+# ------------------------------ SpMSpM Graphs --------------------------------------------
+print("Creating SpMSpM graphs...")
+# Create SpMSpM graphs
+spmspmFilenames = []
 for i in range(0, len(filenames)):
-    if "spmm_" in filenames[i]:
-        spmmFilenames.append(filenames[i])
+    if "spmspm_" in filenames[i]:
+        spmspmFilenames.append(filenames[i])
 
 ### CSV header format ==== Device,Kernel,M,N,K,Total Problem Size (KiB),Iterations,Total Seconds,GFLOP/s
-for i in range(0, len(spmmFilenames)):
+for i in range(0, len(spmspmFilenames)):
     mnk = []
     iters = 0
     kernel = ""
@@ -755,9 +803,10 @@ for i in range(0, len(spmmFilenames)):
     gpuO_Gflops = []
     gpuA_Gflops = []
     gpuU_Gflops = []
+    prob_size = []
 
     # Open file and get all lines
-    fName = os.path.join(os.getcwd(), directory, spmmFilenames[i])
+    fName = os.path.join(os.getcwd(), directory, spmspmFilenames[i])
     openFile = open(fName, 'r')
     lines = openFile.readlines()
     lines.pop(0) # Remove headers
@@ -778,8 +827,10 @@ for i in range(0, len(spmmFilenames)):
             mnk.append([line[2], line[3], line[4]])
         # Get Gflops
         gflops = float(line[-1].rstrip())
+        size = float(line[5].rstrip())
         if line[0] == "cpu":
             cpu_Gflops.append(gflops)
+            prob_size.append(size)
         elif line[0] == "gpu_offloadOnce":
             gpuO_Gflops.append(gflops)
         elif line[0] == "gpu_offloadAlways":
@@ -791,47 +842,47 @@ for i in range(0, len(spmmFilenames)):
     inputTypeStr = ""
     x_name = ""
     xVals = []
-    if "_square_square_M=N=K" in spmmFilenames[i]:
+    if "_square_square_M=N=K" in spmspmFilenames[i]:
         x_name = "Value of M, N, K"
         inputTypeStr = "Square x Square (M=N=K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_tall-thin_short-wide_M=N_M=16K" in spmmFilenames[i]:
+    elif "_tall-thin_short-wide_M=N_M=16K" in spmspmFilenames[i]:
         x_name = "Value of K where M=16K and N=16K"
         inputTypeStr = "Tall-Thin x Short-Wide (M=N=16K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][2])
-    elif "_tall-thin_short-wide_M=N_K=32" in spmmFilenames[i]:
+    elif "_tall-thin_short-wide_M=N_K=32" in spmspmFilenames[i]:
         x_name = "Value of M and N, where K=32"
         inputTypeStr = "Tall-Thin x Short-Wide (M=N, K=32)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_short-wide_tall-thin_M=N_K=16M" in spmmFilenames[i]:
+    elif "_short-wide_tall-thin_M=N_K=16M" in spmspmFilenames[i]:
         x_name = "Value of M and N, where K=16M"
         inputTypeStr = "Short-Wide x Tall-Thin (M=N, K=16M)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_short-wide_tall-thin_M=N=32_K" in spmmFilenames[i]:
+    elif "_short-wide_tall-thin_M=N=32_K" in spmspmFilenames[i]:
         x_name = "Value of K, where M=32 and N=32"
         inputTypeStr = "Short-Wide x Tall-Thin (M=N=32, K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][2])
-    elif "_tall-thin_square_K=N_M=16K" in spmmFilenames[i]:
+    elif "_tall-thin_square_K=N_M=16K" in spmspmFilenames[i]:
         x_name = "Value of N and K, where M=16K"
         inputTypeStr = "Tall-Thin x Square (N=K, M=16K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][2])
-    elif "_tall-thin_square_K=N=32_M" in spmmFilenames[i]:
+    elif "_tall-thin_square_K=N=32_M" in spmspmFilenames[i]:
         x_name = "Value of M, where N=32 and K=32"
         inputTypeStr = "Tall-Thin x Square (M, N=K=32)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_square_short-wide_M=K_N=16K" in spmmFilenames[i]:
+    elif "_square_short-wide_M=K_N=16K" in spmspmFilenames[i]:
         x_name = "Value of M and K, where N=16K"
         inputTypeStr = "Square x Short-Wide (M=K, N=16K)"
         for j in range(0, len(mnk)):
             xVals.append(mnk[j][0])
-    elif "_square_short-wide_M=K=32_N" in spmmFilenames[i]:
+    elif "_square_short-wide_M=K=32_N" in spmspmFilenames[i]:
         x_name = "Value of N, where M=32 and K=32"
         inputTypeStr = "Square x Short-Wide (M=K=32, N)"
         for j in range(0, len(mnk)):
@@ -844,12 +895,12 @@ for i in range(0, len(spmmFilenames)):
     y_name = ""
     title = ""
     fp = ""
-    if kernel == "sspmm" :
+    if kernel == "sspmspm" :
         fp = "FP32"
-    elif kernel == "dspmm":
+    elif kernel == "dspmspm":
         fp = "FP64"
     y_name = "{} GFLOP/s".format(fp)        
-    title = ("{}spmm Performance for {} Problems (sparsity = {})- {} "
+    title = ("{}SpMSpM Performance for {} Problems (sparsity = {})- {} "
              "iterations per problemize").format(kernel[0].upper(),
                                                  inputTypeStr, sparsity, iters)
 
@@ -873,6 +924,15 @@ for i in range(0, len(spmmFilenames)):
     if len(gpuU_Gflops) > 0:
         ax1.plot(xVals, gpuU_Gflops, color="#DDCC77", marker=">", label="GPU (Unified Memory)")
         gpuEnabled = True
+    if len(prob_size) > 0:
+        ax2 = ax1.twinx()
+        ax2.plot(xVals, prob_size, color="red", linestyle="--", marker="s", label="Problem Size (KiB)")
+        ax2.set_ylabel("Problem Size (KiB)", color="red", fontsize=14)
+        ax2.tick_params(axis='y', labelcolor="red")
+        ax2.set_ylim(min(prob_size) * 0.9, max(prob_size) * 1.1)
+        lines_1, labels_1 = ax1.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
 
     if(gpuEnabled):
         yCoord = round(max([max(gpuO_Gflops), max(gpuA_Gflops), max(gpuU_Gflops)]) ,1)
@@ -919,7 +979,7 @@ for i in range(0, len(spmmFilenames)):
     plt.xlabel(x_name, fontsize=20)
     plt.ylabel(y_name, fontsize=20)
     plt.title(title, fontsize=20)
-    plt.savefig(fname="{}/{}.pdf".format(graphDir, spmmFilenames[i][:-4]), format="pdf", dpi=1000, bbox_inches="tight")
+    plt.savefig(fname="{}/{}.pdf".format(graphDir, spmspmFilenames[i][:-4]), format="pdf", dpi=1000, bbox_inches="tight")
     plt.close('all')
     print("\tPDF made")
     

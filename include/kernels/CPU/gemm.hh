@@ -7,7 +7,7 @@ namespace cpu {
 /** An abstract class for GEMM BLAS kernels. */
 template <typename T>
 class gemm : public ::gemm<T> {
- public:
+public:
   using ::gemm<T>::gemm;
   using ::gemm<T>::initInputMatrices;
   using ::gemm<T>::m_;
@@ -17,7 +17,7 @@ class gemm : public ::gemm<T> {
   using ::gemm<T>::B_;
   using ::gemm<T>::C_;
 
- public:
+public:
   /** Initialise the required data structures. */
   void initialise(int m, int n, int k) {
     m_ = m;
@@ -32,7 +32,7 @@ class gemm : public ::gemm<T> {
     initInputMatrices();
   }
 
- private:
+private:
   /** Do any necessary cleanup (free pointers, close library handles, etc.)
    * after Kernel has been called. */
   void postCallKernelCleanup() override {

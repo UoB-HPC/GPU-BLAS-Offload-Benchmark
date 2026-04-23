@@ -54,6 +54,8 @@ class gemv_gpu : public gemv<T> {
       }
 
       // Get device identifier
+      int count;
+      hipCheckError(hipGetDeviceCount(&count));
       hipCheckError(hipGetDevice(&gpuDevice_));
 
       // Initialise 3 streams to asynchronously move data between host and
@@ -115,8 +117,7 @@ class gemv_gpu : public gemv<T> {
       }
       case gpuOffloadType::unified: {
         // Prefetch input data to device
-        hipCheckError(
-            hipMemPrefetchAsync(A_, sizeof(T) * m_ * n_, gpuDevice_, s1_));
+        hipCheckError(hipMemPrefetchAsync(A_, sizeof(T) * m_ * n_, gpuDevice_, s1_));
         hipCheckError(hipMemPrefetchAsync(x_, sizeof(T) * n_, gpuDevice_, s2_));
         hipCheckError(hipMemPrefetchAsync(y_, sizeof(T) * m_, gpuDevice_, s3_));
         break;

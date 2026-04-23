@@ -3,8 +3,9 @@
 #ifdef GPU_ONEMKL
 
 #include <mkl.h>
-
+#include <memory>
 #include <oneapi/mkl/blas.hpp>
+#include <oneapi/mkl/spblas.hpp>
 #include <sycl/sycl.hpp>
 
 // Create an exception handler for asynchronous SYCL exceptions
@@ -14,8 +15,7 @@ static const std::function<void(sycl::exception_list)> exception_handler =
         try {
           std::rethrow_exception(e);
         } catch (std::exception const& e) {
-          std::cout << "ERROR -  Caught asynchronous SYCL exception : "
-                    << e.what() << std::endl;
+          std::cerr << "ERROR -  Caught asynchronous SYCL exception : " << e.what() << std::endl;
         }
       }
     };

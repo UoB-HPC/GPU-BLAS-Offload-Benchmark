@@ -41,6 +41,7 @@
 *.su
 *.idb
 *.pdb
+core
 
 # Kernel Module Compile Results
 *.mod*
@@ -56,5 +57,17 @@ gpu-blob
 CSV*
 Graphs*
 
-# VS Code
+# IDE
 .vscode
+
+# MAC metadata
+.DS_Store
+
+# CSV files and graphs
+*.csv 
+*.png
+
+# Bash scripts to run on different systems
+*.sh
+./slurm_scripts
+./slurm_scripts/*

@@ -32,21 +32,22 @@ template <typename T>
 class doGemv {
  public:
   doGemv(const std::string csvDir, const int iters, const int startDim,
-         const int upperLimit, const bool cpuEnabled = true,
+         const int upperLimit, const int step, const bool cpuEnabled = true,
          const bool gpuEnabled = true)
       : CSV_DIR(csvDir),
         iterations_(iters),
         startDimention_(startDim),
         upperLimit_(upperLimit),
+        step_(step),
         doCPU_(cpuEnabled),
         doGPU_(gpuEnabled)
 #if CPU_ENABLED
         ,
-        gemvCpu_(iterations_)
+        cpu_(iterations_)
 #endif
 #if GPU_ENABLED
         ,
-        gemvGpu_(iterations_)
+        gpu_(iterations_)
 #endif
   {
     static_assert((std::is_same_v<T, float> || std::is_same_v<T, double>) &&
@@ -66,7 +67,7 @@ class doGemv {
     prev_gpuResult_unified = time_checksum_gflop();
     std::ofstream csvFile =
         initCSVFile(CSV_DIR + "/" + getKernelName() + "_square_vector_M=N.csv");
-    for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+    for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
       // M = dim, N = dim;
       callKernels(csvFile, dim, dim);
     }
@@ -94,8 +95,8 @@ class doGemv {
     int M = 16 * N;
     while (M <= upperLimit_) {
       callKernels(csvFile, M, N);
-      M += 16;
-      N++;
+      M += 16 * step_;
+      N += step_;
     }
     // Close file
     csvFile.close();
@@ -117,7 +118,7 @@ class doGemv {
     csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_tall-thin_vector_M_N=32.csv");
     if (upperLimit_ >= 32) {
-      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+      for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
         // M = dim, N = 32;
         callKernels(csvFile, dim, 32);
       }
@@ -145,8 +146,8 @@ class doGemv {
     N = 16 * M;
     while (N <= upperLimit_) {
       callKernels(csvFile, M, N);
-      M++;
-      N += 16;
+      M += step_;
+      N += 16 * step_;
     }
     // Close file
     csvFile.close();
@@ -168,7 +169,7 @@ class doGemv {
     csvFile = initCSVFile(CSV_DIR + "/" + getKernelName() +
                           "_short-wide_vector_M=32_N.csv");
     if (upperLimit_ >= 32) {
-      for (int dim = startDimention_; dim <= upperLimit_; dim++) {
+      for (int dim = startDimention_; dim <= upperLimit_; dim += step_) {
         // M = 32, N = dim;
         callKernels(csvFile, 32, dim);
       }
@@ -190,55 +191,54 @@ class doGemv {
     const uint64_t flops = calcFlops(M, N);
     std::string kernelName = getKernelName();
 
-    time_checksum_gflop cpuResult;
-    time_checksum_gflop gpuResult_once;
-    time_checksum_gflop gpuResult_always;
-    time_checksum_gflop gpuResult_unified;
-
 // Perform CPU kernel
 #if CPU_ENABLED
+    time_checksum_gflop cpuResult;
     if (doCPU_) {
-      gemvCpu_.initialise(M, N);
-      cpuResult = gemvCpu_.compute();
+      cpu_.initialise(M, N);
+      cpuResult = cpu_.compute();
       cpuResult.gflops = calcGflops(flops, iterations_, cpuResult.runtime);
       // Write result to CSV file
-      writeLineToCsv(csvFile, "cpu", kernelName, M, N, 0, probSize, iterations_,
-                     cpuResult.runtime, cpuResult.gflops);
+      writeLineToCsv(csvFile, "cpu", kernelName, M, N, 0, probSize, 0.0,
+                     iterations_, cpuResult.runtime, cpuResult.gflops);
     }
 #endif
 
 // Perform the GPU kernels
 #if GPU_ENABLED
+    time_checksum_gflop gpuResult_once;
+    time_checksum_gflop gpuResult_always;
+    time_checksum_gflop gpuResult_unified;
     if (doGPU_) {
       // - ONCE : Offload to/from GPU once before all iterations and once
       // after
-      gemvGpu_.initialise(gpuOffloadType::once, M, N);
-      gpuResult_once = gemvGpu_.compute();
+      gpu_.initialise(gpuOffloadType::once, M, N);
+      gpuResult_once = gpu_.compute();
       gpuResult_once.gflops =
           calcGflops(flops, iterations_, gpuResult_once.runtime);
 
       // - ALWAYS: Offload to/from GPU every iteration
-      gemvGpu_.initialise(gpuOffloadType::always, M, N);
-      gpuResult_always = gemvGpu_.compute();
+      gpu_.initialise(gpuOffloadType::always, M, N);
+      gpuResult_always = gpu_.compute();
       gpuResult_always.gflops =
           calcGflops(flops, iterations_, gpuResult_always.runtime);
 
       // - UNIFIED : data passed from host to device (and device to host) as
       //             needed
-      gemvGpu_.initialise(gpuOffloadType::unified, M, N);
-      gpuResult_unified = gemvGpu_.compute();
+      gpu_.initialise(gpuOffloadType::unified, M, N);
+      gpuResult_unified = gpu_.compute();
       gpuResult_unified.gflops =
           calcGflops(flops, iterations_, gpuResult_unified.runtime);
 
       // Write results to CSV file
       writeLineToCsv(csvFile, "gpu_offloadOnce", kernelName, M, N, 0, probSize,
-                     iterations_, gpuResult_once.runtime,
+                     0.0, iterations_, gpuResult_once.runtime,
                      gpuResult_once.gflops);
       writeLineToCsv(csvFile, "gpu_offloadAlways", kernelName, M, N, 0,
-                     probSize, iterations_, gpuResult_always.runtime,
+                     probSize, 0.0, iterations_, gpuResult_always.runtime,
                      gpuResult_always.gflops);
       writeLineToCsv(csvFile, "gpu_unified", kernelName, M, N, 0, probSize,
-                     iterations_, gpuResult_unified.runtime,
+                     0.0, iterations_, gpuResult_unified.runtime,
                      gpuResult_unified.gflops);
     }
 #endif
@@ -488,6 +488,9 @@ class doGemv {
   /** The maximum value of the largest problem size dimention. */
   const int upperLimit_;
 
+  /** The step size between each problem size dimension. */
+  const int step_;
+
   /** Whether the CPU kernels should be run. */
   const bool doCPU_ = true;
 
@@ -496,12 +499,12 @@ class doGemv {
 
 #if CPU_ENABLED
   /** The GEMV CPU kernel. */
-  cpu::gemv_cpu<T> gemvCpu_;
+  cpu::gemv_cpu<T> cpu_;
 #endif
 
 #if GPU_ENABLED
   /** The GEMV GPU kernel. */
-  gpu::gemv_gpu<T> gemvGpu_;
+  gpu::gemv_gpu<T> gpu_;
 #endif
 
   /** The point at which offloading to GPU (offload once) becomes worthwhile. */

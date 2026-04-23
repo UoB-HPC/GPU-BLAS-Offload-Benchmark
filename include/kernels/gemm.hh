@@ -1,9 +1,15 @@
 #pragma once
 
+#ifdef CPU_ONEMKL
+#include <mkl.h>
+#endif
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <random>
+#include <iostream>
 
 #include "../utilities.hh"
 

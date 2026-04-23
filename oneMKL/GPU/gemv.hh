@@ -166,6 +166,7 @@ class gemv_gpu : public gemv<T> {
         break;
       }
       case gpuOffloadType::unified: {
+        // Ensure all data resides on host once work has completed
         gpuQueue_.wait_and_throw();
         break;
       }
